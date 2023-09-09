@@ -20,21 +20,22 @@ std::string FourCrypt::entropy_prompt{};
 
 FourCrypt::FourCrypt()
 {
+  using std::string;
   if (!FourCrypt::memlock_initialized) {
     SSC_MemLock_Global_initHandled();
     FourCrypt::memlock_initialized = true;
   }
   if (FourCrypt::password_prompt.empty()) {
     FourCrypt::password_prompt = 
-      std::string{"Please input a password (max length "} +
+      string{"Please input a password (max length "} +
       MAX_PW_BYTES_STR +
-      std::string{" characters)."} + NEWLINE_;
+      string{" characters)."} + NEWLINE_;
     FourCrypt::reentry_prompt =
-      std::string{"Please input the same password again."} + NEWLINE_;
+      string{"Please input the same password again."} + NEWLINE_;
     FourCrypt::entropy_prompt = 
-      std::string{"Please input up to "} +
+      string{"Please input up to "} +
       MAX_PW_BYTES_STR +
-      std::string{" random characters)."} +  NEWLINE_;
+      string{" random characters)."} +  NEWLINE_;
   }
 
   this->pod = new PlainOldData;
@@ -56,21 +57,23 @@ PlainOldData* FourCrypt::getPod()
 SSC_CodeError_t FourCrypt::encrypt()
 {
   PlainOldData* mypod = this->getPod();
+  // We require input and output filenames defined for ENCRYPT mode.
   if (mypod->input_filename == nullptr)
     return ERROR_NO_INPUT_FILENAME;
   if (mypod->output_filename == nullptr)
     return ERROR_NO_OUTPUT_FILENAME;
-  SSC_CodeError_t err = this->mapFiles();
+  int err_idx = 0;
+  SSC_CodeError_t err = this->mapFiles(err_idx);//TODO
   if (err)
     return err;
-  this->getPassword(true);
+  this->getPassword(true);//TODO
   if (mypod->flags & FourCrypt::SUPPLEMENT_ENTROPY)
-    this->getEntropy();
+    this->getEntropy();//TODO
   uint8_t* in   = mypod->input_map.ptr;
   uint8_t* out  = mypod->output_map.ptr;
   size_t   n_in = mypod->input_map.size;
-  out = this->writeHeader(out); // Write the header of the ciphertext file.
-  out = this->writeCiphertext(out, in, n_in); // Encrypt the input stream into the ciphertext file.
+  out = this->writeHeader(out); // Write the header of the ciphertext file. TODO
+  out = this->writeCiphertext(out, in, n_in); // Encrypt the input stream into the ciphertext file. TODO
   //TODO
   return 0;
 }
@@ -87,8 +90,31 @@ SSC_CodeError_t FourCrypt::describe()
   return 0;
 }
 
-SSC_CodeError_t FourCrypt::mapFiles()
+SSC_CodeError_t FourCrypt::mapFiles(int& map_err_idx)
 {
+  PlainOldData&   mypod = *this->getPod();
+  SSC_CodeError_t err = 0;
+  // Input and output filenames have been checked for NULL. Map these filepaths.
+  err = SSC_MemMap_init(
+   &mypod.input_map,
+   mypod.input_filename,
+   0,
+   SSC_MEMMAP_INIT_READONLY |
+   SSC_MEMMAP_INIT_FORCE_EXIST |
+   SSC_MEMMAP_INIT_FORCE_EXIST_YES);
+  if (err) {
+    map_err_idx = 1;
+    return err;
+  }
+  err = SSC_MemMap_init(
+   &mypod.output_map,
+   mypod.output_filename,
+   0,
+   SSC_MEMMAP_INIT_FORCE_EXIST);
+  if (err) {
+    map_err_idx = 2;
+    return err;
+  }
   //TODO
   return 0;
 }
