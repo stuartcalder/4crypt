@@ -1,20 +1,21 @@
 Includes := -I.
 Headers  := CommandLineArg.hh DragonflyV2.hh FourCrypt.hh
 Sources  := Impl/CommandLineArg.cc Impl/FourCrypt.cc Impl/Main.cc
-Objects  := CommandLineArg.o FourCrypt.o
+Objects  := Obj/CommandLineArg.o Obj/FourCrypt.o
 LinkLibs := -lSSC -lPPQ
 CppStd   := c++20
 Lto      := -flto
 Optimize := -O3
 Compile  := c++ $(Includes) $(LinkLibs) -std=$(CppStd) $(Lto) $(Optimize)
 
-%.o: Impl/%.cc %.hh
+Obj/%.o: Impl/%.cc %.hh
 	$(Compile) -c -o $@ $<
-CommandLineArg.o: %.o: Impl/%.cc %.hh FourCrypt.hh
+Obj/CommandLineArg.o: Obj/%.o: Impl/%.cc %.hh FourCrypt.hh
 	$(Compile) -c -o $@ $<
 
-4crypt: Impl/Main.cc $(Objects)
+Bin/4crypt: Impl/Main.cc $(Objects) FourCrypt.hh CommandLineArg.hh
 	$(Compile) -o $@ $< $(Objects)
 
+all: Bin/4crypt
 clean:
-	rm -f *.o 4crypt
+	rm -f Obj/*.o Bin/4crypt

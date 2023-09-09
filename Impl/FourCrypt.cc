@@ -12,7 +12,11 @@
 
 using PlainOldData = FourCrypt::PlainOldData;
 
+// FourCrypt static variable initialization.
 bool FourCrypt::memlock_initialized = false;
+std::string FourCrypt::password_prompt{};
+std::string FourCrypt::reentry_prompt{};
+std::string FourCrypt::entropy_prompt{};
 
 FourCrypt::FourCrypt()
 {
@@ -81,4 +85,32 @@ SSC_CodeError_t FourCrypt::describe()
 {
   //TODO
   return 0;
+}
+
+SSC_CodeError_t FourCrypt::mapFiles()
+{
+  //TODO
+  return 0;
+}
+
+void FourCrypt::getPassword(bool enter_twice)
+{
+  //TODO
+}
+
+uint8_t* FourCrypt::writeHeader(uint8_t* to)
+{
+  //TODO
+  return nullptr;
+}
+
+uint8_t* FourCrypt::writeCiphertext(uint8_t* to, const uint8_t* from, const size_t num)
+{
+  //TODO
+  return nullptr;
+}
+
+void FourCrypt::getEntropy()
+{
+  //TODO
 }
