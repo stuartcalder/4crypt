@@ -95,7 +95,7 @@ have_multiplier:
   delete temp;
   requested_bytes *= multiplier;
   SSC_assertMsg(requested_bytes, "Zero memory requested!\n");
-  uint64_t mask = UINT64_C(0x8000000000000000);
+  uint64_t mask = UINT64_C(0x80'00'00'00'00'00'00'00);
   uint8_t mem = 63;
   while (!(mask & requested_bytes)) {
     mask >>= 1;
@@ -154,6 +154,7 @@ have_multiplier:
   SSC_assertMsg(num_digits > 0, "Asked for 0 padding?");
   uint64_t padding = static_cast<uint64_t>(strtoumax(temp, nullptr, 10));
   delete temp;
+  SSC_assertMsg((padding * multiplier) >= padding, "padding < padding * multiplier... Overflow?\n");
   return padding * multiplier;
 }
 
@@ -177,8 +178,7 @@ print_help()
    "-U, --usemem=<mem[K|M|G]>  Set the lower and upper memory bounds to the same value.\n"
    "-I, --iterations=<num>     Set the number of times to iterate the KDF.\n"
    "-T, --threads=<num>        Set the degree of parallelism for the KDF.\n"
-   "-P, --usephi               Use the Phi function."
-  );
+   "-P, --usephi               Use the Phi function.");
 }
 
 int
@@ -391,7 +391,6 @@ usemem_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
 int
 usephi_argproc(const int, char** R_ argv, const int offset, void* R_ data)
 {
-  SSC_ArgParser parser = SSC_ARGPARSER_NULL_LITERAL;
   PlainOldData* pod = static_cast<PlainOldData*>(data);
   pod->flags |= FourCrypt::ENABLE_PHI;
   return SSC_1opt(argv[0][offset]);

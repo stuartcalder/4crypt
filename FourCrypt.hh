@@ -41,10 +41,10 @@ class FourCrypt
       PPQ_CSPRNG                  rng;
       uint64_t                    tf_key   [PPQ_THREEFISH512_EXTERNAL_KEY_WORDS];
       uint64_t                    tf_tweak [PPQ_THREEFISH512_EXTERNAL_TWEAK_WORDS];
-      SSC_MemMap                  input_map;
-      SSC_MemMap                  output_map;
       uint8_t                     password_buffer [PW_BUFFER_BYTES];
       uint8_t                     verify_buffer   [PW_BUFFER_BYTES];
+      SSC_MemMap                  input_map;
+      SSC_MemMap                  output_map;
       char*                       input_filename;
       char*                       output_filename;
       uint64_t                    tf_ctr_idx;
@@ -59,36 +59,36 @@ class FourCrypt
       uint8_t                     memory_high;
       uint8_t                     iterations;
       SSC_BitFlag8_t              flags;
-      static void init(PlainOldData* pod)
+      static void init(PlainOldData& pod)
       {
-        pod->tf_ctr = PPQ_THREEFISH512COUNTERMODE_NULL_LITERAL;
-        pod->rng = PPQ_CSPRNG_NULL_LITERAL;
-        memset(pod->tf_key, 0, sizeof(pod->tf_key));
-        memset(pod->tf_tweak, 0, sizeof(pod->tf_tweak));
-        pod->input_map = SSC_MEMMAP_NULL_LITERAL;
-        pod->output_map = SSC_MEMMAP_NULL_LITERAL;
-        memset(pod->password_buffer, 0, sizeof(pod->password_buffer));
-        memset(pod->verify_buffer, 0, sizeof(pod->verify_buffer));
-        pod->input_filename = nullptr;
-        pod->output_filename = nullptr;
-        pod->tf_ctr_idx = 0;
-        pod->input_filename_size = 0;
-        pod->output_filename_size = 0;
-        pod->password_size = 0;
-        pod->padding_size = 0;
-        pod->thread_count = 1;
-        pod->execute_mode = ExeMode::NONE;
-        pod->padding_mode = PadMode::NONE;
-        pod->memory_low = MEM_DEFAULT;
-        pod->memory_high = MEM_DEFAULT;
-        pod->iterations = 1;
-        pod->flags = 0;
+        pod.tf_ctr = PPQ_THREEFISH512COUNTERMODE_NULL_LITERAL;
+        pod.rng = PPQ_CSPRNG_NULL_LITERAL;
+        memset(pod.tf_key         , 0, sizeof(pod.tf_key));
+        memset(pod.tf_tweak       , 0, sizeof(pod.tf_tweak));
+        memset(pod.password_buffer, 0, sizeof(pod.password_buffer));
+        memset(pod.verify_buffer  , 0, sizeof(pod.verify_buffer));
+        pod.input_map = SSC_MEMMAP_NULL_LITERAL;
+        pod.output_map = SSC_MEMMAP_NULL_LITERAL;
+        pod.input_filename = nullptr;
+        pod.output_filename = nullptr;
+        pod.tf_ctr_idx = 0;
+        pod.input_filename_size = 0;
+        pod.output_filename_size = 0;
+        pod.password_size = 0;
+        pod.padding_size = 0;
+        pod.thread_count = 1;
+        pod.execute_mode = ExeMode::NONE;
+        pod.padding_mode = PadMode::NONE;
+        pod.memory_low = MEM_DEFAULT;
+        pod.memory_high = MEM_DEFAULT;
+        pod.iterations = 1;
+        pod.flags = 0;
       }
-      static void del(PlainOldData* pod)
+      static void del(PlainOldData& pod)
       {
-        delete pod->input_filename;
-        delete pod->output_filename;
-        SSC_secureZero(pod, sizeof(*pod));
+        delete pod.input_filename;
+        delete pod.output_filename;
+        SSC_secureZero(&pod, sizeof(pod));
       }
     };
     // Public Static Data

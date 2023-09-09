@@ -13,7 +13,7 @@ Obj/%.o: Impl/%.cc %.hh
 Obj/CommandLineArg.o: Obj/%.o: Impl/%.cc %.hh $(Deps_FourCrypt_hh)
 	$(Compile) -c -o $@ $<
 
-Bin/4crypt: Impl/Main.cc $(Objects) FourCrypt.hh CommandLineArg.hh
+Bin/4crypt: Impl/Main.cc $(Objects) $(Deps_FourCrypt_hh) $(Deps_CommandLineArg_hh)
 	$(Compile) -o $@ $< $(Objects)
 
 all: Bin/4crypt

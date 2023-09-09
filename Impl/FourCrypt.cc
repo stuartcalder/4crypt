@@ -38,13 +38,13 @@ FourCrypt::FourCrypt()
   }
 
   this->pod = new PlainOldData;
-  PlainOldData::init(this->getPod());
+  PlainOldData::init(*this->getPod());
   PPQ_CSPRNG_init(&this->getPod()->rng);
 }
 
 FourCrypt::~FourCrypt()
 {
-  PlainOldData::del(this->getPod());
+  PlainOldData::del(*this->getPod());
   delete this->getPod();
 }
 
