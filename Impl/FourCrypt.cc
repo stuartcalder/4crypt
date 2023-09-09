@@ -11,6 +11,10 @@
 #endif
 
 using PlainOldData = FourCrypt::PlainOldData;
+enum {
+  INPUT = 1,
+  OUTPUT = 2
+};
 
 // FourCrypt static variable initialization.
 bool FourCrypt::memlock_initialized = false;
@@ -103,16 +107,18 @@ SSC_CodeError_t FourCrypt::encrypt()
         err_str = "Invalid memory-map error code while trying to map %s map at filepath %s!\n";
     }
     switch(err_idx) {
-      case 1:
+      case INPUT:
         err_map = "input";
         err_path = mypod->input_filename;
         break;
-      case 2:
+      case OUTPUT:
         err_map = "output";
         err_path = mypod->output_filename;
       default:
         SSC_errx("Invalid err_idx %d!\n", err_idx);
     }
+    if (err_idx == OUTPUT && SSC_FilePath_exists(err_path))
+      remove(err_path);
     SSC_errx(err_str, err_map, err_path);
   }
   this->getPassword(true);//TODO
@@ -152,7 +158,7 @@ SSC_CodeError_t FourCrypt::mapFiles(int& map_err_idx)
    SSC_MEMMAP_INIT_FORCE_EXIST |
    SSC_MEMMAP_INIT_FORCE_EXIST_YES);
   if (err) {
-    map_err_idx = 1;
+    map_err_idx = INPUT;
     return err;
   }
   err = SSC_MemMap_init(
@@ -161,7 +167,7 @@ SSC_CodeError_t FourCrypt::mapFiles(int& map_err_idx)
    0,
    SSC_MEMMAP_INIT_FORCE_EXIST);
   if (err) {
-    map_err_idx = 2;
+    map_err_idx = OUTPUT;
     return err;
   }
   return 0;
