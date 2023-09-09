@@ -13,18 +13,18 @@ class FourCrypt
 {
   public:
     // Public constants and types.
-    constexpr size_t MAX_PW_BYTES = 125;
-    constexpr size_t PW_BUFFER_BYTES = MAX_PW_BYTES + 1;
-    static const char* MAX_PW_BYTES_STR = "125";
-    constexpr SSC_BitFlag8_t FLAG_ENABLE_PHI =         0b00000001; // Enable the Phi function.
-    constexpr SSC_BitFlag8_t FLAG_SUPPLEMENT_ENTROPY = 0b00000010; // Supplement entropy from stdin.
+    static constexpr size_t MAX_PW_BYTES = 125;
+    static constexpr size_t PW_BUFFER_BYTES = MAX_PW_BYTES + 1;
+    static constexpr const char* MAX_PW_BYTES_STR = "125";
+    static constexpr SSC_BitFlag8_t ENABLE_PHI =         0b00000001; // Enable the Phi function.
+    static constexpr SSC_BitFlag8_t SUPPLEMENT_ENTROPY = 0b00000010; // Supplement entropy from stdin.
 
-    constexpr SSC_CodeError_t ERROR_NO_INPUT_FILENAME    = -1;
-    constexpr SSC_CodeError_t ERROR_NO_OUTPUT_FILENAME   = -2;
-    constexpr SSC_CodeError_t ERROR_INPUT_MEMMAP_FAILED  = -3;
-    constexpr SSC_CodeError_t ERROR_OUTPUT_MEMMAP_FAILED = -4;
+    static constexpr SSC_CodeError_t ERROR_NO_INPUT_FILENAME    = -1;
+    static constexpr SSC_CodeError_t ERROR_NO_OUTPUT_FILENAME   = -2;
+    static constexpr SSC_CodeError_t ERROR_INPUT_MEMMAP_FAILED  = -3;
+    static constexpr SSC_CodeError_t ERROR_OUTPUT_MEMMAP_FAILED = -4;
 
-    constexpr uint8_t MEM_DEFAULT = 25;
+    static constexpr uint8_t MEM_DEFAULT = 25;
 
     enum class ExeMode
     {
@@ -62,12 +62,12 @@ class FourCrypt
       {
         pod->tf_ctr = PPQ_THREEFISH512COUNTERMODE_NULL_LITERAL;
         pod->rng = PPQ_CSPRNG_NULL_LITERAL;
-        pod->tf_key = {0};
-        pod->tf_tweak = {0};
+        memset(pod->tf_key, 0, sizeof(pod->tf_key));
+        memset(pod->tf_tweak, 0, sizeof(pod->tf_tweak));
         pod->input_map = SSC_MEMMAP_NULL_LITERAL;
         pod->output_map = SSC_MEMMAP_NULL_LITERAL;
-        pod->password_buffer = {0};
-        pod->verify_buffer = {0};
+        memset(pod->password_buffer, 0, sizeof(pod->password_buffer));
+        memset(pod->verify_buffer, 0, sizeof(pod->verify_buffer));
         pod->input_filename = nullptr;
         pod->output_filename = nullptr;
         pod->tf_ctr_idx = 0;
@@ -90,12 +90,17 @@ class FourCrypt
         SSC_secureZero(pod, sizeof(*pod));
       }
     };
+    // Public Static Data
+    static bool memlock_initialized;
     // Public accessors.
     PlainOldData* getPod();
     // Public methods.
     SSC_CodeError_t encrypt();//TODO
     SSC_CodeError_t decrypt();//TODO
     SSC_CodeError_t describe();//TODO
+    // Constructors / Destructors
+    FourCrypt();
+    ~FourCrypt();
   private:
     // Data
     PlainOldData*      pod;
@@ -103,10 +108,6 @@ class FourCrypt
     static std::string password_prompt;
     static std::string reentry_prompt;
     static std::string entropy_prompt;
-    static bool        memlock_initialized = false;
-    // Constructors / Destructors
-    FourCrypt();
-    ~FourCrypt();
     // Private methods.
     void            getPassword(bool enter_twice);//TODO
     void            getEntropy();//TODO

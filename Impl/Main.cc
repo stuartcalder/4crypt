@@ -1,9 +1,11 @@
+#include <array>
 #include <SSC/Macro.h>
 #include <SSC/CommandLineArg.h>
 
 #include "FourCrypt.hh"
+#include "CommandLineArg.hh"
 
-const std::array<SSC_ArgShort, 14> shorts = {
+const std::array<SSC_ArgShort, 14> shorts = {{
   SSC_ARGSHORT_LITERAL(describe_argproc  , 'D'),
   SSC_ARGSHORT_LITERAL(entropy_argproc   , 'E'),
   SSC_ARGSHORT_LITERAL(highmem_argproc   , 'H'),
@@ -18,9 +20,9 @@ const std::array<SSC_ArgShort, 14> shorts = {
   SSC_ARGSHORT_LITERAL(input_argproc     , 'i'),
   SSC_ARGSHORT_LITERAL(output_argproc    , 'o'),
   SSC_ARGSHORT_NULL_LITERAL
-};
+}};
 
-const std::array<SSC_ArgLong, 14> longs = {
+const std::array<SSC_ArgLong, 14> longs = {{
   SSC_ARGLONG_LITERAL(decrypt_argproc   , "decrypt"),
   SSC_ARGLONG_LITERAL(describe_argproc  , "describe"),
   SSC_ARGLONG_LITERAL(encrypt_argproc   , "encrypt"),
@@ -35,11 +37,12 @@ const std::array<SSC_ArgLong, 14> longs = {
   SSC_ARGLONG_LITERAL(usemem_argproc    , "usemem"),
   SSC_ARGLONG_LITERAL(usephi_argproc    , "usephi"),
   SSC_ARGLONG_NULL_LITERAL
-};
+}};
 
 int main(int argc, char* argv[])
 {
   FourCrypt fc;
+  using PlainOldData = FourCrypt::PlainOldData;
   PlainOldData* pod = fc.getPod();
   SSC_assertMsg(argc >= 2, "Invalid number of command-line arguments.\n");
   SSC_processCommandLineArgs(
@@ -52,6 +55,7 @@ int main(int argc, char* argv[])
    pod,
    nullptr);
   SSC_BitError_t biterror = 0;
+  using ExeMode = FourCrypt::ExeMode;
   switch (pod->execute_mode) {
     case ExeMode::ENCRYPT:
       biterror = fc.encrypt(); //TODO: Implement.

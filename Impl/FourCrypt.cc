@@ -1,14 +1,18 @@
 #include "FourCrypt.hh"
-
+#define SSC_EXTERN_MEMLOCK // Enable memory locking.
 #include <SSC/MemLock.h>
 
 #if defined(SSC_OS_UNIXLIKE)
- #define NEWLINE_ "\n"
+ #define NEWLINE_ std::string{"\n"}
 #elif defined(SSC_OS_WINDOWS)
- #define NEWLINE_ "\n\r"
+ #define NEWLINE_ std::string{"\n\r"}
 #else
  #error "Invalid OS!"
 #endif
+
+using PlainOldData = FourCrypt::PlainOldData;
+
+bool FourCrypt::memlock_initialized = false;
 
 FourCrypt::FourCrypt()
 {
@@ -18,15 +22,15 @@ FourCrypt::FourCrypt()
   }
   if (FourCrypt::password_prompt.empty()) {
     FourCrypt::password_prompt = 
-      "Please input a password (max length " +
-      MAX_PW_BYTES_STR +
-      " characters)." NEWLINE_;
+      std::string{"Please input a password (max length "} +
+      std::string{MAX_PW_BYTES_STR} +
+      std::string{" characters)."} + NEWLINE_;
     FourCrypt::reentry_prompt =
-      "Please input the same password again." NEWLINE_;
+      std::string{"Please input the same password again."} + NEWLINE_;
     FourCrypt::entropy_prompt = 
-      "Please input up to " +
-      MAX_PW_BYTES_STR +
-      " random characters)." NEWLINE_;
+      std::string{"Please input up to "} +
+      std::string{MAX_PW_BYTES_STR} +
+      std::string{" random characters)."} +  NEWLINE_;
   }
 
   this->pod = new PlainOldData;
@@ -56,7 +60,7 @@ SSC_CodeError_t FourCrypt::encrypt()
   if (err)
     return err;
   this->getPassword(true);
-  if (mypod->flags & FLAG_SUPPLEMENT_ENTROPY)
+  if (mypod->flags & FourCrypt::SUPPLEMENT_ENTROPY)
     this->getEntropy();
   uint8_t* in   = mypod->input_map.ptr;
   uint8_t* out  = mypod->output_map.ptr;
@@ -64,14 +68,17 @@ SSC_CodeError_t FourCrypt::encrypt()
   out = this->writeHeader(out); // Write the header of the ciphertext file.
   out = this->writeCiphertext(out, in, n_in); // Encrypt the input stream into the ciphertext file.
   //TODO
+  return 0;
 }
 
 SSC_CodeError_t FourCrypt::decrypt()
 {
   //TODO
+  return 0;
 }
 
 SSC_CodeError_t FourCrypt::describe()
 {
   //TODO
+  return 0;
 }

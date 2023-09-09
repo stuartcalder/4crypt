@@ -1,7 +1,9 @@
 #include "CommandLineArg.hh"
-using FourCrypt::ExeMode;
-using FourCrypt::PadMode;
-using FourCrypt::PlainOldData;
+#include "FourCrypt.hh"
+#include <inttypes.h>
+using ExeMode = FourCrypt::ExeMode;
+using PadMode = FourCrypt::PadMode;
+using PlainOldData = FourCrypt::PlainOldData;
 #define R_ SSC_RESTRICT
 
 static int
@@ -11,7 +13,7 @@ set_exemode(
  char* R_         str,
  const int        off)
 {
-  static const char* mode_strings = {
+  static const char* mode_strings[] = {
     "NONE", "ENCRYPT", "DECRYPT", "DESCRIBE"
   };
   SSC_assertMsg(
@@ -26,7 +28,7 @@ set_padmode(
  PlainOldData* R_ ctx,
  PadMode          pm)
 {
-  static const char* mode_strings = {
+  static const char* mode_strings[] = {
     "NONE", "ADD", "TARGET", "AS_IF"
   };
   SSC_assertMsg(
@@ -146,7 +148,7 @@ parse_padding(const char* R_ str, const size_t len)
         goto have_multiplier;
     }
   }
-  uint64_t num_digits = 0;
+  uint64_t num_digits;
 have_multiplier:
   num_digits = SSC_Cstr_shiftDigitsToFront(temp, len);
   SSC_assertMsg(num_digits > 0, "Asked for 0 padding?");
@@ -204,7 +206,7 @@ int
 entropy_argproc(const int, char** R_ argv, const int offset, void* R_ data)
 {
   PlainOldData* pod = static_cast<PlainOldData*>(data);
-  pod->flag |= FLAG_SUPPLEMENT_ENTROPY;
+  pod->flags |= FourCrypt::SUPPLEMENT_ENTROPY;
   return SSC_1opt(argv[0][offset]);
 }
 
@@ -268,6 +270,7 @@ iterations_argproc(const int argc, char** R_ argv, const int offset, void* R_ da
    data,
    nullptr,
    [](SSC_ArgParser* R_ ap, void* R_ dt) -> SSC_Error_t {
+     PlainOldData* pod = static_cast<PlainOldData*>(dt);
      pod->iterations = parse_iterations(ap->to_read, ap->size);
      return 0;
    });
@@ -390,6 +393,6 @@ usephi_argproc(const int, char** R_ argv, const int offset, void* R_ data)
 {
   SSC_ArgParser parser = SSC_ARGPARSER_NULL_LITERAL;
   PlainOldData* pod = static_cast<PlainOldData*>(data);
-  pod->flags |= FLAG_ENABLE_PHI;
+  pod->flags |= FourCrypt::ENABLE_PHI;
   return SSC_1opt(argv[0][offset]);
 }
