@@ -1,6 +1,8 @@
 #include "FourCrypt.hh"
 #define SSC_EXTERN_MEMLOCK // Enable memory locking.
 #include <SSC/MemLock.h>
+#include <SSC/Terminal.h>
+#include <PPQ/Skein512.h>
 
 #if defined(SSC_OS_UNIXLIKE)
  #define NEWLINE_ std::string{"\n"}
@@ -51,6 +53,43 @@ FourCrypt::~FourCrypt()
 {
   PlainOldData::del(*this->getPod());
   delete this->getPod();
+}
+
+void FourCrypt::PlainOldData::init(PlainOldData& pod)
+{
+  pod.tf_ctr = PPQ_THREEFISH512COUNTERMODE_NULL_LITERAL;
+  pod.rng    = PPQ_CSPRNG_NULL_LITERAL;
+  memset(pod.tf_key         , 0, sizeof(pod.tf_key));
+  memset(pod.tf_tweak       , 0, sizeof(pod.tf_tweak));
+  memset(pod.password_buffer, 0, sizeof(pod.password_buffer));
+  memset(pod.verify_buffer  , 0, sizeof(pod.verify_buffer));
+  memset(pod.entropy_buffer , 0, sizeof(pod.entropy_buffer));
+  memset(pod.hash_buffer    , 0, sizeof(pod.hash_buffer));
+  pod.input_map  = SSC_MEMMAP_NULL_LITERAL;
+  pod.output_map = SSC_MEMMAP_NULL_LITERAL;
+  pod.input_filename  = nullptr;
+  pod.output_filename = nullptr;
+  pod.ubi512 = &pod.rng.ubi512;
+  pod.tf_ctr_idx = 0;
+  pod.input_filename_size  = 0;
+  pod.output_filename_size = 0;
+  pod.password_size = 0;
+  pod.entropy_size  = 0;
+  pod.padding_size  = 0;
+  pod.thread_count  = 1;
+  pod.execute_mode = ExeMode::NONE;
+  pod.padding_mode = PadMode::NONE;
+  pod.memory_low  = MEM_DEFAULT;
+  pod.memory_high = MEM_DEFAULT;
+  pod.iterations = 1;
+  pod.flags      = 0;
+}
+
+void FourCrypt::PlainOldData::del(PlainOldData& pod)
+{
+  delete pod.input_filename;
+  delete pod.output_filename;
+  SSC_secureZero(&pod, sizeof(pod));
 }
 
 PlainOldData* FourCrypt::getPod()
@@ -121,7 +160,7 @@ SSC_CodeError_t FourCrypt::encrypt()
       remove(err_path);
     SSC_errx(err_str, err_map, err_path);
   }
-  this->getPassword(true);//TODO
+  this->getPassword(true, false);//TODO
   if (mypod->flags & FourCrypt::SUPPLEMENT_ENTROPY)
     this->getEntropy();//TODO
   uint8_t* in   = mypod->input_map.ptr;
@@ -173,9 +212,55 @@ SSC_CodeError_t FourCrypt::mapFiles(int& map_err_idx)
   return 0;
 }
 
-void FourCrypt::getPassword(bool enter_twice)
+void FourCrypt::getPassword(bool enter_twice, bool entropy)
 {
-  //TODO
+  PlainOldData* mypod = this->getPod();
+  SSC_Terminal_init();
+  if (enter_twice && !entropy) {
+    mypod->password_size = static_cast<uint64_t>(SSC_Terminal_getPasswordChecked(
+     mypod->password_buffer,
+     mypod->verify_buffer,
+     FourCrypt::password_prompt.c_str(),
+     FourCrypt::reentry_prompt.c_str(),
+     1,
+     MAX_PW_BYTES,
+     PW_BUFFER_BYTES));
+    SSC_secureZero(mypod->verify_buffer, sizeof(mypod->verify_buffer));
+    SSC_Terminal_end();
+  }
+  else {
+    uint8_t*     p;
+    std::string* str;
+    uint64_t*    sz;
+    if (entropy) {
+      p   = mypod->entropy_buffer;
+      str = &FourCrypt::entropy_prompt;
+      sz  = &mypod->entropy_size;
+    }
+    else {
+      p   = mypod->password_buffer;
+      str = &FourCrypt::password_prompt;
+      sz  = &mypod->password_size;
+    }
+    *sz = static_cast<uint64_t>(SSC_Terminal_getPassword(
+     p,
+     str->c_str(),
+     1,
+     MAX_PW_BYTES,
+     PW_BUFFER_BYTES));
+    SSC_Terminal_end();
+    if (entropy) {
+      PPQ_Skein512_hashNative(
+       mypod->ubi512,
+       mypod->hash_buffer,
+       mypod->entropy_buffer,
+       mypod->entropy_size);
+      SSC_secureZero(mypod->entropy_buffer, sizeof(mypod->entropy_buffer));
+      mypod->entropy_size = 0;
+      PPQ_CSPRNG_reseed(&mypod->rng, mypod->hash_buffer);
+      SSC_secureZero(mypod->hash_buffer, sizeof(mypod->hash_buffer));
+    }
+  }
 }
 
 uint8_t* FourCrypt::writeHeader(uint8_t* to)

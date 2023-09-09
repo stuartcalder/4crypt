@@ -8,7 +8,6 @@
 #include <SSC/MemMap.h>
 #include <PPQ/CSPRNG.h>
 
-
 class FourCrypt
 {
   public:
@@ -39,18 +38,22 @@ class FourCrypt
     {
       PPQ_Threefish512CounterMode tf_ctr;
       PPQ_CSPRNG                  rng;
-      uint64_t                    tf_key   [PPQ_THREEFISH512_EXTERNAL_KEY_WORDS];
-      uint64_t                    tf_tweak [PPQ_THREEFISH512_EXTERNAL_TWEAK_WORDS];
+      uint64_t                    tf_key          [PPQ_THREEFISH512_EXTERNAL_KEY_WORDS];
+      uint64_t                    tf_tweak        [PPQ_THREEFISH512_EXTERNAL_TWEAK_WORDS];
       uint8_t                     password_buffer [PW_BUFFER_BYTES];
       uint8_t                     verify_buffer   [PW_BUFFER_BYTES];
+      uint8_t                     entropy_buffer  [PW_BUFFER_BYTES];
+      alignas(uint64_t) uint8_t   hash_buffer     [PPQ_THREEFISH512_BLOCK_BYTES];
       SSC_MemMap                  input_map;
       SSC_MemMap                  output_map;
       char*                       input_filename;
       char*                       output_filename;
+      PPQ_UBI512*                 ubi512;
       uint64_t                    tf_ctr_idx;
       uint64_t                    input_filename_size;
       uint64_t                    output_filename_size;
       uint64_t                    password_size;
+      uint64_t                    entropy_size;
       uint64_t                    padding_size;
       uint64_t                    thread_count;
       ExeMode                     execute_mode;
@@ -59,37 +62,8 @@ class FourCrypt
       uint8_t                     memory_high;
       uint8_t                     iterations;
       SSC_BitFlag8_t              flags;
-      static void init(PlainOldData& pod)
-      {
-        pod.tf_ctr = PPQ_THREEFISH512COUNTERMODE_NULL_LITERAL;
-        pod.rng = PPQ_CSPRNG_NULL_LITERAL;
-        memset(pod.tf_key         , 0, sizeof(pod.tf_key));
-        memset(pod.tf_tweak       , 0, sizeof(pod.tf_tweak));
-        memset(pod.password_buffer, 0, sizeof(pod.password_buffer));
-        memset(pod.verify_buffer  , 0, sizeof(pod.verify_buffer));
-        pod.input_map = SSC_MEMMAP_NULL_LITERAL;
-        pod.output_map = SSC_MEMMAP_NULL_LITERAL;
-        pod.input_filename = nullptr;
-        pod.output_filename = nullptr;
-        pod.tf_ctr_idx = 0;
-        pod.input_filename_size = 0;
-        pod.output_filename_size = 0;
-        pod.password_size = 0;
-        pod.padding_size = 0;
-        pod.thread_count = 1;
-        pod.execute_mode = ExeMode::NONE;
-        pod.padding_mode = PadMode::NONE;
-        pod.memory_low = MEM_DEFAULT;
-        pod.memory_high = MEM_DEFAULT;
-        pod.iterations = 1;
-        pod.flags = 0;
-      }
-      static void del(PlainOldData& pod)
-      {
-        delete pod.input_filename;
-        delete pod.output_filename;
-        SSC_secureZero(&pod, sizeof(pod));
-      }
+      static void init(PlainOldData& pod);
+      static void del(PlainOldData& pod);
     };
     // Public Static Data
     static bool memlock_initialized;
@@ -110,7 +84,7 @@ class FourCrypt
     static std::string reentry_prompt;
     static std::string entropy_prompt;
     // Private methods.
-    void            getPassword(bool enter_twice);//TODO
+    void            getPassword(bool enter_twice, bool entropy);//TODO
     void            getEntropy();//TODO
     SSC_CodeError_t mapFiles(int& map_err_idx);
     SSC_CodeError_t unmapFiles();//TODO
