@@ -63,9 +63,58 @@ SSC_CodeError_t FourCrypt::encrypt()
   if (mypod->output_filename == nullptr)
     return ERROR_NO_OUTPUT_FILENAME;
   int err_idx = 0;
-  SSC_CodeError_t err = this->mapFiles(err_idx);//TODO
-  if (err)
-    return err;
+  SSC_CodeError_t err = this->mapFiles(err_idx);
+  const char* err_str;
+  const char* err_map;
+  const char* err_path;
+  if (err) {
+    switch (err) {
+      case SSC_MEMMAP_INIT_CODE_ERR_FEXIST_NO:
+        err_str = "Attempted to map %s filepath at %s, but it did not exist!\n";
+        break;
+      case SSC_MEMMAP_INIT_CODE_ERR_FEXIST_YES:
+        err_str = "Attempted to create and map %s filepath at %s, but it already existed!\n";
+        break;
+      case SSC_MEMMAP_INIT_CODE_ERR_READONLY:
+        err_str = "Attempted to map %s filepath at %s, but failed due to readonly!\n";
+        break;
+      case SSC_MEMMAP_INIT_CODE_ERR_SHRINK:
+        err_str = "Attemped to map %s filepath at %s, but failed because shrinking is disallowed!\n";
+        break;
+      case SSC_MEMMAP_INIT_CODE_ERR_NOSIZE:
+        err_str = "Attempted to map %s filepath at %s, but failed because no size was provided!\n";
+        break;
+      case SSC_MEMMAP_INIT_CODE_ERR_OPEN_FILEPATH:
+        err_str = "Attempted to map %s filepath at %s, but failed to open the filepath!\n";
+        break;
+      case SSC_MEMMAP_INIT_CODE_ERR_CREATE_FILEPATH:
+        err_str = "Attempted to create and map %s filepath at %s, but failed to create the filepath!\n";
+        break;
+      case SSC_MEMMAP_INIT_CODE_ERR_GET_FILE_SIZE:
+        err_str = "Attempted to map %s filepath at %s, but failed to obtain the file size!\n";
+        break;
+      case SSC_MEMMAP_INIT_CODE_ERR_SET_FILE_SIZE:
+        err_str = "Attempted to map %s filepath at %s, but failed to set the file size!\n";
+        break;
+      case SSC_MEMMAP_INIT_CODE_ERR_MAP:
+        err_str = "Attempted to map %s filepath at %s, but failed the memory-map operation!\n";
+        break;
+      default:
+        err_str = "Invalid memory-map error code while trying to map %s map at filepath %s!\n";
+    }
+    switch(err_idx) {
+      case 1:
+        err_map = "input";
+        err_path = mypod->input_filename;
+        break;
+      case 2:
+        err_map = "output";
+        err_path = mypod->output_filename;
+      default:
+        SSC_errx("Invalid err_idx %d!\n", err_idx);
+    }
+    SSC_errx(err_str, err_map, err_path);
+  }
   this->getPassword(true);//TODO
   if (mypod->flags & FourCrypt::SUPPLEMENT_ENTROPY)
     this->getEntropy();//TODO
@@ -115,7 +164,6 @@ SSC_CodeError_t FourCrypt::mapFiles(int& map_err_idx)
     map_err_idx = 2;
     return err;
   }
-  //TODO
   return 0;
 }
 

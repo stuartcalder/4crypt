@@ -112,7 +112,7 @@ class FourCrypt
     // Private methods.
     void            getPassword(bool enter_twice);//TODO
     void            getEntropy();//TODO
-    SSC_CodeError_t mapFiles(int& map_err_idx);//TODO
+    SSC_CodeError_t mapFiles(int& map_err_idx);
     SSC_CodeError_t unmapFiles();//TODO
     uint8_t*        writeHeader(uint8_t* to);//TODO
     const uint8_t*  readHeader(const uint8_t* from);//TODO
