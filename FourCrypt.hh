@@ -15,7 +15,8 @@ class FourCrypt
     // Public constants and types.
     static constexpr size_t MAX_PW_BYTES = 125;
     static constexpr size_t PW_BUFFER_BYTES = MAX_PW_BYTES + 1;
-    static constexpr const char* MAX_PW_BYTES_STR = "125";
+    static constexpr const std::string MAX_PW_BYTES_STR{"125"};
+
     static constexpr SSC_BitFlag8_t ENABLE_PHI =         0b00000001; // Enable the Phi function.
     static constexpr SSC_BitFlag8_t SUPPLEMENT_ENTROPY = 0b00000010; // Supplement entropy from stdin.
 

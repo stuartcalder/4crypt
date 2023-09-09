@@ -27,13 +27,13 @@ FourCrypt::FourCrypt()
   if (FourCrypt::password_prompt.empty()) {
     FourCrypt::password_prompt = 
       std::string{"Please input a password (max length "} +
-      std::string{MAX_PW_BYTES_STR} +
+      MAX_PW_BYTES_STR +
       std::string{" characters)."} + NEWLINE_;
     FourCrypt::reentry_prompt =
       std::string{"Please input the same password again."} + NEWLINE_;
     FourCrypt::entropy_prompt = 
       std::string{"Please input up to "} +
-      std::string{MAX_PW_BYTES_STR} +
+      MAX_PW_BYTES_STR +
       std::string{" random characters)."} +  NEWLINE_;
   }
 
