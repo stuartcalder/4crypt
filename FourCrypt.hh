@@ -25,6 +25,7 @@ class FourCrypt
     static constexpr SSC_CodeError_t ERROR_OUTPUT_MEMMAP_FAILED = -4;
 
     static constexpr uint8_t MEM_DEFAULT = 25;
+    static constexpr uint64_t PAD_FACTOR = 64;
 
     enum class ExeMode
     {
@@ -62,6 +63,7 @@ class FourCrypt
       uint8_t                     memory_high;
       uint8_t                     iterations;
       SSC_BitFlag8_t              flags;
+
       static void init(PlainOldData& pod);
       static void del(PlainOldData& pod);
     };
@@ -73,6 +75,10 @@ class FourCrypt
     SSC_CodeError_t encrypt();//TODO
     SSC_CodeError_t decrypt();//TODO
     SSC_CodeError_t describe();//TODO
+    constexpr uint64_t getPaddingSize(uint64_t req_pad_bytes, uint64_t unpadded_size);
+    constexpr uint64_t getHeaderSize(uint64_t req_pad_bytes);//TODO
+    consteval uint64_t getMinimumOutputSize();//TODO
+    consteval uint64_t getMACSize();
     // Constructors / Destructors
     FourCrypt();
     ~FourCrypt();
@@ -85,12 +91,13 @@ class FourCrypt
     static std::string entropy_prompt;
     // Private methods.
     void            getPassword(bool enter_twice, bool entropy);//TODO
-    void            getEntropy();//TODO
     SSC_CodeError_t mapFiles(int& map_err_idx);
     SSC_CodeError_t unmapFiles();//TODO
     uint8_t*        writeHeader(uint8_t* to);//TODO
+    uint8_t*        writePadding(uint8_t* to);//TODO
     const uint8_t*  readHeader(const uint8_t* from);//TODO
     uint8_t*        writeCiphertext(uint8_t* to, const uint8_t* from, const size_t num);//TODO
+    void            writeMAC(uint8_t* to, const uint8_t* from, const size_t num);//TODO
 };
 
 #endif

@@ -160,9 +160,9 @@ SSC_CodeError_t FourCrypt::encrypt()
       remove(err_path);
     SSC_errx(err_str, err_map, err_path);
   }
-  this->getPassword(true, false);//TODO
+  this->getPassword(true, false);
   if (mypod->flags & FourCrypt::SUPPLEMENT_ENTROPY)
-    this->getEntropy();//TODO
+    this->getPassword(false, true);
   uint8_t* in   = mypod->input_map.ptr;
   uint8_t* out  = mypod->output_map.ptr;
   size_t   n_in = mypod->input_map.size;
@@ -182,6 +182,30 @@ SSC_CodeError_t FourCrypt::describe()
 {
   //TODO
   return 0;
+}
+
+constexpr uint64_t FourCrypt::getPaddingSize(uint64_t req_pad_bytes, uint64_t unpadded_size)
+{
+  uint64_t pad = req_pad_bytes;
+  uint64_t diff = (unpadded_size + pad) % PAD_FACTOR;
+  if (diff)
+    pad += diff;
+  return pad;
+}
+
+constexpr uint64_t FourCrypt::getHeaderSize(uint64_t req_pad_bytes)
+{
+  //TODO
+  return 0;
+}
+consteval uint64_t FourCrypt::getMinimumOutputSize()
+{
+  return FourCrypt::getHeaderSize(0) + FourCrypt::getMACSize() + 1;
+}
+
+consteval uint64_t FourCrypt::getMACSize()
+{
+  return PPQ_THREEFISH512_BLOCK_BYTES;
 }
 
 SSC_CodeError_t FourCrypt::mapFiles(int& map_err_idx)
@@ -269,13 +293,19 @@ uint8_t* FourCrypt::writeHeader(uint8_t* to)
   return nullptr;
 }
 
+uint8_t* FourCrypt::writePadding(uint8_t* to)
+{
+  //TODO
+  return nullptr;
+}
+
 uint8_t* FourCrypt::writeCiphertext(uint8_t* to, const uint8_t* from, const size_t num)
 {
   //TODO
   return nullptr;
 }
 
-void FourCrypt::getEntropy()
+void FourCrypt::writeMAC(uint8_t* to, const uint8_t* from, const size_t num)
 {
   //TODO
 }
