@@ -4,10 +4,13 @@
 #include <SSC/Terminal.h>
 #include <PPQ/Skein512.h>
 
+static_assert(FourCrypt::MAX_PW_BYTES == 125, "MAX_PW_BYTES changed!");
+#define MAX_PW_BYTES_STR "125"
+
 #if defined(SSC_OS_UNIXLIKE)
- #define NEWLINE_ std::string{"\n"}
+ #define NEWLINE_ "\n"
 #elif defined(SSC_OS_WINDOWS)
- #define NEWLINE_ std::string{"\n\r"}
+ #define NEWLINE_ "\n\r"
 #else
  #error "Invalid OS!"
 #endif
@@ -19,31 +22,25 @@ enum {
 };
 
 // FourCrypt static variable initialization.
-bool FourCrypt::memlock_initialized = false;
-std::string FourCrypt::password_prompt{};
-std::string FourCrypt::reentry_prompt{};
-std::string FourCrypt::entropy_prompt{};
+bool FourCrypt::memlock_initialized{false};
+std::string FourCrypt::password_prompt{
+ "Please input a password (max length " MAX_PW_BYTES_STR " characters)." NEWLINE_
+};
+std::string FourCrypt::reentry_prompt{
+  "Please input the same password again." NEWLINE_
+};
+std::string FourCrypt::entropy_prompt{
+  "Please input up to " MAX_PW_BYTES_STR " random characters)." NEWLINE_
+};
 
 FourCrypt::FourCrypt()
 {
-  using std::string;
+  #if defined(SSC_MEMLOCK_H)
   if (!FourCrypt::memlock_initialized) {
     SSC_MemLock_Global_initHandled();
     FourCrypt::memlock_initialized = true;
   }
-  if (FourCrypt::password_prompt.empty()) {
-    FourCrypt::password_prompt = 
-      string{"Please input a password (max length "} +
-      MAX_PW_BYTES_STR +
-      string{" characters)."} + NEWLINE_;
-    FourCrypt::reentry_prompt =
-      string{"Please input the same password again."} + NEWLINE_;
-    FourCrypt::entropy_prompt = 
-      string{"Please input up to "} +
-      MAX_PW_BYTES_STR +
-      string{" random characters)."} +  NEWLINE_;
-  }
-
+  #endif
   this->pod = new PlainOldData;
   PlainOldData::init(*this->getPod());
   PPQ_CSPRNG_init(&this->getPod()->rng);
@@ -106,6 +103,8 @@ SSC_CodeError_t FourCrypt::encrypt()
   if (mypod->output_filename == nullptr)
     return ERROR_NO_OUTPUT_FILENAME;
   int err_idx = 0;
+  //TODO: Setup the output map's size to create and map a file of the right size.
+  // Map the input and output files.
   SSC_CodeError_t err = this->mapFiles(err_idx);
   const char* err_str;
   const char* err_map;
@@ -160,8 +159,10 @@ SSC_CodeError_t FourCrypt::encrypt()
       remove(err_path);
     SSC_errx(err_str, err_map, err_path);
   }
+  // Get the encryption password.
   this->getPassword(true, false);
   if (mypod->flags & FourCrypt::SUPPLEMENT_ENTROPY)
+    // Get the entropy password and hash it into the RNG.
     this->getPassword(false, true);
   uint8_t* in   = mypod->input_map.ptr;
   uint8_t* out  = mypod->output_map.ptr;
@@ -184,23 +185,37 @@ SSC_CodeError_t FourCrypt::describe()
   return 0;
 }
 
-constexpr uint64_t FourCrypt::getPaddingSize(uint64_t req_pad_bytes, uint64_t unpadded_size)
-{
-  uint64_t pad = req_pad_bytes;
-  uint64_t diff = (unpadded_size + pad) % PAD_FACTOR;
-  if (diff)
-    pad += diff;
-  return pad;
-}
-
-constexpr uint64_t FourCrypt::getHeaderSize(uint64_t req_pad_bytes)
+uint64_t FourCrypt::getOutputSize()
 {
   //TODO
   return 0;
 }
+
+constexpr uint64_t FourCrypt::getRealPaddingSize(uint64_t req_pad_bytes, uint64_t unpadded_size)
+{
+  //TODO
+  return 0;
+}
+
+consteval uint64_t FourCrypt::getHeaderSize()
+{
+  uint64_t size = 0;
+  size +=  4; // 4crypt magic bytes.
+  size +=  4; // Mem Low, High, Iter count, Phi usage.
+  size +=  8; // Size of the file, little-endian encoded.
+  size += 16; // Threefish512 Tweak.
+  size += 32; // CATENA salt.
+  size += 32; // Threefish512 CTR IV.
+  size +=  8; // Thread count, little-endian encoded.
+  size +=  8; // Reserved.
+  size +=  8; // Ciphered padding size, little-endian encoded.
+  size +=  8; // Ciphered reserved.
+  return size;
+}
+
 consteval uint64_t FourCrypt::getMinimumOutputSize()
 {
-  return FourCrypt::getHeaderSize(0) + FourCrypt::getMACSize() + 1;
+  return FourCrypt::getHeaderSize() + FourCrypt::getMACSize() + 64;
 }
 
 consteval uint64_t FourCrypt::getMACSize()

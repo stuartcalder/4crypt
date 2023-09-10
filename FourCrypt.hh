@@ -14,7 +14,14 @@ class FourCrypt
     // Public constants and types.
     static constexpr size_t MAX_PW_BYTES = 125;
     static constexpr size_t PW_BUFFER_BYTES = MAX_PW_BYTES + 1;
-    static constexpr const std::string MAX_PW_BYTES_STR{"125"};
+    #if   SSC_ENDIAN == SSC_ENDIAN_LITTLE
+    static constexpr bool is_little_endian = true;
+    #elif SSC_ENDIAN == SSC_ENDIAN_BIG
+    static constexpr bool is_little_endian = false;
+    #else
+     #error "Invalid endianness!"
+    #endif
+    static constexpr const uint8_t magic[4] = { 0xe2, 0x2a, 0x1e, 0x9b };
 
     static constexpr SSC_BitFlag8_t ENABLE_PHI =         0b00000001; // Enable the Phi function.
     static constexpr SSC_BitFlag8_t SUPPLEMENT_ENTROPY = 0b00000010; // Supplement entropy from stdin.
@@ -75,8 +82,9 @@ class FourCrypt
     SSC_CodeError_t encrypt();//TODO
     SSC_CodeError_t decrypt();//TODO
     SSC_CodeError_t describe();//TODO
-    constexpr uint64_t getPaddingSize(uint64_t req_pad_bytes, uint64_t unpadded_size);
-    constexpr uint64_t getHeaderSize(uint64_t req_pad_bytes);//TODO
+    uint64_t getOutputSize();//TODO
+    constexpr uint64_t getRealPaddingSize(uint64_t req_pad_bytes, uint64_t unpadded_size);
+    consteval uint64_t getHeaderSize();//TODO
     consteval uint64_t getMinimumOutputSize();//TODO
     consteval uint64_t getMACSize();
     // Constructors / Destructors
