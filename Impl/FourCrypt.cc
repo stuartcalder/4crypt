@@ -105,7 +105,7 @@ SSC_CodeError_t FourCrypt::encrypt()
   int err_idx = 0;
   //TODO: Setup the output map's size to create and map a file of the right size.
   // Map the input and output files.
-  SSC_CodeError_t err = this->mapFiles(err_idx);
+  SSC_CodeError_t err = this->mapFiles(&err_idx);
   const char* err_str;
   const char* err_map;
   const char* err_path;
@@ -223,7 +223,7 @@ consteval uint64_t FourCrypt::getMACSize()
   return PPQ_THREEFISH512_BLOCK_BYTES;
 }
 
-SSC_CodeError_t FourCrypt::mapFiles(int& map_err_idx)
+SSC_CodeError_t FourCrypt::mapFiles(int* map_err_idx, size_t input_size, size_t output_size)
 {
   PlainOldData&   mypod = *this->getPod();
   SSC_CodeError_t err = 0;
@@ -231,21 +231,23 @@ SSC_CodeError_t FourCrypt::mapFiles(int& map_err_idx)
   err = SSC_MemMap_init(
    &mypod.input_map,
    mypod.input_filename,
-   0,
+   input_size,
    SSC_MEMMAP_INIT_READONLY |
    SSC_MEMMAP_INIT_FORCE_EXIST |
    SSC_MEMMAP_INIT_FORCE_EXIST_YES);
   if (err) {
-    map_err_idx = INPUT;
+    if (map_err_idx)
+      *map_err_idx = INPUT;
     return err;
   }
   err = SSC_MemMap_init(
    &mypod.output_map,
    mypod.output_filename,
-   0,
+   output_size,
    SSC_MEMMAP_INIT_FORCE_EXIST);
   if (err) {
-    map_err_idx = OUTPUT;
+    if (map_err_idx)
+      *map_err_idx = OUTPUT;
     return err;
   }
   return 0;

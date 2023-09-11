@@ -1,5 +1,4 @@
 #include "CommandLineArg.hh"
-#include "FourCrypt.hh"
 #include <inttypes.h>
 using ExeMode = FourCrypt::ExeMode;
 using PadMode = FourCrypt::PadMode;

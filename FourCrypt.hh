@@ -14,13 +14,10 @@ class FourCrypt
     // Public constants and types.
     static constexpr size_t MAX_PW_BYTES = 125;
     static constexpr size_t PW_BUFFER_BYTES = MAX_PW_BYTES + 1;
-    #if   SSC_ENDIAN == SSC_ENDIAN_LITTLE
-    static constexpr bool is_little_endian = true;
-    #elif SSC_ENDIAN == SSC_ENDIAN_BIG
-    static constexpr bool is_little_endian = false;
-    #else
-     #error "Invalid endianness!"
-    #endif
+    static_assert(
+     SSC_ENDIAN == SSC_ENDIAN_LITTLE || SSC_ENDIAN == SSC_ENDIAN_BIG,
+     "Invalid endianness!");
+    static constexpr const bool is_little_endian = []() -> bool { return (SSC_ENDIAN == SSC_ENDIAN_LITTLE); }();
     static constexpr const uint8_t magic[4] = { 0xe2, 0x2a, 0x1e, 0x9b };
 
     static constexpr SSC_BitFlag8_t ENABLE_PHI =         0b00000001; // Enable the Phi function.
@@ -99,7 +96,7 @@ class FourCrypt
     static std::string entropy_prompt;
     // Private methods.
     void            getPassword(bool enter_twice, bool entropy);//TODO
-    SSC_CodeError_t mapFiles(int& map_err_idx);
+    SSC_CodeError_t mapFiles(int* map_err_idx, size_t input_size = 0, size_t output_size = 0);
     SSC_CodeError_t unmapFiles();//TODO
     uint8_t*        writeHeader(uint8_t* to);//TODO
     uint8_t*        writePadding(uint8_t* to);//TODO
