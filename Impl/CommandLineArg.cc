@@ -31,7 +31,7 @@ set_padmode(
     "NONE", "ADD", "TARGET", "AS_IF"
   };
   SSC_assertMsg(
-   ctx->padding_mode == PadMode::NONE,
+   ctx->padding_mode == PadMode::ADD,
    "Padding mode already set to %s!\n", mode_strings[static_cast<int>(ctx->padding_mode)]);
   ctx->padding_mode = pm;
 }

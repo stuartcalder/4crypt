@@ -15,22 +15,21 @@ class FourCrypt
     // Public constants and types.
     static constexpr size_t MAX_PW_BYTES = 125;
     static constexpr size_t PW_BUFFER_BYTES = MAX_PW_BYTES + 1;
-    static_assert(
-     SSC_ENDIAN == SSC_ENDIAN_LITTLE || SSC_ENDIAN == SSC_ENDIAN_BIG,
-     "Invalid endianness!");
+    static_assert(SSC_ENDIAN == SSC_ENDIAN_LITTLE || SSC_ENDIAN == SSC_ENDIAN_BIG, "Invalid endianness!");
     static constexpr const bool is_little_endian = []() -> bool { return (SSC_ENDIAN == SSC_ENDIAN_LITTLE); }();
     static constexpr const uint8_t magic[4] = { 0xe2, 0x2a, 0x1e, 0x9b };
 
-    static constexpr SSC_BitFlag8_t ENABLE_PHI =         0b00000001; // Enable the Phi function.
-    static constexpr SSC_BitFlag8_t SUPPLEMENT_ENTROPY = 0b00000010; // Supplement entropy from stdin.
+    static constexpr const SSC_BitFlag8_t ENABLE_PHI =         0b00000001; // Enable the Phi function.
+    static constexpr const SSC_BitFlag8_t SUPPLEMENT_ENTROPY = 0b00000010; // Supplement entropy from stdin.
 
-    static constexpr SSC_CodeError_t ERROR_NO_INPUT_FILENAME    = -1;
-    static constexpr SSC_CodeError_t ERROR_NO_OUTPUT_FILENAME   = -2;
-    static constexpr SSC_CodeError_t ERROR_INPUT_MEMMAP_FAILED  = -3;
-    static constexpr SSC_CodeError_t ERROR_OUTPUT_MEMMAP_FAILED = -4;
+    static constexpr const SSC_CodeError_t ERROR_NO_INPUT_FILENAME    = -1;
+    static constexpr const SSC_CodeError_t ERROR_NO_OUTPUT_FILENAME   = -2;
+    static constexpr const SSC_CodeError_t ERROR_INPUT_MEMMAP_FAILED  = -3;
+    static constexpr const SSC_CodeError_t ERROR_OUTPUT_MEMMAP_FAILED = -4;
 
-    static constexpr uint8_t MEM_DEFAULT = 25;
-    static constexpr uint64_t PAD_FACTOR = 64;
+    static constexpr const uint8_t  MEM_DEFAULT = 25;
+    static constexpr const uint64_t PAD_FACTOR = 64;
+    static constexpr const uint64_t MAC_SIZE = 64;
 
     enum class ExeMode
     {
@@ -38,7 +37,7 @@ class FourCrypt
     };
     enum class PadMode
     {
-      NONE, ADD, TARGET, AS_IF
+      ADD, TARGET, AS_IF
     };
     struct PlainOldData
     {
@@ -83,9 +82,9 @@ class FourCrypt
     SSC_CodeError_t describe();//TODO
     uint64_t getOutputSize();//TODO
     constexpr uint64_t getRealPaddingSize(uint64_t req_pad_bytes, uint64_t unpadded_size);
-    consteval uint64_t getHeaderSize();
-    consteval uint64_t getMinimumOutputSize();
-    consteval uint64_t getMACSize();
+    static consteval uint64_t getHeaderSize();
+    static consteval uint64_t getMetadataSize();
+    static consteval uint64_t getMinimumOutputSize();
     // Constructors / Destructors
     FourCrypt();
     ~FourCrypt();
@@ -98,10 +97,11 @@ class FourCrypt
     static std::string entropy_prompt;
     // Private methods.
     void            getPassword(bool enter_twice, bool entropy);//TODO
+    SSC_Error_t     normalizePadding();//TODO
+    void            runKDF();//TODO
     SSC_CodeError_t mapFiles(int* map_err_idx, size_t input_size = 0, size_t output_size = 0);
     SSC_CodeError_t unmapFiles();//TODO
-    uint8_t*        writeHeader(uint8_t* to);//TODO
-    uint8_t*        writePadding(uint8_t* to);//TODO
+    uint8_t*        writeHeader(uint8_t* to);
     const uint8_t*  readHeader(const uint8_t* from);//TODO
     uint8_t*        writeCiphertext(uint8_t* to, const uint8_t* from, const size_t num);//TODO
     void            writeMAC(uint8_t* to, const uint8_t* from, const size_t num);//TODO

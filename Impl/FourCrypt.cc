@@ -77,7 +77,7 @@ void FourCrypt::PlainOldData::init(PlainOldData& pod)
   pod.padding_size  = 0;
   pod.thread_count  = 1;
   pod.execute_mode = ExeMode::NONE;
-  pod.padding_mode = PadMode::NONE;
+  pod.padding_mode = PadMode::ADD;
   pod.memory_low  = MEM_DEFAULT;
   pod.memory_high = MEM_DEFAULT;
   pod.iterations = 1;
@@ -166,13 +166,52 @@ SSC_CodeError_t FourCrypt::encrypt()
   if (mypod->flags & FourCrypt::SUPPLEMENT_ENTROPY)
     // Get the entropy password and hash it into the RNG.
     this->getPassword(false, true);
+  this->normalizePadding();//TODO
+  this->runKDF();//TODO
   uint8_t* in   = mypod->input_map.ptr;
   uint8_t* out  = mypod->output_map.ptr;
   size_t   n_in = mypod->input_map.size;
-  out = this->writeHeader(out); // Write the header of the ciphertext file. TODO
+  out = this->writeHeader(out); // Write the header of the ciphertext file.
   out = this->writeCiphertext(out, in, n_in); // Encrypt the input stream into the ciphertext file. TODO
   //TODO
   return 0;
+}
+
+
+SSC_Error_t FourCrypt::normalizePadding()
+{
+  PlainOldData* mypod = this->getPod();
+  uint64_t size = mypod->input_map.size;
+  uint64_t pad  = mypod->padding_size;
+  switch (mypod->padding_mode) {
+    // Add @pad to @size, then round up to be evenly divisible by PAD_FACTOR.
+    case PadMode::ADD:
+      if ((size + pad) % PAD_FACTOR)
+        mypod->padding_size = pad + (PAD_FACTOR - ((size + pad) % PAD_FACTOR));
+      break;
+    // Determine the difference between @pad and @size, storing the results in @pad.
+    case PadMode::TARGET:
+      if (pad < size)
+        return -1;
+      // Desire for TARGET: Output file is an exact, specific size.
+      mypod->padding_size = size - pad;
+      mypod->padding_mode = PadMode::ADD;
+      return this->normalizePadding();
+    case PadMode::AS_IF:
+      if (pad < size)
+        return -1;
+      mypod->padding_size = size - pad;
+      mypod->padding_mode = PadMode::ADD;
+      return this->normalizePadding();
+    default:
+      return -1;
+  }
+  return 0;
+}
+
+void FourCrypt::runKDF()
+{
+  //TODO
 }
 
 SSC_CodeError_t FourCrypt::decrypt()
@@ -215,18 +254,22 @@ consteval uint64_t FourCrypt::getHeaderSize()
   return size;
 }
 
-consteval uint64_t FourCrypt::getMinimumOutputSize()
+consteval uint64_t FourCrypt::getMetadataSize()
 {
-  return FourCrypt::getHeaderSize() + FourCrypt::getMACSize() + 64;
+  return FourCrypt::getHeaderSize() + MAC_SIZE;
 }
 
-consteval uint64_t FourCrypt::getMACSize()
+consteval uint64_t FourCrypt::getMinimumOutputSize()
 {
-  return PPQ_THREEFISH512_BLOCK_BYTES;
+  return FourCrypt::getHeaderSize() + MAC_SIZE + PAD_FACTOR;
 }
+static_assert(FourCrypt::getMinimumOutputSize() % FourCrypt::PAD_FACTOR == 0);
 
 SSC_CodeError_t FourCrypt::mapFiles(int* map_err_idx, size_t input_size, size_t output_size)
 {
+  constexpr const SSC_BitFlag_t input_flag = SSC_MEMMAP_INIT_READONLY |
+   SSC_MEMMAP_INIT_FORCE_EXIST | SSC_MEMMAP_INIT_FORCE_EXIST_YES;
+  constexpr const SSC_BitFlag_t output_flag = SSC_MEMMAP_INIT_FORCE_EXIST;
   PlainOldData&   mypod = *this->getPod();
   SSC_CodeError_t err = 0;
   // Input and output filenames have been checked for NULL. Map these filepaths.
@@ -234,9 +277,7 @@ SSC_CodeError_t FourCrypt::mapFiles(int* map_err_idx, size_t input_size, size_t 
    &mypod.input_map,
    mypod.input_filename,
    input_size,
-   SSC_MEMMAP_INIT_READONLY |
-   SSC_MEMMAP_INIT_FORCE_EXIST |
-   SSC_MEMMAP_INIT_FORCE_EXIST_YES);
+   input_flag);
   if (err) {
     if (map_err_idx)
       *map_err_idx = INPUT;
@@ -246,7 +287,7 @@ SSC_CodeError_t FourCrypt::mapFiles(int* map_err_idx, size_t input_size, size_t 
    &mypod.output_map,
    mypod.output_filename,
    output_size,
-   SSC_MEMMAP_INIT_FORCE_EXIST);
+   output_flag);
   if (err) {
     if (map_err_idx)
       *map_err_idx = OUTPUT;
@@ -348,7 +389,7 @@ uint8_t* FourCrypt::writeHeader(uint8_t* to)
       tmp[0] = mypod->padding_size;
     else
       tmp[0] = SSC_swap64(mypod->padding_size);
-    tmp[1] = 0x0000000000000000;
+    tmp[1] = 0;
     PPQ_Threefish512CounterMode_xorKeystream(
      &mypod->tf_ctr,
      to,
