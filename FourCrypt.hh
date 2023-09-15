@@ -7,6 +7,7 @@
 #include <SSC/Memory.h>
 #include <SSC/MemMap.h>
 #include <PPQ/CSPRNG.h>
+#include <PPQ/Catena512.h>
 
 class FourCrypt
 {
@@ -49,6 +50,8 @@ class FourCrypt
       uint8_t                     verify_buffer   [PW_BUFFER_BYTES];
       uint8_t                     entropy_buffer  [PW_BUFFER_BYTES];
       alignas(uint64_t) uint8_t   hash_buffer     [PPQ_THREEFISH512_BLOCK_BYTES];
+      alignas(uint64_t) uint8_t   catena_salt     [PPQ_CATENA512_SALT_BYTES];
+      alignas(uint64_t) uint8_t   tf_ctr_iv       [PPQ_THREEFISH512COUNTERMODE_IV_BYTES];
       SSC_MemMap                  input_map;
       SSC_MemMap                  output_map;
       char*                       input_filename;
@@ -73,16 +76,15 @@ class FourCrypt
     };
     // Public Static Data
     static bool memlock_initialized;
-    // Public accessors.
-    PlainOldData* getPod();
     // Public methods.
+    PlainOldData*   getPod();
     SSC_CodeError_t encrypt();//TODO
     SSC_CodeError_t decrypt();//TODO
     SSC_CodeError_t describe();//TODO
     uint64_t getOutputSize();//TODO
     constexpr uint64_t getRealPaddingSize(uint64_t req_pad_bytes, uint64_t unpadded_size);
-    consteval uint64_t getHeaderSize();//TODO
-    consteval uint64_t getMinimumOutputSize();//TODO
+    consteval uint64_t getHeaderSize();
+    consteval uint64_t getMinimumOutputSize();
     consteval uint64_t getMACSize();
     // Constructors / Destructors
     FourCrypt();

@@ -62,6 +62,8 @@ void FourCrypt::PlainOldData::init(PlainOldData& pod)
   memset(pod.verify_buffer  , 0, sizeof(pod.verify_buffer));
   memset(pod.entropy_buffer , 0, sizeof(pod.entropy_buffer));
   memset(pod.hash_buffer    , 0, sizeof(pod.hash_buffer));
+  memset(pod.catena_salt    , 0, sizeof(pod.catena_salt));
+  memset(pod.tf_ctr_iv      , 0, sizeof(pod.tf_ctr_iv));
   pod.input_map  = SSC_MEMMAP_NULL_LITERAL;
   pod.output_map = SSC_MEMMAP_NULL_LITERAL;
   pod.input_filename  = nullptr;
@@ -270,22 +272,22 @@ void FourCrypt::getPassword(bool enter_twice, bool entropy)
     SSC_Terminal_end();
   }
   else {
-    uint8_t*     p;
-    std::string* str;
-    uint64_t*    sz;
+    uint8_t*    p;
+    const char* str;
+    uint64_t*   sz;
     if (entropy) {
       p   = mypod->entropy_buffer;
-      str = &FourCrypt::entropy_prompt;
+      str = FourCrypt::entropy_prompt.c_str();
       sz  = &mypod->entropy_size;
     }
     else {
       p   = mypod->password_buffer;
-      str = &FourCrypt::password_prompt;
+      str = FourCrypt::password_prompt.c_str();
       sz  = &mypod->password_size;
     }
     *sz = static_cast<uint64_t>(SSC_Terminal_getPassword(
      p,
-     str->c_str(),
+     str,
      1,
      MAX_PW_BYTES,
      PW_BUFFER_BYTES));
@@ -306,14 +308,57 @@ void FourCrypt::getPassword(bool enter_twice, bool entropy)
 
 uint8_t* FourCrypt::writeHeader(uint8_t* to)
 {
-  //TODO
-  return nullptr;
-}
-
-uint8_t* FourCrypt::writePadding(uint8_t* to)
-{
-  //TODO
-  return nullptr;
+  PlainOldData* mypod = this->getPod();
+  // Magic bytes.
+  memcpy(to, FourCrypt::magic, sizeof(FourCrypt::magic));
+  to += sizeof(FourCrypt::magic);
+  // Mem Low, High, Iteration Count, Phi usage.
+  (*to++) = mypod->memory_low;
+  (*to++) = mypod->memory_high;
+  (*to++) = mypod->iterations;
+  if (mypod->flags & ENABLE_PHI)
+    (*to++) = 1;
+  else
+    (*to++) = 0;
+  // Size of the file, little-endian encoded.
+  {
+    uint64_t size = mypod->output_map.size;
+    memcpy(to, &size, sizeof(size));
+    to += sizeof(size);
+  }
+  // Threefish512 Tweak.
+  memcpy(to, mypod->tf_tweak, PPQ_THREEFISH512_TWEAK_BYTES);
+  to += PPQ_THREEFISH512_TWEAK_BYTES;
+  // CATENA Salt.
+  memcpy(to, mypod->catena_salt, sizeof(mypod->catena_salt));
+  to += sizeof(mypod->catena_salt);
+  // Threefish512 CTR IV.
+  memcpy(to, mypod->tf_ctr_iv, sizeof(mypod->tf_ctr_iv));
+  to += sizeof(mypod->tf_ctr_iv);
+  // Thread count, little-endian encoded.
+  memcpy(to, &mypod->thread_count, sizeof(mypod->thread_count));
+  to += sizeof(mypod->thread_count);
+  // 8 bytes reserved.
+  memset(to, 0, 8);
+  to += 8;
+  // 8 Ciphered padding size bytes; 8 ciphered reserve bytes.
+  {
+    uint64_t tmp[2];
+    if constexpr(FourCrypt::is_little_endian)
+      tmp[0] = mypod->padding_size;
+    else
+      tmp[0] = SSC_swap64(mypod->padding_size);
+    tmp[1] = 0x0000000000000000;
+    PPQ_Threefish512CounterMode_xorKeystream(
+     &mypod->tf_ctr,
+     to,
+     tmp,
+     sizeof(tmp),
+     mypod->tf_ctr_idx);
+    mypod->tf_ctr_idx += sizeof(tmp);
+    to += sizeof(tmp);
+  }
+  return to;
 }
 
 uint8_t* FourCrypt::writeCiphertext(uint8_t* to, const uint8_t* from, const size_t num)
