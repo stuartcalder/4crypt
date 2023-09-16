@@ -21,18 +21,19 @@ class FourCrypt
     // Public constants and types.
     static constexpr size_t MAX_PW_BYTES = 125;
     static constexpr size_t PW_BUFFER_BYTES = MAX_PW_BYTES + 1;
-    static_assert(SSC_ENDIAN == SSC_ENDIAN_LITTLE || SSC_ENDIAN == SSC_ENDIAN_BIG, "Invalid endianness!");
+    static_assert(SSC_ENDIAN == SSC_ENDIAN_LITTLE || SSC_ENDIAN == SSC_ENDIAN_BIG, "Only big and little endian supported!");
     static constexpr const bool is_little_endian = []() -> bool { return (SSC_ENDIAN == SSC_ENDIAN_LITTLE); }();
     static constexpr const uint8_t magic[4] = { 0xe2, 0x2a, 0x1e, 0x9b };
 
     static constexpr const SSC_BitFlag8_t ENABLE_PHI =         0b00000001; // Enable the Phi function.
     static constexpr const SSC_BitFlag8_t SUPPLEMENT_ENTROPY = 0b00000010; // Supplement entropy from stdin.
 
-    static constexpr const SSC_CodeError_t ERROR_NO_INPUT_FILENAME      = -1;
-    static constexpr const SSC_CodeError_t ERROR_NO_OUTPUT_FILENAME     = -2;
-    static constexpr const SSC_CodeError_t ERROR_INPUT_MEMMAP_FAILED    = -3;
-    static constexpr const SSC_CodeError_t ERROR_OUTPUT_MEMMAP_FAILED   = -4;
-    static constexpr const SSC_CodeError_t ERROR_GETTING_INPUT_FILESIZE = -5;
+    static constexpr const SSC_CodeError_t ERROR_NO_INPUT_FILENAME        = -1;
+    static constexpr const SSC_CodeError_t ERROR_NO_OUTPUT_FILENAME       = -2;
+    static constexpr const SSC_CodeError_t ERROR_INPUT_MEMMAP_FAILED      = -3;
+    static constexpr const SSC_CodeError_t ERROR_OUTPUT_MEMMAP_FAILED     = -4;
+    static constexpr const SSC_CodeError_t ERROR_GETTING_INPUT_FILESIZE   = -5;
+    static constexpr const SSC_CodeError_t ERROR_INPUT_FILESIZE_TOO_SMALL = -6;
 
     static constexpr const uint8_t  MEM_DEFAULT = 25;
     static constexpr const uint64_t PAD_FACTOR = 64;
@@ -50,7 +51,7 @@ class FourCrypt
     {
       PPQ_Threefish512CounterMode tf_ctr;
       PPQ_CSPRNG                  rng;
-      alignas(uint64_t) uint8_t   hash_buffer     [PPQ_THREEFISH512_BLOCK_BYTES];
+      alignas(uint64_t) uint8_t   hash_buffer     [PPQ_THREEFISH512_BLOCK_BYTES * 2]; // Enough room for 2 64 byte hashes in 1 buffer.
       uint64_t                    tf_sec_key      [PPQ_THREEFISH512_EXTERNAL_KEY_WORDS];
       uint64_t                    tf_tweak        [PPQ_THREEFISH512_EXTERNAL_TWEAK_WORDS];
       alignas(uint64_t) uint8_t   mac_key         [PPQ_THREEFISH512_BLOCK_BYTES];
@@ -85,7 +86,7 @@ class FourCrypt
     static bool memlock_initialized;
     // Public methods.
     PlainOldData*   getPod();
-    SSC_CodeError_t encrypt();//TODO
+    SSC_CodeError_t encrypt();//TODO: Test me?
     SSC_CodeError_t decrypt();//TODO
     SSC_CodeError_t describe();//TODO
     static consteval uint64_t getHeaderSize();
@@ -104,7 +105,7 @@ class FourCrypt
     // Private methods.
     void            getPassword(bool enter_twice, bool entropy);//TODO
     SSC_Error_t     normalizePadding(const uint64_t input_filesize);//TODO
-    void            genRandomElments();
+    void            genRandomElements();
     SSC_Error_t     runKDF();//TODO
     SSC_CodeError_t mapFiles(int* map_err_idx, size_t input_size = 0, size_t output_size = 0);
     SSC_CodeError_t unmapFiles();//TODO

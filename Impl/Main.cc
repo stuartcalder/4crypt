@@ -41,7 +41,7 @@ const std::array<SSC_ArgLong, 14> longs = {{
 
 int main(int argc, char* argv[])
 {
-  FourCrypt fc;
+  FourCrypt fc{};
   using PlainOldData = FourCrypt::PlainOldData;
   PlainOldData* pod = fc.getPod();
   SSC_assertMsg(argc >= 2, "Invalid number of command-line arguments.\n");

@@ -64,6 +64,8 @@ static void kdf(
    new_salt,
    input,
    sizeof(input));
+  // Copy that new salt into Catena.
+  memcpy(catena->salt, new_salt, sizeof(new_salt));
 
   // Run the requested Catena KDF.
   if (pod->flags & FourCrypt::ENABLE_PHI)
@@ -108,6 +110,10 @@ FourCrypt::~FourCrypt()
 consteval uint64_t FourCrypt::getHeaderSize()
 {
   uint64_t size = 0;
+  static_assert(sizeof(FourCrypt::magic) == 4);
+  static_assert(PPQ_THREEFISH512_TWEAK_BYTES == 16);
+  static_assert(PPQ_CATENA512_SALT_BYTES == 32);
+  static_assert(PPQ_THREEFISH512COUNTERMODE_IV_BYTES == 32);
   size +=  4; // 4crypt magic bytes.
   size +=  4; // Mem Low, High, Iter count, Phi usage.
   size +=  8; // Size of the file, little-endian encoded.
@@ -255,11 +261,11 @@ SSC_CodeError_t FourCrypt::encrypt()
   if (mypod->flags & FourCrypt::SUPPLEMENT_ENTROPY)
     // Get the entropy password and hash it into the RNG.
     this->getPassword(false, true);
-  this->genRandomElments();
-  this->runKDF();//TODO
-  uint8_t* in   = mypod->input_map.ptr;
-  uint8_t* out  = mypod->output_map.ptr;
-  size_t   n_in = mypod->input_map.size;
+  this->genRandomElements();
+  this->runKDF();
+  const uint8_t* in   = mypod->input_map.ptr;
+  uint8_t*       out  = mypod->output_map.ptr;
+  size_t         n_in = mypod->input_map.size;
   out = this->writeHeader(out); // Write the header of the ciphertext file.
   out = this->writeCiphertext(out, in, n_in); // Encrypt the input stream into the ciphertext file.
   this->writeMAC(out, mypod->output_map.ptr, mypod->output_map.size - MAC_SIZE);
@@ -298,7 +304,7 @@ SSC_Error_t FourCrypt::normalizePadding(const uint64_t input_filesize)
   return 0;
 }
 
-void FourCrypt::genRandomElments()
+void FourCrypt::genRandomElements()
 {
   PlainOldData* mypod = this->getPod();
   PPQ_CSPRNG*   myrng = &mypod->rng;
@@ -348,17 +354,62 @@ SSC_Error_t FourCrypt::runKDF()
     }
     delete[] threads;
   }
-
   SSC_secureZero(catenas, sizeof(PPQ_Catena512) * num_threads);
-  SSC_secureZero(outputs, output_bytes);
   delete[] catenas;
+  SSC_secureZero(mypod->password_buffer, sizeof(mypod->password_buffer));
+
+  // Combine all the outputs into one.
+  for (uint64_t i = 1; i < num_threads; ++i)
+    SSC_xor64(outputs, outputs + (i * PPQ_THREEFISH512_BLOCK_BYTES));
+  // Hash into 128 bytes of output.
+  PPQ_Skein512_hash(
+   mypod->ubi512,
+   mypod->hash_buffer,
+   outputs,
+   PPQ_THREEFISH512_BLOCK_BYTES,
+   sizeof(mypod->hash_buffer));
+  SSC_secureZero(outputs, output_bytes);
   delete[] outputs;
+  // The first 64 become the secret encryption key; the latter 64 become the authentication key.
+  memcpy(mypod->tf_sec_key, mypod->hash_buffer, PPQ_THREEFISH512_BLOCK_BYTES);
+  memcpy(mypod->mac_key   , mypod->hash_buffer + PPQ_THREEFISH512_BLOCK_BYTES, PPQ_THREEFISH512_BLOCK_BYTES);
+  SSC_secureZero(mypod->hash_buffer, sizeof(mypod->hash_buffer));
+  // Initialize the PPQ_Threefish512Static inside @mypod->tf_ctr.
+  PPQ_Threefish512Static_init(
+   &mypod->tf_ctr.threefish512,
+   mypod->tf_sec_key,
+   mypod->tf_tweak);
+  // Initialize @mypod->tf_ctr itself.
+  PPQ_Threefish512CounterMode_init(
+   &mypod->tf_ctr,
+   mypod->tf_ctr_iv);
+
   delete[] errors;
   return 0;
 }
 
 SSC_CodeError_t FourCrypt::decrypt()
 {
+  PlainOldData* mypod = this->getPod();
+  if (mypod->input_filename == nullptr)
+    return ERROR_NO_INPUT_FILENAME;
+  if (mypod->output_filename == nullptr) {
+    mypod->output_filename_size = mypod->input_filename_size + 3;
+    mypod->output_filename = new char[mypod->output_filename_size + 1];
+    memcpy(
+     mypod->output_filename,
+     mypod->input_filename,
+     mypod->input_filename_size);
+    memcpy(
+     mypod->output_filename + mypod->input_filename_size,
+     ".4c",
+     sizeof(".4c"));
+  }
+  size_t input_filesize;
+  if (!SSC_FilePath_getSize(mypod->input_filename, &input_filesize))
+    return ERROR_GETTING_INPUT_FILESIZE;
+  if (input_filesize < FourCrypt::getMinimumOutputSize())
+    return ERROR_INPUT_FILESIZE_TOO_SMALL;
   //TODO
   return 0;
 }
@@ -446,7 +497,7 @@ void FourCrypt::getPassword(bool enter_twice, bool entropy)
       SSC_secureZero(mypod->entropy_buffer, sizeof(mypod->entropy_buffer));
       mypod->entropy_size = 0;
       PPQ_CSPRNG_reseed(&mypod->rng, mypod->hash_buffer);
-      SSC_secureZero(mypod->hash_buffer, sizeof(mypod->hash_buffer));
+      SSC_secureZero(mypod->hash_buffer, PPQ_THREEFISH512_BLOCK_BYTES);
     }
   }
 }
@@ -461,10 +512,10 @@ uint8_t* FourCrypt::writeHeader(uint8_t* to)
   (*to++) = mypod->memory_low;
   (*to++) = mypod->memory_high;
   (*to++) = mypod->iterations;
-  if (mypod->flags & ENABLE_PHI)
-    (*to++) = 1;
+  if (mypod->flags & FourCrypt::ENABLE_PHI)
+    (*to++) = 0x01;
   else
-    (*to++) = 0;
+    (*to++) = 0x00;
   // Size of the file, little-endian encoded.
   {
     uint64_t size;
@@ -486,9 +537,11 @@ uint8_t* FourCrypt::writeHeader(uint8_t* to)
   to += sizeof(mypod->tf_ctr_iv);
   // Thread count, little-endian encoded.
   {
-    uint64_t tcount = mypod->thread_count;
-    if constexpr(!FourCrypt::is_little_endian)
-      tcount = SSC_swap64(tcount);
+    uint64_t tcount;
+    if constexpr(FourCrypt::is_little_endian)
+      tcount = mypod->thread_count;
+    else
+      tcount = SSC_swap64(mypod->thread_count);
     memcpy(to, &tcount, sizeof(tcount));
     to += sizeof(tcount);
   }
