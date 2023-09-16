@@ -360,6 +360,8 @@ uint8_t* FourCrypt::writeHeader(uint8_t* to)
   // Size of the file, little-endian encoded.
   {
     uint64_t size = mypod->output_map.size;
+    if constexpr(!FourCrypt::is_little_endian)
+      size = SSC_swap64(size);
     memcpy(to, &size, sizeof(size));
     to += sizeof(size);
   }
@@ -373,8 +375,13 @@ uint8_t* FourCrypt::writeHeader(uint8_t* to)
   memcpy(to, mypod->tf_ctr_iv, sizeof(mypod->tf_ctr_iv));
   to += sizeof(mypod->tf_ctr_iv);
   // Thread count, little-endian encoded.
-  memcpy(to, &mypod->thread_count, sizeof(mypod->thread_count));
-  to += sizeof(mypod->thread_count);
+  {
+    uint64_t tcount = mypod->thread_count;
+    if constexpr(!FourCrypt::is_little_endian)
+      tcount = SSC_swap64(tcount);
+    memcpy(to, &tcount, sizeof(tcount));
+    to += sizeof(tcount);
+  }
   // 8 bytes reserved.
   memset(to, 0, 8);
   to += 8;
