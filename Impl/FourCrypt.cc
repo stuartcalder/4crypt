@@ -4,7 +4,7 @@
 #include <SSC/Terminal.h>
 #include <PPQ/Skein512.h>
 #include <thread>
-#include <vector>
+#include <memory>
 
 #define R_ SSC_RESTRICT
 
@@ -331,9 +331,10 @@ SSC_Error_t FourCrypt::runKDF()
   SSC_Error_t* const   errors  = new SSC_Error_t[num_threads];
   uint8_t* const       outputs = new uint8_t[output_bytes];
   {
-    std::vector<std::thread> threads;
+    std::thread* threads = new std::thread[num_threads];
     for (uint64_t i = 0; i < num_threads; ++i) {
-      threads.emplace_back(
+      std::construct_at(
+       threads + i,
        kdf,
        outputs + (i * PPQ_THREEFISH512_BLOCK_BYTES),
        mypod,
@@ -341,12 +342,13 @@ SSC_Error_t FourCrypt::runKDF()
        errors  + i,
        i);
     }
-    for (uint64_t i = 0; i < num_threads; ++i)
+    for (uint64_t i = 0; i < num_threads; ++i) {
       threads[i].join();
+      std::destroy_at(threads + i);
+    }
+    delete[] threads;
   }
 
-
-  // TODO
   SSC_secureZero(catenas, sizeof(PPQ_Catena512) * num_threads);
   SSC_secureZero(outputs, output_bytes);
   delete[] catenas;
