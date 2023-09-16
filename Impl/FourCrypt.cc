@@ -3,6 +3,9 @@
 #include <SSC/MemLock.h>
 #include <SSC/Terminal.h>
 #include <PPQ/Skein512.h>
+#include <thread>
+
+#define R_ SSC_RESTRICT
 
 static_assert(FourCrypt::MAX_PW_BYTES == 125, "MAX_PW_BYTES changed!");
 #define MAX_PW_BYTES_STR "125"
@@ -32,6 +35,55 @@ std::string FourCrypt::reentry_prompt{
 std::string FourCrypt::entropy_prompt{
   "Please input up to " MAX_PW_BYTES_STR " random characters)." NEWLINE_
 };
+
+static void kdf(
+ uint8_t*       R_ output,
+ PlainOldData*  R_ pod,
+ PPQ_Catena512* R_ catena,
+ SSC_Error_t*   R_ err,
+ uint64_t          thread_idx)
+{
+  uint8_t input    [sizeof(pod->catena_salt) + sizeof(thread_idx)];
+  uint8_t new_salt [PPQ_THREEFISH512_BLOCK_BYTES];
+
+  PPQ_Catena512_init(catena);
+  memcpy(input, pod->catena_salt, sizeof(pod->catena_salt));
+  {
+    uint64_t ti;
+    if constexpr(FourCrypt::is_little_endian)
+      ti = thread_idx;
+    else
+      ti = SSC_swap64(thread_idx);
+    memcpy(input + sizeof(pod->catena_salt), &ti, sizeof(ti));
+  }
+
+  // Hash the inputs into a unique salt.
+  PPQ_Skein512_hashNative(
+   pod->ubi512,
+   new_salt,
+   input,
+   sizeof(input));
+
+  // Run the requested Catena KDF.
+  if (pod->flags & FourCrypt::ENABLE_PHI)
+    *err = PPQ_Catena512_usePhi(
+     catena,
+     output,
+     pod->password_buffer,
+     pod->password_size,
+     pod->memory_low,
+     pod->memory_high,
+     pod->iterations);
+  else
+    *err = PPQ_Catena512_noPhi(
+     catena,
+     output,
+     pod->password_buffer,
+     pod->password_size,
+     pod->memory_low,
+     pod->memory_high,
+     pod->iterations);
+}
 
 FourCrypt::FourCrypt()
 {
@@ -81,8 +133,8 @@ static_assert(FourCrypt::getMinimumOutputSize() % FourCrypt::PAD_FACTOR == 0);
 
 void FourCrypt::PlainOldData::init(PlainOldData& pod)
 {
-  pod.tf_ctr = PPQ_THREEFISH512COUNTERMODE_NULL_LITERAL;
-  pod.rng    = PPQ_CSPRNG_NULL_LITERAL;
+  pod.tf_ctr    = PPQ_THREEFISH512COUNTERMODE_NULL_LITERAL;
+  pod.rng       = PPQ_CSPRNG_NULL_LITERAL;
   memset(pod.hash_buffer    , 0, sizeof(pod.hash_buffer));
   memset(pod.tf_sec_key     , 0, sizeof(pod.tf_sec_key));
   memset(pod.tf_tweak       , 0, sizeof(pod.tf_tweak));
@@ -202,6 +254,7 @@ SSC_CodeError_t FourCrypt::encrypt()
   if (mypod->flags & FourCrypt::SUPPLEMENT_ENTROPY)
     // Get the entropy password and hash it into the RNG.
     this->getPassword(false, true);
+  this->genRandomElments();
   this->runKDF();//TODO
   uint8_t* in   = mypod->input_map.ptr;
   uint8_t* out  = mypod->output_map.ptr;
@@ -244,9 +297,36 @@ SSC_Error_t FourCrypt::normalizePadding(const uint64_t input_filesize)
   return 0;
 }
 
-void FourCrypt::runKDF()
+void FourCrypt::genRandomElments()
 {
+  PlainOldData* mypod = this->getPod();
+  PPQ_CSPRNG*   myrng = &mypod->rng;
+
+  // Threefish512 Tweak.
+  PPQ_CSPRNG_get(
+   myrng,
+   mypod->tf_tweak,
+   PPQ_THREEFISH512_TWEAK_BYTES);
+  // Catena salt.
+  PPQ_CSPRNG_get(
+   myrng,
+   mypod->catena_salt,
+   sizeof(mypod->catena_salt));
+  // Threefish512 CTR IV.
+  PPQ_CSPRNG_get(
+   myrng,
+   mypod->tf_ctr_iv,
+   sizeof(mypod->tf_ctr_iv));
+  // Destroy the RNG after we're finished.
+  SSC_secureZero(myrng, sizeof(*myrng));
+}
+
+SSC_Error_t FourCrypt::runKDF()
+{
+  PlainOldData* mypod = this->getPod();
+  // TODO: Run a Catena512 instance for each thread instance.
   //TODO
+  return 0;
 }
 
 SSC_CodeError_t FourCrypt::decrypt()
@@ -338,7 +418,7 @@ void FourCrypt::getPassword(bool enter_twice, bool entropy)
       SSC_secureZero(mypod->entropy_buffer, sizeof(mypod->entropy_buffer));
       mypod->entropy_size = 0;
       PPQ_CSPRNG_reseed(&mypod->rng, mypod->hash_buffer);
-      SSC_secureZero(mypod->hash_buffer, PPQ_THREEFISH512_BLOCK_BYTES);
+      SSC_secureZero(mypod->hash_buffer, sizeof(mypod->hash_buffer));
     }
   }
 }

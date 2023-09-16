@@ -9,6 +9,12 @@
 #include <PPQ/CSPRNG.h>
 #include <PPQ/Catena512.h>
 
+#if !defined(SSC_LANG_CPP)
+ #error "We need C++!"
+#elif SSC_LANG_CPP < SSC_CPP_20
+ #error "We need at least C++20!"
+#endif
+
 class FourCrypt
 {
   public:
@@ -44,7 +50,7 @@ class FourCrypt
     {
       PPQ_Threefish512CounterMode tf_ctr;
       PPQ_CSPRNG                  rng;
-      alignas(uint64_t) uint8_t   hash_buffer     [PPQ_THREEFISH512_BLOCK_BYTES * 2]; // Large enough to hash into two 64 bytes keys.
+      alignas(uint64_t) uint8_t   hash_buffer     [PPQ_THREEFISH512_BLOCK_BYTES];
       uint64_t                    tf_sec_key      [PPQ_THREEFISH512_EXTERNAL_KEY_WORDS];
       uint64_t                    tf_tweak        [PPQ_THREEFISH512_EXTERNAL_TWEAK_WORDS];
       alignas(uint64_t) uint8_t   mac_key         [PPQ_THREEFISH512_BLOCK_BYTES];
@@ -98,7 +104,8 @@ class FourCrypt
     // Private methods.
     void            getPassword(bool enter_twice, bool entropy);//TODO
     SSC_Error_t     normalizePadding(const uint64_t input_filesize);//TODO
-    void            runKDF();//TODO
+    void            genRandomElments();
+    SSC_Error_t     runKDF();//TODO
     SSC_CodeError_t mapFiles(int* map_err_idx, size_t input_size = 0, size_t output_size = 0);
     SSC_CodeError_t unmapFiles();//TODO
     uint8_t*        writeHeader(uint8_t* to);
