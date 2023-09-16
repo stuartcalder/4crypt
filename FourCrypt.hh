@@ -34,6 +34,9 @@ class FourCrypt
     static constexpr const SSC_CodeError_t ERROR_OUTPUT_MEMMAP_FAILED     = -4;
     static constexpr const SSC_CodeError_t ERROR_GETTING_INPUT_FILESIZE   = -5;
     static constexpr const SSC_CodeError_t ERROR_INPUT_FILESIZE_TOO_SMALL = -6;
+    static constexpr const SSC_CodeError_t ERROR_INVALID_4CRYPT_FILE      = -7;
+    static constexpr const SSC_CodeError_t ERROR_INPUT_SIZE_MISMATCH      = -8;
+    static constexpr const SSC_CodeError_t ERROR_RESERVED_BYTES_USED      = -9;
 
     static constexpr const uint8_t  MEM_DEFAULT = 25;
     static constexpr const uint64_t PAD_FACTOR = 64;
@@ -110,7 +113,7 @@ class FourCrypt
     SSC_CodeError_t mapFiles(int* map_err_idx, size_t input_size = 0, size_t output_size = 0);
     SSC_CodeError_t unmapFiles();//TODO
     uint8_t*        writeHeader(uint8_t* to);
-    const uint8_t*  readHeader(const uint8_t* from);//TODO
+    const uint8_t*  readHeader(const uint8_t* from, SSC_CodeError_t* err);//TODO
     uint8_t*        writeCiphertext(uint8_t* to, const uint8_t* from, const size_t num);//TODO
     void            writeMAC(uint8_t* to, const uint8_t* from, const size_t num);//TODO
 };

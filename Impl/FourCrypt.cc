@@ -414,6 +414,86 @@ SSC_CodeError_t FourCrypt::decrypt()
   return 0;
 }
 
+const uint8_t* FourCrypt::readHeader(
+ const uint8_t*   from,
+ SSC_CodeError_t* err)
+{
+  PlainOldData* mypod = this->getPod();
+  // Check the magic bytes.
+  if (memcmp(from, FourCrypt::magic, sizeof(FourCrypt::magic))) {
+    *err = ERROR_INVALID_4CRYPT_FILE;
+    return from;
+  }
+  from += sizeof(FourCrypt::magic);
+  // Mem Low, High, Iteration Count, Phi usage.
+  mypod->memory_low  = (*from++);
+  mypod->memory_high = (*from++);
+  mypod->iterations  = (*from++);
+  {
+    uint8_t phi = (*from++);
+    if (phi)
+      mypod->flags |= ENABLE_PHI;
+  }
+  // Size of the file, little-endian encoded.
+  {
+    uint64_t size;
+    memcpy(&size, from, sizeof(size));
+    from += sizeof(size);
+    if constexpr(!FourCrypt::is_little_endian)
+      size = SSC_swap64(size);
+    if (mypod->input_map.size != size) {
+      *err = ERROR_INPUT_SIZE_MISMATCH;
+      return from;
+    }
+  }
+  // Threefish512 Tweak.
+  memcpy(mypod->tf_tweak, from, PPQ_THREEFISH512_TWEAK_BYTES);
+  from += PPQ_THREEFISH512_TWEAK_BYTES;
+  // CATENA Salt.
+  memcpy(mypod->catena_salt, from, sizeof(mypod->catena_salt));
+  from += sizeof(mypod->catena_salt);
+  // Threefish512 CTR IV.
+  memcpy(mypod->tf_ctr_iv, from, sizeof(mypod->tf_ctr_iv));
+  from += sizeof(mypod->tf_ctr_iv);
+  // Thread count, little-endian encoded.
+  {
+    uint64_t tcount;
+    memcpy(&tcount, from, sizeof(tcount));
+    from += sizeof(tcount);
+    if constexpr(FourCrypt::is_little_endian)
+      mypod->thread_count = tcount;
+    else
+      mypod->thread_count = SSC_swap64(tcount);
+  }
+  // 8 bytes reserved.
+  if (!SSC_isZero(from, 8)) {
+    *err = ERROR_RESERVED_BYTES_USED;
+    return from;
+  }
+  from += 8;
+  // 8 Ciphered padding size bytes; 8 ciphered reserve bytes.
+  {
+    uint64_t tmp[2];
+    PPQ_Threefish512CounterMode_xorKeystream(
+     &mypod->tf_ctr,
+     tmp,
+     from,
+     sizeof(tmp),
+     mypod->tf_ctr_idx);
+    mypod->tf_ctr_idx += sizeof(tmp);
+    from += sizeof(tmp);
+    if constexpr(FourCrypt::is_little_endian)
+      mypod->padding_size = tmp[0];
+    else
+      mypod->padding_size = SSC_swap64(tmp[0]);
+    if (tmp[1] != 0) {
+      *err = ERROR_RESERVED_BYTES_USED;
+      return from;
+    }
+  }
+  return from;
+}
+
 SSC_CodeError_t FourCrypt::describe()
 {
   //TODO
