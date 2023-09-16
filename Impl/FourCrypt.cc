@@ -52,18 +52,46 @@ FourCrypt::~FourCrypt()
   delete this->getPod();
 }
 
+consteval uint64_t FourCrypt::getHeaderSize()
+{
+  uint64_t size = 0;
+  size +=  4; // 4crypt magic bytes.
+  size +=  4; // Mem Low, High, Iter count, Phi usage.
+  size +=  8; // Size of the file, little-endian encoded.
+  size += 16; // Threefish512 Tweak.
+  size += 32; // CATENA salt.
+  size += 32; // Threefish512 CTR IV.
+  size +=  8; // Thread count, little-endian encoded.
+  size +=  8; // Reserved.
+  size +=  8; // Ciphered padding size, little-endian encoded.
+  size +=  8; // Ciphered reserved.
+  return size;
+}
+
+consteval uint64_t FourCrypt::getMetadataSize()
+{
+  return FourCrypt::getHeaderSize() + MAC_SIZE;
+}
+
+consteval uint64_t FourCrypt::getMinimumOutputSize()
+{
+  return FourCrypt::getMetadataSize() + PAD_FACTOR;
+}
+static_assert(FourCrypt::getMinimumOutputSize() % FourCrypt::PAD_FACTOR == 0);
+
 void FourCrypt::PlainOldData::init(PlainOldData& pod)
 {
   pod.tf_ctr = PPQ_THREEFISH512COUNTERMODE_NULL_LITERAL;
   pod.rng    = PPQ_CSPRNG_NULL_LITERAL;
-  memset(pod.tf_key         , 0, sizeof(pod.tf_key));
+  memset(pod.hash_buffer    , 0, sizeof(pod.hash_buffer));
+  memset(pod.tf_sec_key     , 0, sizeof(pod.tf_sec_key));
   memset(pod.tf_tweak       , 0, sizeof(pod.tf_tweak));
+  memset(pod.mac_key        , 0, sizeof(pod.mac_key));
+  memset(pod.catena_salt    , 0, sizeof(pod.catena_salt));
+  memset(pod.tf_ctr_iv      , 0, sizeof(pod.tf_ctr_iv));
   memset(pod.password_buffer, 0, sizeof(pod.password_buffer));
   memset(pod.verify_buffer  , 0, sizeof(pod.verify_buffer));
   memset(pod.entropy_buffer , 0, sizeof(pod.entropy_buffer));
-  memset(pod.hash_buffer    , 0, sizeof(pod.hash_buffer));
-  memset(pod.catena_salt    , 0, sizeof(pod.catena_salt));
-  memset(pod.tf_ctr_iv      , 0, sizeof(pod.tf_ctr_iv));
   pod.input_map  = SSC_MEMMAP_NULL_LITERAL;
   pod.output_map = SSC_MEMMAP_NULL_LITERAL;
   pod.input_filename  = nullptr;
@@ -104,10 +132,18 @@ SSC_CodeError_t FourCrypt::encrypt()
     return ERROR_NO_INPUT_FILENAME;
   if (mypod->output_filename == nullptr)
     return ERROR_NO_OUTPUT_FILENAME;
+  // Get the size of the input file.
+  size_t input_filesize;
+  if (!SSC_FilePath_getSize(mypod->input_filename, &input_filesize))
+    return ERROR_GETTING_INPUT_FILESIZE;
+  // Normalize the padding.
+  this->normalizePadding(input_filesize);
   int err_idx = 0;
-  //TODO: Setup the output map's size to create and map a file of the right size.
   // Map the input and output files.
-  SSC_CodeError_t err = this->mapFiles(&err_idx);
+  SSC_CodeError_t err = this->mapFiles(
+   &err_idx,
+   0,
+   input_filesize + mypod->padding_size + FourCrypt::getMetadataSize());
   const char* err_str;
   const char* err_map;
   const char* err_path;
@@ -166,22 +202,21 @@ SSC_CodeError_t FourCrypt::encrypt()
   if (mypod->flags & FourCrypt::SUPPLEMENT_ENTROPY)
     // Get the entropy password and hash it into the RNG.
     this->getPassword(false, true);
-  this->normalizePadding();//TODO
   this->runKDF();//TODO
   uint8_t* in   = mypod->input_map.ptr;
   uint8_t* out  = mypod->output_map.ptr;
   size_t   n_in = mypod->input_map.size;
   out = this->writeHeader(out); // Write the header of the ciphertext file.
-  out = this->writeCiphertext(out, in, n_in); // Encrypt the input stream into the ciphertext file. TODO
-  //TODO
+  out = this->writeCiphertext(out, in, n_in); // Encrypt the input stream into the ciphertext file.
+  this->writeMAC(out, mypod->output_map.ptr, mypod->output_map.size - MAC_SIZE);
   return 0;
 }
 
 
-SSC_Error_t FourCrypt::normalizePadding()
+SSC_Error_t FourCrypt::normalizePadding(const uint64_t input_filesize)
 {
   PlainOldData* mypod = this->getPod();
-  uint64_t size = mypod->input_map.size;
+  const uint64_t size = input_filesize;
   uint64_t pad  = mypod->padding_size;
   switch (mypod->padding_mode) {
     // Add @pad to @size, then round up to be evenly divisible by PAD_FACTOR.
@@ -189,20 +224,20 @@ SSC_Error_t FourCrypt::normalizePadding()
       if ((size + pad) % PAD_FACTOR)
         mypod->padding_size = pad + (PAD_FACTOR - ((size + pad) % PAD_FACTOR));
       break;
-    // Determine the difference between @pad and @size, storing the results in @pad.
+    // Goal: Output file is an exact, specific size specified in @pad.
     case PadMode::TARGET:
-      if (pad < size)
+      if (pad < (size + FourCrypt::getMetadataSize()))
         return -1;
-      // Desire for TARGET: Output file is an exact, specific size.
-      mypod->padding_size = size - pad;
+      mypod->padding_size = pad - (size + FourCrypt::getMetadataSize());
       mypod->padding_mode = PadMode::ADD;
-      return this->normalizePadding();
+      return this->normalizePadding(size);
+    // Add padding as if @size were @pad.
     case PadMode::AS_IF:
       if (pad < size)
         return -1;
-      mypod->padding_size = size - pad;
+      mypod->padding_size = pad - size;
       mypod->padding_mode = PadMode::ADD;
-      return this->normalizePadding();
+      return this->normalizePadding(size);
     default:
       return -1;
   }
@@ -225,45 +260,6 @@ SSC_CodeError_t FourCrypt::describe()
   //TODO
   return 0;
 }
-
-uint64_t FourCrypt::getOutputSize()
-{
-  //TODO
-  return 0;
-}
-
-constexpr uint64_t FourCrypt::getRealPaddingSize(uint64_t req_pad_bytes, uint64_t unpadded_size)
-{
-  //TODO
-  return 0;
-}
-
-consteval uint64_t FourCrypt::getHeaderSize()
-{
-  uint64_t size = 0;
-  size +=  4; // 4crypt magic bytes.
-  size +=  4; // Mem Low, High, Iter count, Phi usage.
-  size +=  8; // Size of the file, little-endian encoded.
-  size += 16; // Threefish512 Tweak.
-  size += 32; // CATENA salt.
-  size += 32; // Threefish512 CTR IV.
-  size +=  8; // Thread count, little-endian encoded.
-  size +=  8; // Reserved.
-  size +=  8; // Ciphered padding size, little-endian encoded.
-  size +=  8; // Ciphered reserved.
-  return size;
-}
-
-consteval uint64_t FourCrypt::getMetadataSize()
-{
-  return FourCrypt::getHeaderSize() + MAC_SIZE;
-}
-
-consteval uint64_t FourCrypt::getMinimumOutputSize()
-{
-  return FourCrypt::getHeaderSize() + MAC_SIZE + PAD_FACTOR;
-}
-static_assert(FourCrypt::getMinimumOutputSize() % FourCrypt::PAD_FACTOR == 0);
 
 SSC_CodeError_t FourCrypt::mapFiles(int* map_err_idx, size_t input_size, size_t output_size)
 {
@@ -342,7 +338,7 @@ void FourCrypt::getPassword(bool enter_twice, bool entropy)
       SSC_secureZero(mypod->entropy_buffer, sizeof(mypod->entropy_buffer));
       mypod->entropy_size = 0;
       PPQ_CSPRNG_reseed(&mypod->rng, mypod->hash_buffer);
-      SSC_secureZero(mypod->hash_buffer, sizeof(mypod->hash_buffer));
+      SSC_secureZero(mypod->hash_buffer, PPQ_THREEFISH512_BLOCK_BYTES);
     }
   }
 }
@@ -404,11 +400,37 @@ uint8_t* FourCrypt::writeHeader(uint8_t* to)
 
 uint8_t* FourCrypt::writeCiphertext(uint8_t* to, const uint8_t* from, const size_t num)
 {
-  //TODO
-  return nullptr;
+  PlainOldData* mypod = this->getPod();
+  // Encipher padding bytes, if applicable.
+  if (mypod->padding_size) {
+    PPQ_Threefish512CounterMode_xorKeystream(
+     &mypod->tf_ctr,
+     to,
+     to,
+     mypod->padding_size,
+     mypod->tf_ctr_idx);
+    to                += mypod->padding_size;
+    mypod->tf_ctr_idx += mypod->padding_size;
+  }
+  // Encipher the plaintext.
+  PPQ_Threefish512CounterMode_xorKeystream(
+   &mypod->tf_ctr,
+   to,
+   from,
+   num,
+   mypod->tf_ctr_idx);
+  to += num;
+  return to;
 }
 
 void FourCrypt::writeMAC(uint8_t* to, const uint8_t* from, const size_t num)
 {
-  //TODO
+  PlainOldData* mypod = this->getPod();
+  PPQ_Skein512_mac(
+   mypod->ubi512,
+   to,
+   from,
+   mypod->mac_key,
+   num,
+   PPQ_THREEFISH512_BLOCK_BYTES);
 }

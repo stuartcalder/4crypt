@@ -22,10 +22,11 @@ class FourCrypt
     static constexpr const SSC_BitFlag8_t ENABLE_PHI =         0b00000001; // Enable the Phi function.
     static constexpr const SSC_BitFlag8_t SUPPLEMENT_ENTROPY = 0b00000010; // Supplement entropy from stdin.
 
-    static constexpr const SSC_CodeError_t ERROR_NO_INPUT_FILENAME    = -1;
-    static constexpr const SSC_CodeError_t ERROR_NO_OUTPUT_FILENAME   = -2;
-    static constexpr const SSC_CodeError_t ERROR_INPUT_MEMMAP_FAILED  = -3;
-    static constexpr const SSC_CodeError_t ERROR_OUTPUT_MEMMAP_FAILED = -4;
+    static constexpr const SSC_CodeError_t ERROR_NO_INPUT_FILENAME      = -1;
+    static constexpr const SSC_CodeError_t ERROR_NO_OUTPUT_FILENAME     = -2;
+    static constexpr const SSC_CodeError_t ERROR_INPUT_MEMMAP_FAILED    = -3;
+    static constexpr const SSC_CodeError_t ERROR_OUTPUT_MEMMAP_FAILED   = -4;
+    static constexpr const SSC_CodeError_t ERROR_GETTING_INPUT_FILESIZE = -5;
 
     static constexpr const uint8_t  MEM_DEFAULT = 25;
     static constexpr const uint64_t PAD_FACTOR = 64;
@@ -43,14 +44,15 @@ class FourCrypt
     {
       PPQ_Threefish512CounterMode tf_ctr;
       PPQ_CSPRNG                  rng;
-      uint64_t                    tf_key          [PPQ_THREEFISH512_EXTERNAL_KEY_WORDS];
+      alignas(uint64_t) uint8_t   hash_buffer     [PPQ_THREEFISH512_BLOCK_BYTES * 2]; // Large enough to hash into two 64 bytes keys.
+      uint64_t                    tf_sec_key      [PPQ_THREEFISH512_EXTERNAL_KEY_WORDS];
       uint64_t                    tf_tweak        [PPQ_THREEFISH512_EXTERNAL_TWEAK_WORDS];
+      alignas(uint64_t) uint8_t   mac_key         [PPQ_THREEFISH512_BLOCK_BYTES];
+      alignas(uint64_t) uint8_t   catena_salt     [PPQ_CATENA512_SALT_BYTES];
+      alignas(uint64_t) uint8_t   tf_ctr_iv       [PPQ_THREEFISH512COUNTERMODE_IV_BYTES];
       uint8_t                     password_buffer [PW_BUFFER_BYTES];
       uint8_t                     verify_buffer   [PW_BUFFER_BYTES];
       uint8_t                     entropy_buffer  [PW_BUFFER_BYTES];
-      alignas(uint64_t) uint8_t   hash_buffer     [PPQ_THREEFISH512_BLOCK_BYTES];
-      alignas(uint64_t) uint8_t   catena_salt     [PPQ_CATENA512_SALT_BYTES];
-      alignas(uint64_t) uint8_t   tf_ctr_iv       [PPQ_THREEFISH512COUNTERMODE_IV_BYTES];
       SSC_MemMap                  input_map;
       SSC_MemMap                  output_map;
       char*                       input_filename;
@@ -80,8 +82,6 @@ class FourCrypt
     SSC_CodeError_t encrypt();//TODO
     SSC_CodeError_t decrypt();//TODO
     SSC_CodeError_t describe();//TODO
-    uint64_t getOutputSize();//TODO
-    constexpr uint64_t getRealPaddingSize(uint64_t req_pad_bytes, uint64_t unpadded_size);
     static consteval uint64_t getHeaderSize();
     static consteval uint64_t getMetadataSize();
     static consteval uint64_t getMinimumOutputSize();
@@ -97,7 +97,7 @@ class FourCrypt
     static std::string entropy_prompt;
     // Private methods.
     void            getPassword(bool enter_twice, bool entropy);//TODO
-    SSC_Error_t     normalizePadding();//TODO
+    SSC_Error_t     normalizePadding(const uint64_t input_filesize);//TODO
     void            runKDF();//TODO
     SSC_CodeError_t mapFiles(int* map_err_idx, size_t input_size = 0, size_t output_size = 0);
     SSC_CodeError_t unmapFiles();//TODO
