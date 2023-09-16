@@ -197,12 +197,13 @@ SSC_CodeError_t FourCrypt::encrypt()
     return ERROR_GETTING_INPUT_FILESIZE;
   // Normalize the padding.
   this->normalizePadding(input_filesize);
-  int err_idx = 0;
+  InOutDir err_idx = InOutDir::NONE;
   // Map the input and output files.
   SSC_CodeError_t err = this->mapFiles(
    &err_idx,
    0,
-   input_filesize + mypod->padding_size + FourCrypt::getMetadataSize());
+   input_filesize + mypod->padding_size + FourCrypt::getMetadataSize(),
+   InOutDir::NONE);
   const char* err_str;
   const char* err_map;
   const char* err_path;
@@ -242,17 +243,17 @@ SSC_CodeError_t FourCrypt::encrypt()
         err_str = "Invalid memory-map error code while trying to map %s map at filepath %s!\n";
     }
     switch(err_idx) {
-      case INPUT:
+      case InOutDir::INPUT:
         err_map = "input";
         err_path = mypod->input_filename;
         break;
-      case OUTPUT:
+      case InOutDir::OUTPUT:
         err_map = "output";
         err_path = mypod->output_filename;
       default:
         SSC_errx("Invalid err_idx %d!\n", err_idx);
     }
-    if (err_idx == OUTPUT && SSC_FilePath_exists(err_path))
+    if (err_idx == InOutDir::OUTPUT && SSC_FilePath_exists(err_path))
       remove(err_path);
     SSC_errx(err_str, err_map, err_path);
   }
@@ -388,11 +389,29 @@ SSC_Error_t FourCrypt::runKDF()
   return 0;
 }
 
+SSC_Error_t FourCrypt::verifyMAC(const uint8_t* mac, const uint8_t* begin, const uint64_t size)
+{
+  alignas(uint64_t) uint8_t tmp_mac [PPQ_THREEFISH512_BLOCK_BYTES];
+  PlainOldData* mypod = this->getPod();
+  PPQ_Skein512_mac(
+   mypod->ubi512,
+   tmp_mac,
+   begin,
+   mypod->mac_key,
+   size,
+   sizeof(tmp_mac));
+  if (SSC_constTimeMemDiff(tmp_mac, mac, PPQ_THREEFISH512_BLOCK_BYTES))
+    return -1;
+  return 0;
+}
+
 SSC_CodeError_t FourCrypt::decrypt()
 {
   PlainOldData* mypod = this->getPod();
+  // Ensure at least an input file path is provided.
   if (mypod->input_filename == nullptr)
     return ERROR_NO_INPUT_FILENAME;
+  // If an output file path wasn't provided, construct one.
   if (mypod->output_filename == nullptr) {
     mypod->output_filename_size = mypod->input_filename_size + 3;
     mypod->output_filename = new char[mypod->output_filename_size + 1];
@@ -405,16 +424,52 @@ SSC_CodeError_t FourCrypt::decrypt()
      ".4c",
      sizeof(".4c"));
   }
+  // Get the size of the input file.
   size_t input_filesize;
   if (!SSC_FilePath_getSize(mypod->input_filename, &input_filesize))
     return ERROR_GETTING_INPUT_FILESIZE;
+  // Check to see if the input file is large enough.
   if (input_filesize < FourCrypt::getMinimumOutputSize())
     return ERROR_INPUT_FILESIZE_TOO_SMALL;
-  //TODO
+  // Do not proceed if a file already exists at the output filepath.
+  if (SSC_FilePath_exists(mypod->output_filename))
+    return ERROR_OUTPUT_FILE_EXISTS;
+  // Map the input file.
+  {
+    SSC_Error_t err = this->mapFiles(
+     nullptr,
+     input_filesize,
+     0,
+     InOutDir::INPUT);
+    if (err)
+      return ERROR_INPUT_MEMMAP_FAILED;
+  }
+  // Get the decryption password.
+  this->getPassword(false, false);
+  const uint8_t* in = mypod->input_map.ptr;
+  const size_t   num_in = mypod->input_map.size;
+  SSC_CodeError_t err = 0;
+  // Read the input file header's plaintext.
+  in = this->readHeaderPlaintext(in, &err);
+  if (err)
+    return err;
+  // Run the KDF to generate secret values.
+  this->runKDF();
+  // Check the MAC for integrity and authentication.
+  this->verifyMAC(
+   mypod->input_map.ptr + (num_in - MAC_SIZE),
+   mypod->input_map.ptr,
+   num_in - MAC_SIZE);
+  // Decipher the encrypted portion of the input file header.
+  in = this->readHeaderCiphertext(in, &err);
+  if (err)
+    return err;
+  
+  // TODO
   return 0;
 }
 
-const uint8_t* FourCrypt::readHeader(
+const uint8_t* FourCrypt::readHeaderPlaintext(
  const uint8_t*   from,
  SSC_CodeError_t* err)
 {
@@ -471,6 +526,7 @@ const uint8_t* FourCrypt::readHeader(
     return from;
   }
   from += 8;
+  #if 0
   // 8 Ciphered padding size bytes; 8 ciphered reserve bytes.
   {
     uint64_t tmp[2];
@@ -491,6 +547,35 @@ const uint8_t* FourCrypt::readHeader(
       return from;
     }
   }
+  #endif
+  return from;
+}
+
+const uint8_t* FourCrypt::readHeaderCiphertext(const uint8_t* from, SSC_CodeError_t* err)
+{
+  PlainOldData* mypod = this->getPod();
+  // 8 Ciphered padding size bytes; 8 ciphered reserve bytes.
+  {
+    uint64_t tmp[2];
+    PPQ_Threefish512CounterMode_xorKeystream(
+     &mypod->tf_ctr,
+     tmp,
+     from,
+     sizeof(tmp),
+     mypod->tf_ctr_idx);
+    mypod->tf_ctr_idx += sizeof(tmp);
+    from += sizeof(tmp);
+    if constexpr(FourCrypt::is_little_endian)
+      mypod->padding_size = tmp[0];
+    else
+      mypod->padding_size = SSC_swap64(tmp[0]);
+    if (tmp[1] != 0) {
+      *err = ERROR_RESERVED_BYTES_USED;
+      return from;
+    }
+  }
+  from              += mypod->padding_size;
+  mypod->tf_ctr_idx += mypod->padding_size;
   return from;
 }
 
@@ -500,7 +585,7 @@ SSC_CodeError_t FourCrypt::describe()
   return 0;
 }
 
-SSC_CodeError_t FourCrypt::mapFiles(int* map_err_idx, size_t input_size, size_t output_size)
+SSC_CodeError_t FourCrypt::mapFiles(InOutDir* map_err_idx, size_t input_size, size_t output_size, InOutDir only_map)
 {
   constexpr const SSC_BitFlag_t input_flag = SSC_MEMMAP_INIT_READONLY |
    SSC_MEMMAP_INIT_FORCE_EXIST | SSC_MEMMAP_INIT_FORCE_EXIST_YES;
@@ -508,25 +593,29 @@ SSC_CodeError_t FourCrypt::mapFiles(int* map_err_idx, size_t input_size, size_t 
   PlainOldData&   mypod = *this->getPod();
   SSC_CodeError_t err = 0;
   // Input and output filenames have been checked for NULL. Map these filepaths.
-  err = SSC_MemMap_init(
-   &mypod.input_map,
-   mypod.input_filename,
-   input_size,
-   input_flag);
-  if (err) {
-    if (map_err_idx)
-      *map_err_idx = INPUT;
-    return err;
+  if (only_map != InOutDir::OUTPUT) {
+    err = SSC_MemMap_init(
+     &mypod.input_map,
+     mypod.input_filename,
+     input_size,
+     input_flag);
+    if (err) {
+      if (map_err_idx)
+        *map_err_idx = InOutDir::INPUT;
+      return err;
+    }
   }
-  err = SSC_MemMap_init(
-   &mypod.output_map,
-   mypod.output_filename,
-   output_size,
-   output_flag);
-  if (err) {
-    if (map_err_idx)
-      *map_err_idx = OUTPUT;
-    return err;
+  if (only_map != InOutDir::INPUT) {
+    err = SSC_MemMap_init(
+     &mypod.output_map,
+     mypod.output_filename,
+     output_size,
+     output_flag);
+    if (err) {
+      if (map_err_idx)
+        *map_err_idx = InOutDir::OUTPUT;
+      return err;
+    }
   }
   return 0;
 }

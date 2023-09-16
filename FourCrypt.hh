@@ -28,15 +28,16 @@ class FourCrypt
     static constexpr const SSC_BitFlag8_t ENABLE_PHI =         0b00000001; // Enable the Phi function.
     static constexpr const SSC_BitFlag8_t SUPPLEMENT_ENTROPY = 0b00000010; // Supplement entropy from stdin.
 
-    static constexpr const SSC_CodeError_t ERROR_NO_INPUT_FILENAME        = -1;
-    static constexpr const SSC_CodeError_t ERROR_NO_OUTPUT_FILENAME       = -2;
-    static constexpr const SSC_CodeError_t ERROR_INPUT_MEMMAP_FAILED      = -3;
-    static constexpr const SSC_CodeError_t ERROR_OUTPUT_MEMMAP_FAILED     = -4;
-    static constexpr const SSC_CodeError_t ERROR_GETTING_INPUT_FILESIZE   = -5;
-    static constexpr const SSC_CodeError_t ERROR_INPUT_FILESIZE_TOO_SMALL = -6;
-    static constexpr const SSC_CodeError_t ERROR_INVALID_4CRYPT_FILE      = -7;
-    static constexpr const SSC_CodeError_t ERROR_INPUT_SIZE_MISMATCH      = -8;
-    static constexpr const SSC_CodeError_t ERROR_RESERVED_BYTES_USED      = -9;
+    static constexpr const SSC_CodeError_t ERROR_NO_INPUT_FILENAME        =  -1;
+    static constexpr const SSC_CodeError_t ERROR_NO_OUTPUT_FILENAME       =  -2;
+    static constexpr const SSC_CodeError_t ERROR_INPUT_MEMMAP_FAILED      =  -3;
+    static constexpr const SSC_CodeError_t ERROR_OUTPUT_MEMMAP_FAILED     =  -4;
+    static constexpr const SSC_CodeError_t ERROR_GETTING_INPUT_FILESIZE   =  -5;
+    static constexpr const SSC_CodeError_t ERROR_INPUT_FILESIZE_TOO_SMALL =  -6;
+    static constexpr const SSC_CodeError_t ERROR_INVALID_4CRYPT_FILE      =  -7;
+    static constexpr const SSC_CodeError_t ERROR_INPUT_SIZE_MISMATCH      =  -8;
+    static constexpr const SSC_CodeError_t ERROR_RESERVED_BYTES_USED      =  -9;
+    static constexpr const SSC_CodeError_t ERROR_OUTPUT_FILE_EXISTS       = -10;
 
     static constexpr const uint8_t  MEM_DEFAULT = 25;
     static constexpr const uint64_t PAD_FACTOR = 64;
@@ -49,6 +50,12 @@ class FourCrypt
     enum class PadMode
     {
       ADD, TARGET, AS_IF
+    };
+    enum class InOutDir
+    {
+      NONE   = 0,
+      INPUT  = 1,
+      OUTPUT = 2
     };
     struct PlainOldData
     {
@@ -109,11 +116,13 @@ class FourCrypt
     void            getPassword(bool enter_twice, bool entropy);//TODO
     SSC_Error_t     normalizePadding(const uint64_t input_filesize);//TODO
     void            genRandomElements();
-    SSC_Error_t     runKDF();//TODO
-    SSC_CodeError_t mapFiles(int* map_err_idx, size_t input_size = 0, size_t output_size = 0);
+    SSC_Error_t     runKDF();
+    SSC_Error_t     verifyMAC(const uint8_t* mac, const uint8_t* begin, const uint64_t size); //TODO
+    SSC_CodeError_t mapFiles(InOutDir* map_err_idx, size_t input_size = 0, size_t output_size = 0, InOutDir only_map = InOutDir::NONE);
     SSC_CodeError_t unmapFiles();//TODO
     uint8_t*        writeHeader(uint8_t* to);
-    const uint8_t*  readHeader(const uint8_t* from, SSC_CodeError_t* err);//TODO
+    const uint8_t*  readHeaderPlaintext(const uint8_t* from, SSC_CodeError_t* err);
+    const uint8_t*  readHeaderCiphertext(const uint8_t* from, SSC_CodeError_t* err);
     uint8_t*        writeCiphertext(uint8_t* to, const uint8_t* from, const size_t num);//TODO
     void            writeMAC(uint8_t* to, const uint8_t* from, const size_t num);//TODO
 };
