@@ -4,6 +4,7 @@
 #include <SSC/Terminal.h>
 #include <PPQ/Skein512.h>
 #include <thread>
+#include <vector>
 
 #define R_ SSC_RESTRICT
 
@@ -20,7 +21,7 @@ static_assert(FourCrypt::MAX_PW_BYTES == 125, "MAX_PW_BYTES changed!");
 
 using PlainOldData = FourCrypt::PlainOldData;
 enum {
-  INPUT = 1,
+  INPUT  = 1,
   OUTPUT = 2
 };
 
@@ -59,7 +60,7 @@ static void kdf(
 
   // Hash the inputs into a unique salt.
   PPQ_Skein512_hashNative(
-   pod->ubi512,
+   &catena->ubi512,
    new_salt,
    input,
    sizeof(input));
@@ -323,9 +324,34 @@ void FourCrypt::genRandomElments()
 
 SSC_Error_t FourCrypt::runKDF()
 {
-  PlainOldData* mypod = this->getPod();
-  // TODO: Run a Catena512 instance for each thread instance.
-  //TODO
+  PlainOldData*  mypod = this->getPod();
+  const uint64_t num_threads = mypod->thread_count;
+  const uint64_t output_bytes = num_threads * PPQ_THREEFISH512_BLOCK_BYTES;
+  PPQ_Catena512* const catenas = new PPQ_Catena512[num_threads];
+  SSC_Error_t* const   errors  = new SSC_Error_t[num_threads];
+  uint8_t* const       outputs = new uint8_t[output_bytes];
+  {
+    std::vector<std::thread> threads;
+    for (uint64_t i = 0; i < num_threads; ++i) {
+      threads.emplace_back(
+       kdf,
+       outputs + (i * PPQ_THREEFISH512_BLOCK_BYTES),
+       mypod,
+       catenas + i,
+       errors  + i,
+       i);
+    }
+    for (uint64_t i = 0; i < num_threads; ++i)
+      threads[i].join();
+  }
+
+
+  // TODO
+  SSC_secureZero(catenas, sizeof(PPQ_Catena512) * num_threads);
+  SSC_secureZero(outputs, output_bytes);
+  delete[] catenas;
+  delete[] outputs;
+  delete[] errors;
   return 0;
 }
 
@@ -439,9 +465,11 @@ uint8_t* FourCrypt::writeHeader(uint8_t* to)
     (*to++) = 0;
   // Size of the file, little-endian encoded.
   {
-    uint64_t size = mypod->output_map.size;
-    if constexpr(!FourCrypt::is_little_endian)
-      size = SSC_swap64(size);
+    uint64_t size;
+    if constexpr(FourCrypt::is_little_endian)
+      size = mypod->output_map.size;
+    else
+      size = SSC_swap64(mypod->output_map.size);
     memcpy(to, &size, sizeof(size));
     to += sizeof(size);
   }
