@@ -8,12 +8,15 @@
 #include <SSC/MemMap.h>
 #include <PPQ/CSPRNG.h>
 #include <PPQ/Catena512.h>
+#include <PPQ/Threefish512.h>
 
 #if !defined(SSC_LANG_CPP)
  #error "We need C++!"
 #elif SSC_LANG_CPP < SSC_CPP_20
  #error "We need at least C++20!"
 #endif
+
+#define R_ SSC_RESTRICT
 
 class FourCrypt
 {
@@ -23,7 +26,7 @@ class FourCrypt
     static constexpr size_t PW_BUFFER_BYTES = MAX_PW_BYTES + 1;
     static_assert(SSC_ENDIAN == SSC_ENDIAN_LITTLE || SSC_ENDIAN == SSC_ENDIAN_BIG, "Only big and little endian supported!");
     static constexpr const bool is_little_endian = []() -> bool { return (SSC_ENDIAN == SSC_ENDIAN_LITTLE); }();
-    static constexpr const uint8_t magic[4] = { 0xe2, 0x2a, 0x1e, 0x9b };
+    static constexpr const uint8_t magic[4] = { 0xa0, 0x13, 0xaf, 0xb9 };
 
     static constexpr const SSC_BitFlag8_t ENABLE_PHI =         0b00000001; // Enable the Phi function.
     static constexpr const SSC_BitFlag8_t SUPPLEMENT_ENTROPY = 0b00000010; // Supplement entropy from stdin.
@@ -38,6 +41,7 @@ class FourCrypt
     static constexpr const SSC_CodeError_t ERROR_INPUT_SIZE_MISMATCH      =  -8;
     static constexpr const SSC_CodeError_t ERROR_RESERVED_BYTES_USED      =  -9;
     static constexpr const SSC_CodeError_t ERROR_OUTPUT_FILE_EXISTS       = -10;
+    static constexpr const SSC_CodeError_t ERROR_MAC_VALIDATION_FAILED    = -11;
 
     static constexpr const uint8_t  MEM_DEFAULT = 25;
     static constexpr const uint64_t PAD_FACTOR = 64;
@@ -95,7 +99,7 @@ class FourCrypt
     // Public Static Data
     static bool memlock_initialized;
     // Public methods.
-    PlainOldData*   getPod();
+    PlainOldData*       getPod();
     SSC_CodeError_t encrypt();//TODO: Test me?
     SSC_CodeError_t decrypt();//TODO
     SSC_CodeError_t describe();//TODO
@@ -113,18 +117,22 @@ class FourCrypt
     static std::string reentry_prompt;
     static std::string entropy_prompt;
     // Private methods.
-    void            getPassword(bool enter_twice, bool entropy);//TODO
-    SSC_Error_t     normalizePadding(const uint64_t input_filesize);//TODO
+    void            getPassword(bool enter_twice, bool entropy);
+    SSC_Error_t     normalizePadding(const uint64_t input_filesize);
     void            genRandomElements();
     SSC_Error_t     runKDF();
-    SSC_Error_t     verifyMAC(const uint8_t* mac, const uint8_t* begin, const uint64_t size); //TODO
+    SSC_Error_t     verifyMAC(const uint8_t* R_ mac, const uint8_t* R_ begin, const uint64_t size);
     SSC_CodeError_t mapFiles(InOutDir* map_err_idx, size_t input_size = 0, size_t output_size = 0, InOutDir only_map = InOutDir::NONE);
+    SSC_Error_t     syncMaps(); //TODO
     SSC_CodeError_t unmapFiles();//TODO
     uint8_t*        writeHeader(uint8_t* to);
-    const uint8_t*  readHeaderPlaintext(const uint8_t* from, SSC_CodeError_t* err);
-    const uint8_t*  readHeaderCiphertext(const uint8_t* from, SSC_CodeError_t* err);
-    uint8_t*        writeCiphertext(uint8_t* to, const uint8_t* from, const size_t num);//TODO
-    void            writeMAC(uint8_t* to, const uint8_t* from, const size_t num);//TODO
+    const uint8_t*  readHeaderPlaintext(const uint8_t* R_ from, SSC_CodeError_t* R_ err);
+    const uint8_t*  readHeaderCiphertext(const uint8_t* R_ from, SSC_CodeError_t* R_ err);
+    uint8_t*        writeCiphertext(uint8_t* R_ to, const uint8_t* R_ from, const size_t num);
+    uint8_t*        writePlaintext(uint8_t* R_ to, const uint8_t* R_ from, const size_t num); //TODO
+    void            writeMAC(uint8_t* R_ to, const uint8_t* R_ from, const size_t num);
 };
+
+#undef R_
 
 #endif

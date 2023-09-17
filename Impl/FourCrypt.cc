@@ -45,7 +45,7 @@ static void kdf(
  uint64_t          thread_idx)
 {
   uint8_t input    [sizeof(pod->catena_salt) + sizeof(thread_idx)];
-  uint8_t new_salt [PPQ_THREEFISH512_BLOCK_BYTES];
+  uint8_t new_salt [PPQ_CATENA512_SALT_BYTES];
 
   PPQ_Catena512_init(catena);
   memcpy(input, pod->catena_salt, sizeof(pod->catena_salt));
@@ -59,12 +59,14 @@ static void kdf(
   }
 
   // Hash the inputs into a unique salt.
-  PPQ_Skein512_hashNative(
+  PPQ_Skein512_hash(
    &catena->ubi512,
    new_salt,
    input,
-   sizeof(input));
+   sizeof(input),
+   sizeof(new_salt));
   // Copy that new salt into Catena.
+  static_assert(sizeof(catena->salt) == sizeof(new_salt));
   memcpy(catena->salt, new_salt, sizeof(new_salt));
 
   // Run the requested Catena KDF.
@@ -201,7 +203,7 @@ SSC_CodeError_t FourCrypt::encrypt()
   // Map the input and output files.
   SSC_CodeError_t err = this->mapFiles(
    &err_idx,
-   0,
+   input_filesize,
    input_filesize + mypod->padding_size + FourCrypt::getMetadataSize(),
    InOutDir::NONE);
   const char* err_str;
@@ -262,7 +264,9 @@ SSC_CodeError_t FourCrypt::encrypt()
   if (mypod->flags & FourCrypt::SUPPLEMENT_ENTROPY)
     // Get the entropy password and hash it into the RNG.
     this->getPassword(false, true);
+  // Generate pseudorandom values.
   this->genRandomElements();
+  // Run the key derivation function and get our secret values.
   this->runKDF();
   const uint8_t* in   = mypod->input_map.ptr;
   uint8_t*       out  = mypod->output_map.ptr;
@@ -270,6 +274,7 @@ SSC_CodeError_t FourCrypt::encrypt()
   out = this->writeHeader(out); // Write the header of the ciphertext file.
   out = this->writeCiphertext(out, in, n_in); // Encrypt the input stream into the ciphertext file.
   this->writeMAC(out, mypod->output_map.ptr, mypod->output_map.size - MAC_SIZE);
+  this->syncMaps();
   return 0;
 }
 
@@ -389,7 +394,7 @@ SSC_Error_t FourCrypt::runKDF()
   return 0;
 }
 
-SSC_Error_t FourCrypt::verifyMAC(const uint8_t* mac, const uint8_t* begin, const uint64_t size)
+SSC_Error_t FourCrypt::verifyMAC(const uint8_t* R_ mac, const uint8_t* R_ begin, const uint64_t size)
 {
   alignas(uint64_t) uint8_t tmp_mac [PPQ_THREEFISH512_BLOCK_BYTES];
   PlainOldData* mypod = this->getPod();
@@ -456,22 +461,50 @@ SSC_CodeError_t FourCrypt::decrypt()
   // Run the KDF to generate secret values.
   this->runKDF();
   // Check the MAC for integrity and authentication.
-  this->verifyMAC(
+  err = this->verifyMAC(
    mypod->input_map.ptr + (num_in - MAC_SIZE),
    mypod->input_map.ptr,
    num_in - MAC_SIZE);
+  if (err)
+    return ERROR_MAC_VALIDATION_FAILED;
   // Decipher the encrypted portion of the input file header.
   in = this->readHeaderCiphertext(in, &err);
   if (err)
     return err;
+  // Map the output file
+  const size_t num_out = num_in - FourCrypt::getMetadataSize() - mypod->padding_size;
+  {
+    SSC_Error_t err = this->mapFiles(
+     nullptr,
+     0,
+     num_out,
+     InOutDir::OUTPUT);
+    if (err)
+      return ERROR_OUTPUT_MEMMAP_FAILED;
+  }
+  this->writePlaintext(mypod->output_map.ptr, in, num_out);
   
-  // TODO
+  this->syncMaps();
+  return 0;
+}
+
+SSC_Error_t FourCrypt::syncMaps()
+{
+  PlainOldData* mypod = this->getPod();
+  if (mypod->input_map.ptr) {
+    if (SSC_MemMap_sync(&mypod->input_map))
+      return -1;
+  }
+  if (mypod->output_map.ptr) {
+    if (SSC_MemMap_sync(&mypod->output_map))
+      return -1;
+  }
   return 0;
 }
 
 const uint8_t* FourCrypt::readHeaderPlaintext(
- const uint8_t*   from,
- SSC_CodeError_t* err)
+ const uint8_t* R_   from,
+ SSC_CodeError_t* R_ err)
 {
   PlainOldData* mypod = this->getPod();
   // Check the magic bytes.
@@ -551,7 +584,7 @@ const uint8_t* FourCrypt::readHeaderPlaintext(
   return from;
 }
 
-const uint8_t* FourCrypt::readHeaderCiphertext(const uint8_t* from, SSC_CodeError_t* err)
+const uint8_t* FourCrypt::readHeaderCiphertext(const uint8_t* R_ from, SSC_CodeError_t* R_ err)
 {
   PlainOldData* mypod = this->getPod();
   // 8 Ciphered padding size bytes; 8 ciphered reserve bytes.
@@ -574,7 +607,9 @@ const uint8_t* FourCrypt::readHeaderCiphertext(const uint8_t* from, SSC_CodeErro
       return from;
     }
   }
+  // Skip past the ciphertext padding bytes.
   from              += mypod->padding_size;
+  // Increment the keystream counter past the padding bytes.
   mypod->tf_ctr_idx += mypod->padding_size;
   return from;
 }
@@ -737,7 +772,7 @@ uint8_t* FourCrypt::writeHeader(uint8_t* to)
   return to;
 }
 
-uint8_t* FourCrypt::writeCiphertext(uint8_t* to, const uint8_t* from, const size_t num)
+uint8_t* FourCrypt::writeCiphertext(uint8_t* R_ to, const uint8_t* R_ from, const size_t num)
 {
   PlainOldData* mypod = this->getPod();
   // Encipher padding bytes, if applicable.
@@ -758,11 +793,27 @@ uint8_t* FourCrypt::writeCiphertext(uint8_t* to, const uint8_t* from, const size
    from,
    num,
    mypod->tf_ctr_idx);
-  to += num;
+  to                += num;
+  mypod->tf_ctr_idx += num;
   return to;
 }
 
-void FourCrypt::writeMAC(uint8_t* to, const uint8_t* from, const size_t num)
+uint8_t* FourCrypt::writePlaintext(uint8_t* R_ to, const uint8_t* R_ from, const size_t num)
+{
+  PlainOldData* mypod = this->getPod();
+  PPQ_Threefish512CounterMode_xorKeystream(
+   &mypod->tf_ctr,
+   to,
+   from,
+   num,
+   mypod->tf_ctr_idx);
+  to                += num;
+  mypod->tf_ctr_idx += num;
+  // TODO ?
+  return to;
+}
+
+void FourCrypt::writeMAC(uint8_t* R_ to, const uint8_t* R_ from, const size_t num)
 {
   PlainOldData* mypod = this->getPod();
   PPQ_Skein512_mac(
@@ -771,5 +822,5 @@ void FourCrypt::writeMAC(uint8_t* to, const uint8_t* from, const size_t num)
    from,
    mypod->mac_key,
    num,
-   PPQ_THREEFISH512_BLOCK_BYTES);
+   sizeof(mypod->mac_key));
 }
