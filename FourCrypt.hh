@@ -31,6 +31,7 @@ class FourCrypt
     static constexpr const SSC_BitFlag8_t ENABLE_PHI =         0b00000001; // Enable the Phi function.
     static constexpr const SSC_BitFlag8_t SUPPLEMENT_ENTROPY = 0b00000010; // Supplement entropy from stdin.
 
+    // 4crypt Code Errors.
     static constexpr const SSC_CodeError_t ERROR_NO_INPUT_FILENAME        =  -1;
     static constexpr const SSC_CodeError_t ERROR_NO_OUTPUT_FILENAME       =  -2;
     static constexpr const SSC_CodeError_t ERROR_INPUT_MEMMAP_FAILED      =  -3;
@@ -42,6 +43,7 @@ class FourCrypt
     static constexpr const SSC_CodeError_t ERROR_RESERVED_BYTES_USED      =  -9;
     static constexpr const SSC_CodeError_t ERROR_OUTPUT_FILE_EXISTS       = -10;
     static constexpr const SSC_CodeError_t ERROR_MAC_VALIDATION_FAILED    = -11;
+    static constexpr const SSC_CodeError_t ERROR_KDF_FAILED               = -12;
 
     static constexpr const uint8_t  MEM_DEFAULT = 25;
     static constexpr const uint64_t PAD_FACTOR = 64;
@@ -60,6 +62,10 @@ class FourCrypt
       NONE   = 0,
       INPUT  = 1,
       OUTPUT = 2
+    };
+    enum class ErrType
+    {
+      FOURCRYPT, MEMMAP
     };
     struct PlainOldData
     {
@@ -99,10 +105,10 @@ class FourCrypt
     // Public Static Data
     static bool memlock_initialized;
     // Public methods.
-    PlainOldData*       getPod();
-    SSC_CodeError_t encrypt();//TODO: Test me?
-    SSC_CodeError_t decrypt();//TODO
-    SSC_CodeError_t describe();//TODO
+    PlainOldData*   getPod();
+    SSC_CodeError_t encrypt(ErrType* err_type, InOutDir* err_dir);
+    SSC_CodeError_t decrypt(ErrType* err_type);
+    SSC_CodeError_t describe(ErrType* err_type); //TODO
     static consteval uint64_t getHeaderSize();
     static consteval uint64_t getMetadataSize();
     static consteval uint64_t getMinimumOutputSize();
@@ -123,8 +129,8 @@ class FourCrypt
     SSC_Error_t     runKDF();
     SSC_Error_t     verifyMAC(const uint8_t* R_ mac, const uint8_t* R_ begin, const uint64_t size);
     SSC_CodeError_t mapFiles(InOutDir* map_err_idx, size_t input_size = 0, size_t output_size = 0, InOutDir only_map = InOutDir::NONE);
-    SSC_Error_t     syncMaps(); //TODO
-    SSC_CodeError_t unmapFiles();//TODO
+    SSC_Error_t     syncMaps();
+    void            unmapFiles();//TODO
     uint8_t*        writeHeader(uint8_t* to);
     const uint8_t*  readHeaderPlaintext(const uint8_t* R_ from, SSC_CodeError_t* R_ err);
     const uint8_t*  readHeaderCiphertext(const uint8_t* R_ from, SSC_CodeError_t* R_ err);

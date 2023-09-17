@@ -185,7 +185,7 @@ PlainOldData* FourCrypt::getPod()
   return this->pod;
 }
 
-SSC_CodeError_t FourCrypt::encrypt()
+SSC_CodeError_t FourCrypt::encrypt(ErrType* err_typ, InOutDir* err_dir)
 {
   PlainOldData* mypod = this->getPod();
   // We require input and output filenames defined for ENCRYPT mode.
@@ -199,65 +199,17 @@ SSC_CodeError_t FourCrypt::encrypt()
     return ERROR_GETTING_INPUT_FILESIZE;
   // Normalize the padding.
   this->normalizePadding(input_filesize);
-  InOutDir err_idx = InOutDir::NONE;
+  InOutDir err_io_dir = InOutDir::NONE;
   // Map the input and output files.
   SSC_CodeError_t err = this->mapFiles(
-   &err_idx,
+   &err_io_dir,
    input_filesize,
    input_filesize + mypod->padding_size + FourCrypt::getMetadataSize(),
    InOutDir::NONE);
-  const char* err_str;
-  const char* err_map;
-  const char* err_path;
   if (err) {
-    switch (err) {
-      case SSC_MEMMAP_INIT_CODE_ERR_FEXIST_NO:
-        err_str = "Attempted to map %s filepath at %s, but it did not exist!\n";
-        break;
-      case SSC_MEMMAP_INIT_CODE_ERR_FEXIST_YES:
-        err_str = "Attempted to create and map %s filepath at %s, but it already existed!\n";
-        break;
-      case SSC_MEMMAP_INIT_CODE_ERR_READONLY:
-        err_str = "Attempted to map %s filepath at %s, but failed due to readonly!\n";
-        break;
-      case SSC_MEMMAP_INIT_CODE_ERR_SHRINK:
-        err_str = "Attemped to map %s filepath at %s, but failed because shrinking is disallowed!\n";
-        break;
-      case SSC_MEMMAP_INIT_CODE_ERR_NOSIZE:
-        err_str = "Attempted to map %s filepath at %s, but failed because no size was provided!\n";
-        break;
-      case SSC_MEMMAP_INIT_CODE_ERR_OPEN_FILEPATH:
-        err_str = "Attempted to map %s filepath at %s, but failed to open the filepath!\n";
-        break;
-      case SSC_MEMMAP_INIT_CODE_ERR_CREATE_FILEPATH:
-        err_str = "Attempted to create and map %s filepath at %s, but failed to create the filepath!\n";
-        break;
-      case SSC_MEMMAP_INIT_CODE_ERR_GET_FILE_SIZE:
-        err_str = "Attempted to map %s filepath at %s, but failed to obtain the file size!\n";
-        break;
-      case SSC_MEMMAP_INIT_CODE_ERR_SET_FILE_SIZE:
-        err_str = "Attempted to map %s filepath at %s, but failed to set the file size!\n";
-        break;
-      case SSC_MEMMAP_INIT_CODE_ERR_MAP:
-        err_str = "Attempted to map %s filepath at %s, but failed the memory-map operation!\n";
-        break;
-      default:
-        err_str = "Invalid memory-map error code while trying to map %s map at filepath %s!\n";
-    }
-    switch(err_idx) {
-      case InOutDir::INPUT:
-        err_map = "input";
-        err_path = mypod->input_filename;
-        break;
-      case InOutDir::OUTPUT:
-        err_map = "output";
-        err_path = mypod->output_filename;
-      default:
-        SSC_errx("Invalid err_idx %d!\n", err_idx);
-    }
-    if (err_idx == InOutDir::OUTPUT && SSC_FilePath_exists(err_path))
-      remove(err_path);
-    SSC_errx(err_str, err_map, err_path);
+    *err_typ = ErrType::MEMMAP;
+    *err_dir = err_io_dir;
+    return err;
   }
   // Get the encryption password.
   this->getPassword(true, false);
@@ -275,6 +227,7 @@ SSC_CodeError_t FourCrypt::encrypt()
   out = this->writeCiphertext(out, in, n_in); // Encrypt the input stream into the ciphertext file.
   this->writeMAC(out, mypod->output_map.ptr, mypod->output_map.size - MAC_SIZE);
   this->syncMaps();
+  this->unmapFiles();
   return 0;
 }
 
@@ -390,6 +343,12 @@ SSC_Error_t FourCrypt::runKDF()
    &mypod->tf_ctr,
    mypod->tf_ctr_iv);
 
+  for (uint64_t i = 0; i < num_threads; ++i) {
+    if (errors[i]) {
+      delete[] errors;
+      return -1;
+    }
+  }
   delete[] errors;
   return 0;
 }
@@ -410,7 +369,7 @@ SSC_Error_t FourCrypt::verifyMAC(const uint8_t* R_ mac, const uint8_t* R_ begin,
   return 0;
 }
 
-SSC_CodeError_t FourCrypt::decrypt()
+SSC_CodeError_t FourCrypt::decrypt(ErrType* etyp)
 {
   PlainOldData* mypod = this->getPod();
   // Ensure at least an input file path is provided.
@@ -482,9 +441,11 @@ SSC_CodeError_t FourCrypt::decrypt()
     if (err)
       return ERROR_OUTPUT_MEMMAP_FAILED;
   }
+  // Decipher the encrypted payload into the mapped output file.
   this->writePlaintext(mypod->output_map.ptr, in, num_out);
   
   this->syncMaps();
+  this->unmapFiles();
   return 0;
 }
 
@@ -500,6 +461,15 @@ SSC_Error_t FourCrypt::syncMaps()
       return -1;
   }
   return 0;
+}
+
+void FourCrypt::unmapFiles()
+{
+  PlainOldData* mypod = this->getPod();
+  if (mypod->input_map.ptr)
+    SSC_MemMap_del(&mypod->input_map);
+  if (mypod->output_map.ptr)
+    SSC_MemMap_del(&mypod->output_map);
 }
 
 const uint8_t* FourCrypt::readHeaderPlaintext(
@@ -614,7 +584,7 @@ const uint8_t* FourCrypt::readHeaderCiphertext(const uint8_t* R_ from, SSC_CodeE
   return from;
 }
 
-SSC_CodeError_t FourCrypt::describe()
+SSC_CodeError_t FourCrypt::describe(ErrType* etyp)
 {
   //TODO
   return 0;
@@ -809,7 +779,6 @@ uint8_t* FourCrypt::writePlaintext(uint8_t* R_ to, const uint8_t* R_ from, const
    mypod->tf_ctr_idx);
   to                += num;
   mypod->tf_ctr_idx += num;
-  // TODO ?
   return to;
 }
 
