@@ -5,6 +5,7 @@
 #include <PPQ/Skein512.h>
 #include <thread>
 #include <memory>
+#include <cinttypes> // DEBUG
 
 #define R_ SSC_RESTRICT
 
@@ -204,6 +205,7 @@ SSC_CodeError_t FourCrypt::encrypt(ErrType* err_typ, InOutDir* err_dir)
      ".4c",
      sizeof(".4c"));
   }
+  puts("Getting the size of the input file."); //DEBUG
   // Get the size of the input file.
   size_t input_filesize;
   if (SSC_FilePath_getSize(mypod->input_filename, &input_filesize))
@@ -222,15 +224,20 @@ SSC_CodeError_t FourCrypt::encrypt(ErrType* err_typ, InOutDir* err_dir)
     *err_dir = err_io_dir;
     return err;
   }
+  puts("Mapped the input and output files."); //DEBUG
   // Get the encryption password.
   this->getPassword(true, false);
   if (mypod->flags & FourCrypt::SUPPLEMENT_ENTROPY)
     // Get the entropy password and hash it into the RNG.
     this->getPassword(false, true);
+  puts("Obtained the password."); //DEBUG
   // Generate pseudorandom values.
   this->genRandomElements();
+  puts("Generated the random elements."); //DEBUG
   // Run the key derivation function and get our secret values.
+  puts("Attempting to run the KDF."); //DEBUG
   this->runKDF();
+  puts("Successfully ran the KDF."); //DEBUG
   const uint8_t* in   = mypod->input_map.ptr;
   uint8_t*       out  = mypod->output_map.ptr;
   size_t         n_in = mypod->input_map.size;
@@ -296,6 +303,8 @@ void FourCrypt::genRandomElements()
    sizeof(mypod->tf_ctr_iv));
   // Destroy the RNG after we're finished.
   SSC_secureZero(myrng, sizeof(*myrng));
+  // Initialize UBI512 again since it's pointing to the one inside mypod->rng.
+  PPQ_UBI512_init(mypod->ubi512);
 }
 
 SSC_Error_t FourCrypt::runKDF()
@@ -303,11 +312,13 @@ SSC_Error_t FourCrypt::runKDF()
   PlainOldData*  mypod = this->getPod();
   const uint64_t num_threads = mypod->thread_count;
   const uint64_t output_bytes = num_threads * PPQ_THREEFISH512_BLOCK_BYTES;
+  printf("Now inside runKDF with num_threads %" PRIu64 ", output_bytes %" PRIu64 "\n", num_threads, output_bytes); //DEBUG
   PPQ_Catena512* const catenas = new PPQ_Catena512[num_threads];
   SSC_Error_t* const   errors  = new SSC_Error_t[num_threads];
   uint8_t* const       outputs = new uint8_t[output_bytes];
   {
     std::thread* threads = new std::thread[num_threads];
+    puts("Allocated threads. About to construct threads."); //DEBUG
     for (uint64_t i = 0; i < num_threads; ++i) {
       std::construct_at(
        threads + i,
@@ -317,20 +328,26 @@ SSC_Error_t FourCrypt::runKDF()
        catenas + i,
        errors  + i,
        i);
+       printf("Successfully constructed thread %" PRIu64 "\n", i); //DEBUG
     }
     for (uint64_t i = 0; i < num_threads; ++i) {
+      printf("About to join() thread %" PRIu64 "\n", i); //DEBUG
       threads[i].join();
+      printf("About to destroy thread %" PRIu64 " in memory.\n", i); //DEBUG
       std::destroy_at(threads + i);
     }
     delete[] threads;
   }
+  puts("Zeroing catenas."); //DEBUG
   SSC_secureZero(catenas, sizeof(PPQ_Catena512) * num_threads);
   delete[] catenas;
+  puts("Zeroing password buffer."); //DEBUG
   SSC_secureZero(mypod->password_buffer, sizeof(mypod->password_buffer));
 
   // Combine all the outputs into one.
   for (uint64_t i = 1; i < num_threads; ++i)
     SSC_xor64(outputs, outputs + (i * PPQ_THREEFISH512_BLOCK_BYTES));
+  puts("Successfully combined all outputs into one."); //DEBUG
   // Hash into 128 bytes of output.
   PPQ_Skein512_hash(
    mypod->ubi512,
@@ -338,12 +355,15 @@ SSC_Error_t FourCrypt::runKDF()
    outputs,
    PPQ_THREEFISH512_BLOCK_BYTES,
    sizeof(mypod->hash_buffer));
+  puts("Hashed outputs into 128 bytes."); //DEBUG
   SSC_secureZero(outputs, output_bytes);
+  puts("Zeroed over outputs."); //DEBUG
   delete[] outputs;
   // The first 64 become the secret encryption key; the latter 64 become the authentication key.
   memcpy(mypod->tf_sec_key, mypod->hash_buffer, PPQ_THREEFISH512_BLOCK_BYTES);
   memcpy(mypod->mac_key   , mypod->hash_buffer + PPQ_THREEFISH512_BLOCK_BYTES, PPQ_THREEFISH512_BLOCK_BYTES);
   SSC_secureZero(mypod->hash_buffer, sizeof(mypod->hash_buffer));
+  puts("Zeroed over hash buffer and copied keys."); //DEBUG
   // Initialize the PPQ_Threefish512Static inside @mypod->tf_ctr.
   PPQ_Threefish512Static_init(
    &mypod->tf_ctr.threefish512,

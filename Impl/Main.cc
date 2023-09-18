@@ -82,7 +82,7 @@ static void handle_fourcrypt_errors(PlainOldData* pod, SSC_CodeError_t err, InOu
       SSC_errx("Failed to validate the MAC!\n");
       break;
     default:
-      SSC_errx("Unaccounted for code_error code in pod.\n");
+      SSC_errx("Unaccounted for code_error code in pod, %d.\n", err);
   }
 }
 static void handle_memmap_errors(PlainOldData* pod, SSC_CodeError_t err, InOutDir err_io_dir)
@@ -171,6 +171,8 @@ int main(int argc, char* argv[])
     default:
       SSC_errx("Invalid execute_mode in pod.\n");
   }
+  if (code_error == 0)
+    return EXIT_SUCCESS;
   switch (code_type) {
     case ErrType::FOURCRYPT:
       handle_fourcrypt_errors(pod, code_error, code_io_dir);
@@ -218,5 +220,4 @@ int main(int argc, char* argv[])
     default:
       SSC_errx("Unaccounted for code_error code in pod.\n");
   }
-  return EXIT_SUCCESS;
 }
