@@ -163,7 +163,7 @@ int main(int argc, char* argv[])
       code_error = fc.encrypt(&code_type, &code_io_dir); //TODO: Implement.
       break;
     case ExeMode::DECRYPT:
-      code_error = fc.decrypt(&code_type); //TODO: Implement.
+      code_error = fc.decrypt(&code_type, &code_io_dir); //TODO: Implement.
       break;
     case ExeMode::DESCRIBE:
       code_error = fc.describe(&code_type); //TODO: Implement.

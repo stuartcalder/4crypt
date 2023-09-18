@@ -191,11 +191,22 @@ SSC_CodeError_t FourCrypt::encrypt(ErrType* err_typ, InOutDir* err_dir)
   // We require input and output filenames defined for ENCRYPT mode.
   if (mypod->input_filename == nullptr)
     return ERROR_NO_INPUT_FILENAME;
-  if (mypod->output_filename == nullptr)
-    return ERROR_NO_OUTPUT_FILENAME;
+  // If an output file path wasn't provided, construct one.
+  if (mypod->output_filename == nullptr) {
+    mypod->output_filename_size = mypod->input_filename_size + 3;
+    mypod->output_filename = new char[mypod->output_filename_size + 1];
+    memcpy(
+     mypod->output_filename,
+     mypod->input_filename,
+     mypod->input_filename_size);
+    memcpy(
+     mypod->output_filename + mypod->input_filename_size,
+     ".4c",
+     sizeof(".4c"));
+  }
   // Get the size of the input file.
   size_t input_filesize;
-  if (!SSC_FilePath_getSize(mypod->input_filename, &input_filesize))
+  if (SSC_FilePath_getSize(mypod->input_filename, &input_filesize))
     return ERROR_GETTING_INPUT_FILESIZE;
   // Normalize the padding.
   this->normalizePadding(input_filesize);
@@ -369,28 +380,17 @@ SSC_Error_t FourCrypt::verifyMAC(const uint8_t* R_ mac, const uint8_t* R_ begin,
   return 0;
 }
 
-SSC_CodeError_t FourCrypt::decrypt(ErrType* etyp)
+SSC_CodeError_t FourCrypt::decrypt(ErrType* err_type, InOutDir* err_io_dir)
 {
   PlainOldData* mypod = this->getPod();
   // Ensure at least an input file path is provided.
   if (mypod->input_filename == nullptr)
     return ERROR_NO_INPUT_FILENAME;
-  // If an output file path wasn't provided, construct one.
-  if (mypod->output_filename == nullptr) {
-    mypod->output_filename_size = mypod->input_filename_size + 3;
-    mypod->output_filename = new char[mypod->output_filename_size + 1];
-    memcpy(
-     mypod->output_filename,
-     mypod->input_filename,
-     mypod->input_filename_size);
-    memcpy(
-     mypod->output_filename + mypod->input_filename_size,
-     ".4c",
-     sizeof(".4c"));
-  }
+  if (mypod->output_filename == nullptr)
+    return ERROR_NO_OUTPUT_FILENAME;
   // Get the size of the input file.
   size_t input_filesize;
-  if (!SSC_FilePath_getSize(mypod->input_filename, &input_filesize))
+  if (SSC_FilePath_getSize(mypod->input_filename, &input_filesize))
     return ERROR_GETTING_INPUT_FILESIZE;
   // Check to see if the input file is large enough.
   if (input_filesize < FourCrypt::getMinimumOutputSize())

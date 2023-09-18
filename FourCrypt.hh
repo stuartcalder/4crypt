@@ -107,7 +107,7 @@ class FourCrypt
     // Public methods.
     PlainOldData*   getPod();
     SSC_CodeError_t encrypt(ErrType* err_type, InOutDir* err_dir);
-    SSC_CodeError_t decrypt(ErrType* err_type);
+    SSC_CodeError_t decrypt(ErrType* err_type, InOutDir* err_dir);
     SSC_CodeError_t describe(ErrType* err_type); //TODO
     static consteval uint64_t getHeaderSize();
     static consteval uint64_t getMetadataSize();
