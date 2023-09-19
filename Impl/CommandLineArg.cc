@@ -161,23 +161,22 @@ static void
 print_help()
 {
   puts(
-   "\n"
    ".------.\n"
    "|4crypt|\n"
    "'------'\n"
-   "-h, --help                 Print help output.\n"
-   "-e, --encrypt              Encrypt a file.\n"
-   "-d, --decrypt              Decrypt a file.\n"
-   "-D, --describe             Describe the header of an ecrypted file.\n"
-   "-i, --input=<filepath>     Specify an input file's path.\n"
-   "-o, --output=<filepath>    Specify an output file's path.\n"
-   "-E, --entropy              Provide addition entropy to the RNG from stdin.\n"
-   "-H, --highmem=<mem[K|M|G]> Provide an upper memory bound for key derivation.\n"
-   "-L, --lowmem=<mem[K|M|G]>  Provide a lower memory bound for key derivation.\n"
-   "-U, --usemem=<mem[K|M|G]>  Set the lower and upper memory bounds to the same value.\n"
-   "-I, --iterations=<num>     Set the number of times to iterate the KDF.\n"
-   "-T, --threads=<num>        Set the degree of parallelism for the KDF.\n"
-   "-P, --usephi               Use the Phi function.");
+   "-h, --help                  Print help output.\n"
+   "-e, --encrypt               Encrypt a file.\n"
+   "-d, --decrypt               Decrypt a file.\n"
+   "-D, --describe              Describe the header of an ecrypted file.\n"
+   "-i, --input=<filepath>      Specify an input file's path.\n"
+   "-o, --output=<filepath>     Specify an output file's path.\n"
+   "-E, --entropy               Provide addition entropy to the RNG from stdin.\n"
+   "-H, --high-mem=<mem[K|M|G]> Provide an upper memory bound for key derivation.\n"
+   "-L, --low-mem=<mem[K|M|G]>  Provide a lower memory bound for key derivation.\n"
+   "-U, --use-mem=<mem[K|M|G]>  Set the lower and upper memory bounds to the same value.\n"
+   "-I, --iterations=<num>      Set the number of times to iterate the KDF.\n"
+   "-T, --threads=<num>         Set the degree of parallelism for the KDF.\n"
+   "-P, --use-phi               Use the Phi function.");
 }
 
 int
@@ -218,7 +217,7 @@ help_argproc(const int, char** R_, const int, void* R_)
 }
 
 int
-highmem_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
+high_mem_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
 {
   SSC_ArgParser parser;
   return SSC_ArgParser_process(
@@ -276,7 +275,7 @@ iterations_argproc(const int argc, char** R_ argv, const int offset, void* R_ da
 }
 
 int
-lowmem_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
+low_mem_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
 {
   SSC_ArgParser parser;
   return SSC_ArgParser_process(
@@ -316,15 +315,15 @@ output_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
 }
 
 int
-padasif_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
+pad_as_if_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
 {
   PlainOldData* pod = static_cast<PlainOldData*>(data);
   set_padmode(pod, PadMode::AS_IF);
-  return padby_argproc(argc, argv, offset, data);
+  return pad_by_argproc(argc, argv, offset, data);
 }
 
 int
-padby_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
+pad_by_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
 {
   SSC_ArgParser parser;
   return SSC_ArgParser_process(
@@ -342,11 +341,11 @@ padby_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
 }
 
 int
-padto_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
+pad_to_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
 {
   PlainOldData* pod = static_cast<PlainOldData*>(data);
   set_padmode(pod, PadMode::TARGET);
-  return padby_argproc(argc, argv, offset, data);
+  return pad_by_argproc(argc, argv, offset, data);
 }
 
 int
@@ -368,7 +367,7 @@ threads_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
 }
 
 int
-usemem_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
+use_mem_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
 {
   SSC_ArgParser parser;
   return SSC_ArgParser_process(
@@ -388,7 +387,7 @@ usemem_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
 }
 
 int
-usephi_argproc(const int, char** R_ argv, const int offset, void* R_ data)
+use_phi_argproc(const int, char** R_ argv, const int offset, void* R_ data)
 {
   PlainOldData* pod = static_cast<PlainOldData*>(data);
   pod->flags |= FourCrypt::ENABLE_PHI;

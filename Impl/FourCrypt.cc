@@ -1,6 +1,4 @@
 #include "FourCrypt.hh"
-#define SSC_EXTERN_MEMLOCK // Enable memory locking.
-#include <SSC/MemLock.h>
 #include <SSC/Terminal.h>
 #include <PPQ/Skein512.h>
 #include <thread>
@@ -26,7 +24,6 @@ enum {
 };
 
 // FourCrypt static variable initialization.
-bool FourCrypt::memlock_initialized{false};
 std::string FourCrypt::password_prompt{
  "Please input a password (max length " MAX_PW_BYTES_STR " characters)." NEWLINE_
 };
@@ -92,12 +89,6 @@ static void kdf(
 
 FourCrypt::FourCrypt()
 {
-  #if defined(SSC_MEMLOCK_H)
-  if (!FourCrypt::memlock_initialized) {
-    SSC_MemLock_Global_initHandled();
-    FourCrypt::memlock_initialized = true;
-  }
-  #endif
   this->pod = new PlainOldData;
   PlainOldData::init(*this->getPod());
   PPQ_CSPRNG_init(&this->getPod()->rng);
