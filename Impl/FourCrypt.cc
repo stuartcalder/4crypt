@@ -5,7 +5,6 @@
 #include <PPQ/Skein512.h>
 #include <thread>
 #include <memory>
-#include <cinttypes> // DEBUG
 
 #define R_ SSC_RESTRICT
 
@@ -35,7 +34,7 @@ std::string FourCrypt::reentry_prompt{
   "Please input the same password again." NEWLINE_
 };
 std::string FourCrypt::entropy_prompt{
-  "Please input up to " MAX_PW_BYTES_STR " random characters)." NEWLINE_
+  "Please input up to " MAX_PW_BYTES_STR " random characters." NEWLINE_
 };
 
 static void kdf(
@@ -205,7 +204,6 @@ SSC_CodeError_t FourCrypt::encrypt(ErrType* err_typ, InOutDir* err_dir)
      ".4c",
      sizeof(".4c"));
   }
-  puts("Getting the size of the input file."); //DEBUG
   // Get the size of the input file.
   size_t input_filesize;
   if (SSC_FilePath_getSize(mypod->input_filename, &input_filesize))
@@ -224,20 +222,15 @@ SSC_CodeError_t FourCrypt::encrypt(ErrType* err_typ, InOutDir* err_dir)
     *err_dir = err_io_dir;
     return err;
   }
-  puts("Mapped the input and output files."); //DEBUG
   // Get the encryption password.
   this->getPassword(true, false);
   if (mypod->flags & FourCrypt::SUPPLEMENT_ENTROPY)
     // Get the entropy password and hash it into the RNG.
     this->getPassword(false, true);
-  puts("Obtained the password."); //DEBUG
   // Generate pseudorandom values.
   this->genRandomElements();
-  puts("Generated the random elements."); //DEBUG
   // Run the key derivation function and get our secret values.
-  puts("Attempting to run the KDF."); //DEBUG
   this->runKDF();
-  puts("Successfully ran the KDF."); //DEBUG
   const uint8_t* in   = mypod->input_map.ptr;
   uint8_t*       out  = mypod->output_map.ptr;
   size_t         n_in = mypod->input_map.size;
@@ -312,13 +305,11 @@ SSC_Error_t FourCrypt::runKDF()
   PlainOldData*  mypod = this->getPod();
   const uint64_t num_threads = mypod->thread_count;
   const uint64_t output_bytes = num_threads * PPQ_THREEFISH512_BLOCK_BYTES;
-  printf("Now inside runKDF with num_threads %" PRIu64 ", output_bytes %" PRIu64 "\n", num_threads, output_bytes); //DEBUG
   PPQ_Catena512* const catenas = new PPQ_Catena512[num_threads];
   SSC_Error_t* const   errors  = new SSC_Error_t[num_threads];
   uint8_t* const       outputs = new uint8_t[output_bytes];
   {
     std::thread* threads = new std::thread[num_threads];
-    puts("Allocated threads. About to construct threads."); //DEBUG
     for (uint64_t i = 0; i < num_threads; ++i) {
       std::construct_at(
        threads + i,
@@ -328,26 +319,20 @@ SSC_Error_t FourCrypt::runKDF()
        catenas + i,
        errors  + i,
        i);
-       printf("Successfully constructed thread %" PRIu64 "\n", i); //DEBUG
     }
     for (uint64_t i = 0; i < num_threads; ++i) {
-      printf("About to join() thread %" PRIu64 "\n", i); //DEBUG
       threads[i].join();
-      printf("About to destroy thread %" PRIu64 " in memory.\n", i); //DEBUG
       std::destroy_at(threads + i);
     }
     delete[] threads;
   }
-  puts("Zeroing catenas."); //DEBUG
   SSC_secureZero(catenas, sizeof(PPQ_Catena512) * num_threads);
   delete[] catenas;
-  puts("Zeroing password buffer."); //DEBUG
   SSC_secureZero(mypod->password_buffer, sizeof(mypod->password_buffer));
 
   // Combine all the outputs into one.
   for (uint64_t i = 1; i < num_threads; ++i)
     SSC_xor64(outputs, outputs + (i * PPQ_THREEFISH512_BLOCK_BYTES));
-  puts("Successfully combined all outputs into one."); //DEBUG
   // Hash into 128 bytes of output.
   PPQ_Skein512_hash(
    mypod->ubi512,
@@ -355,15 +340,12 @@ SSC_Error_t FourCrypt::runKDF()
    outputs,
    PPQ_THREEFISH512_BLOCK_BYTES,
    sizeof(mypod->hash_buffer));
-  puts("Hashed outputs into 128 bytes."); //DEBUG
   SSC_secureZero(outputs, output_bytes);
-  puts("Zeroed over outputs."); //DEBUG
   delete[] outputs;
   // The first 64 become the secret encryption key; the latter 64 become the authentication key.
   memcpy(mypod->tf_sec_key, mypod->hash_buffer, PPQ_THREEFISH512_BLOCK_BYTES);
   memcpy(mypod->mac_key   , mypod->hash_buffer + PPQ_THREEFISH512_BLOCK_BYTES, PPQ_THREEFISH512_BLOCK_BYTES);
   SSC_secureZero(mypod->hash_buffer, sizeof(mypod->hash_buffer));
-  puts("Zeroed over hash buffer and copied keys."); //DEBUG
   // Initialize the PPQ_Threefish512Static inside @mypod->tf_ctr.
   PPQ_Threefish512Static_init(
    &mypod->tf_ctr.threefish512,
@@ -404,20 +386,39 @@ SSC_CodeError_t FourCrypt::decrypt(ErrType* err_type, InOutDir* err_io_dir)
 {
   PlainOldData* mypod = this->getPod();
   // Ensure at least an input file path is provided.
-  if (mypod->input_filename == nullptr)
+  if (mypod->input_filename == nullptr) {
+    *err_io_dir = InOutDir::INPUT;
     return ERROR_NO_INPUT_FILENAME;
-  if (mypod->output_filename == nullptr)
-    return ERROR_NO_OUTPUT_FILENAME;
+  }
+  if (mypod->output_filename == nullptr) {
+    uint64_t size = mypod->input_filename_size;
+    if (size >= 4 && memcmp(mypod->input_filename + (size - 3), ".4c", 3) == 0) {
+      mypod->output_filename_size = size - 3;
+      mypod->output_filename = new char[mypod->output_filename_size + 1];
+      memcpy(mypod->output_filename, mypod->input_filename, mypod->output_filename_size);
+      mypod->output_filename[mypod->output_filename_size] = '\0';
+    }
+    else {
+      *err_io_dir = InOutDir::OUTPUT;
+      return ERROR_NO_OUTPUT_FILENAME;
+    }
+  }
   // Get the size of the input file.
   size_t input_filesize;
-  if (SSC_FilePath_getSize(mypod->input_filename, &input_filesize))
+  if (SSC_FilePath_getSize(mypod->input_filename, &input_filesize)) {
+    *err_io_dir = InOutDir::INPUT;
     return ERROR_GETTING_INPUT_FILESIZE;
+  }
   // Check to see if the input file is large enough.
-  if (input_filesize < FourCrypt::getMinimumOutputSize())
+  if (input_filesize < FourCrypt::getMinimumOutputSize()) {
+    *err_io_dir = InOutDir::INPUT;
     return ERROR_INPUT_FILESIZE_TOO_SMALL;
+  }
   // Do not proceed if a file already exists at the output filepath.
-  if (SSC_FilePath_exists(mypod->output_filename))
+  if (SSC_FilePath_exists(mypod->output_filename)) {
+    *err_io_dir = InOutDir::OUTPUT;
     return ERROR_OUTPUT_FILE_EXISTS;
+  }
   // Map the input file.
   {
     SSC_Error_t err = this->mapFiles(
@@ -425,8 +426,10 @@ SSC_CodeError_t FourCrypt::decrypt(ErrType* err_type, InOutDir* err_io_dir)
      input_filesize,
      0,
      InOutDir::INPUT);
-    if (err)
+    if (err) {
+      *err_io_dir = InOutDir::INPUT;
       return ERROR_INPUT_MEMMAP_FAILED;
+    }
   }
   // Get the decryption password.
   this->getPassword(false, false);
@@ -444,8 +447,10 @@ SSC_CodeError_t FourCrypt::decrypt(ErrType* err_type, InOutDir* err_io_dir)
    mypod->input_map.ptr + (num_in - MAC_SIZE),
    mypod->input_map.ptr,
    num_in - MAC_SIZE);
-  if (err)
+  if (err) {
+    *err_io_dir = InOutDir::INPUT;
     return ERROR_MAC_VALIDATION_FAILED;
+  }
   // Decipher the encrypted portion of the input file header.
   in = this->readHeaderCiphertext(in, &err);
   if (err)
@@ -458,8 +463,10 @@ SSC_CodeError_t FourCrypt::decrypt(ErrType* err_type, InOutDir* err_io_dir)
      0,
      num_out,
      InOutDir::OUTPUT);
-    if (err)
+    if (err) {
+      *err_io_dir = InOutDir::OUTPUT;
       return ERROR_OUTPUT_MEMMAP_FAILED;
+    }
   }
   // Decipher the encrypted payload into the mapped output file.
   this->writePlaintext(mypod->output_map.ptr, in, num_out);
@@ -788,7 +795,7 @@ uint8_t* FourCrypt::writeCiphertext(uint8_t* R_ to, const uint8_t* R_ from, cons
   return to;
 }
 
-uint8_t* FourCrypt::writePlaintext(uint8_t* R_ to, const uint8_t* R_ from, const size_t num)
+void FourCrypt::writePlaintext(uint8_t* R_ to, const uint8_t* R_ from, const size_t num)
 {
   PlainOldData* mypod = this->getPod();
   PPQ_Threefish512CounterMode_xorKeystream(
@@ -799,7 +806,6 @@ uint8_t* FourCrypt::writePlaintext(uint8_t* R_ to, const uint8_t* R_ from, const
    mypod->tf_ctr_idx);
   to                += num;
   mypod->tf_ctr_idx += num;
-  return to;
 }
 
 void FourCrypt::writeMAC(uint8_t* R_ to, const uint8_t* R_ from, const size_t num)

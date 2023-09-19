@@ -26,7 +26,7 @@ class FourCrypt
     static constexpr size_t PW_BUFFER_BYTES = MAX_PW_BYTES + 1;
     static_assert(SSC_ENDIAN == SSC_ENDIAN_LITTLE || SSC_ENDIAN == SSC_ENDIAN_BIG, "Only big and little endian supported!");
     static constexpr const bool is_little_endian = []() -> bool { return (SSC_ENDIAN == SSC_ENDIAN_LITTLE); }();
-    static constexpr const uint8_t magic[4] = { 0xa0, 0x13, 0xaf, 0xb9 };
+    static constexpr const uint8_t magic[4] = { 0xe2, 0x2a, 0x1e, 0x9b };
 
     static constexpr const SSC_BitFlag8_t ENABLE_PHI =         0b00000001; // Enable the Phi function.
     static constexpr const SSC_BitFlag8_t SUPPLEMENT_ENTROPY = 0b00000010; // Supplement entropy from stdin.
@@ -45,7 +45,7 @@ class FourCrypt
     static constexpr const SSC_CodeError_t ERROR_MAC_VALIDATION_FAILED    = -11;
     static constexpr const SSC_CodeError_t ERROR_KDF_FAILED               = -12;
 
-    static constexpr const uint8_t  MEM_DEFAULT = 25;
+    static constexpr const uint8_t  MEM_DEFAULT = 24;
     static constexpr const uint64_t PAD_FACTOR = 64;
     static constexpr const uint64_t MAC_SIZE = 64;
 
@@ -135,7 +135,7 @@ class FourCrypt
     const uint8_t*  readHeaderPlaintext(const uint8_t* R_ from, SSC_CodeError_t* R_ err);
     const uint8_t*  readHeaderCiphertext(const uint8_t* R_ from, SSC_CodeError_t* R_ err);
     uint8_t*        writeCiphertext(uint8_t* R_ to, const uint8_t* R_ from, const size_t num);
-    uint8_t*        writePlaintext(uint8_t* R_ to, const uint8_t* R_ from, const size_t num); //TODO
+    void            writePlaintext(uint8_t* R_ to, const uint8_t* R_ from, const size_t num);
     void            writeMAC(uint8_t* R_ to, const uint8_t* R_ from, const size_t num);
 };
 
