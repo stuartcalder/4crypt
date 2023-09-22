@@ -643,11 +643,11 @@ SSC_CodeError_t FourCrypt::describe(ErrType* errtype, InOutDir* errdir)
 
   // Print plaintext header information from beginning to end.
   printf(
-   "4crypt encrypted file %s:\n",
+   "4crypt encrypted file:    %s\n",
    mypod->input_filename);
   if (mypod->memory_low == mypod->memory_high) {
     printf(
-     "Memory Bound: %s\n",
+     "The KDF Memory Bound is...%s\n",
      FourCrypt::makeMemoryString(
       mypod->memory_low).c_str());
   }
@@ -662,12 +662,10 @@ SSC_CodeError_t FourCrypt::describe(ErrType* errtype, InOutDir* errdir)
       mypod->memory_high).c_str());
   }
   printf(
-   "The KDF is iterated %" PRIu8 " times.\n", mypod->iterations);
+   "The KDF is iterated...    %" PRIu8 " time(s).\n", mypod->iterations);
   if (mypod->flags & FourCrypt::ENABLE_PHI)
     puts("The Phi function IS USED! Beware cache-timing attacks!");
-  printf(
-   "The file is %" PRIu64 " bytes.\n",
-   static_cast<uint64_t>(mypod->input_map.size));
+  printf("The file is...            %" PRIu64 " byte(s).\n", static_cast<uint64_t>(mypod->input_map.size));
   printf("Threefish512 Tweak:       0x");
   SSC_printBytes(
    mypod->tf_tweak,
@@ -680,7 +678,8 @@ SSC_CodeError_t FourCrypt::describe(ErrType* errtype, InOutDir* errdir)
   SSC_printBytes(
    mypod->tf_ctr_iv,
    sizeof(mypod->tf_ctr_iv));
-  printf("\nThread count: %" PRIu64 "\n", mypod->thread_count);
+  //printf("\nThread count: %" PRIu64 "\n", mypod->thread_count);
+  printf("\nThread count...           %" PRIu64 " thread(s).\n", mypod->thread_count);
   return 0;
 }
 
@@ -940,7 +939,7 @@ std::string FourCrypt::makeMemoryString(const uint8_t mem_bitshift)
   std::string s;
   
   // Set initial values.
-  value = static_cast<uint64_t>(1) << mem_bitshift;
+  value = (static_cast<uint64_t>(1) << mem_bitshift) * 64;
   size = 1;
   size_count = 0;
   size_fraction = 0.0;
