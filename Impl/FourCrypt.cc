@@ -642,44 +642,41 @@ SSC_CodeError_t FourCrypt::describe(ErrType* errtype, InOutDir* errdir)
   memcpy(mac, mypod->input_map.ptr + num_in - sizeof(mac), sizeof(mac));
 
   // Print plaintext header information from beginning to end.
-  printf(
-   "4crypt encrypted file:    %s\n",
-   mypod->input_filename);
+  printf("The file size is................%" PRIu64 " byte(s).\n", static_cast<uint64_t>(mypod->input_map.size));
   if (mypod->memory_low == mypod->memory_high) {
     printf(
-     "The KDF Memory Bound is...%s\n",
+     "The KDF Memory Bound is.........%s\n",
      FourCrypt::makeMemoryString(
-      mypod->memory_low).c_str());
+      mypod->memory_low + 6).c_str());
   }
   else {
     printf(
      "Lower Memory Bound: %s\n",
      FourCrypt::makeMemoryString(
-      mypod->memory_low).c_str());
+      mypod->memory_low + 6).c_str());
     printf(
      "Upper Memory Bound: %s\n",
      FourCrypt::makeMemoryString(
-      mypod->memory_high).c_str());
+      mypod->memory_high + 6).c_str());
   }
+  printf("The KDF Thread Count is.........%" PRIu64 " thread(s).\n", mypod->thread_count);
   printf(
-   "The KDF is iterated...    %" PRIu8 " time(s).\n", mypod->iterations);
+   "Each KDF thread iterates........%" PRIu8 " time(s).\n", mypod->iterations);
   if (mypod->flags & FourCrypt::ENABLE_PHI)
     puts("The Phi function IS USED! Beware cache-timing attacks!");
-  printf("The file is...            %" PRIu64 " byte(s).\n", static_cast<uint64_t>(mypod->input_map.size));
-  printf("Threefish512 Tweak:       0x");
+  printf("The Threefish512 Tweak is.......0x");
   SSC_printBytes(
    mypod->tf_tweak,
    PPQ_THREEFISH512_TWEAK_BYTES);
-  printf("\nCatena512 Salt:           0x");
+  printf("\nThe Catena512 Salt is...........0x");
   SSC_printBytes(
    mypod->catena_salt,
    sizeof(mypod->catena_salt));
-  printf("\nThreefish512 CTR-mode IV: 0x");
+  printf("\nThreefish512 CTR-Mode's IV is...0x");
   SSC_printBytes(
    mypod->tf_ctr_iv,
    sizeof(mypod->tf_ctr_iv));
-  //printf("\nThread count: %" PRIu64 "\n", mypod->thread_count);
-  printf("\nThread count...           %" PRIu64 " thread(s).\n", mypod->thread_count);
+  putchar('\n');
   return 0;
 }
 
@@ -939,7 +936,7 @@ std::string FourCrypt::makeMemoryString(const uint8_t mem_bitshift)
   std::string s;
   
   // Set initial values.
-  value = (static_cast<uint64_t>(1) << mem_bitshift) * 64;
+  value = (static_cast<uint64_t>(1) << mem_bitshift);
   size = 1;
   size_count = 0;
   size_fraction = 0.0;

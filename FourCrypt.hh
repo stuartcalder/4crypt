@@ -124,7 +124,7 @@ class FourCrypt
     static std::string reentry_prompt;
     static std::string entropy_prompt;
     // Static methods.
-    static bool     verifyBasicMetadata(PlainOldData* extpod, InOutDir dir);
+    static bool        verifyBasicMetadata(PlainOldData* extpod, InOutDir dir);
     static std::string makeMemoryString(const uint8_t mem_bitshift);
     // Private methods.
     void            getPassword(bool enter_twice, bool entropy);
