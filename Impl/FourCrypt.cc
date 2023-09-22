@@ -216,7 +216,7 @@ SSC_CodeError_t FourCrypt::encrypt(ErrType* err_typ, InOutDir* err_dir)
     return err;
   }
   // Get the encryption password.
-  this->getPassword(true, false);
+  this->getPassword(!(mypod->flags & FourCrypt::ENTER_PASS_ONCE), false);
   if (mypod->flags & FourCrypt::SUPPLEMENT_ENTROPY)
     // Get the entropy password and hash it into the RNG.
     this->getPassword(false, true);

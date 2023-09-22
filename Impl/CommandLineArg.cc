@@ -176,6 +176,7 @@ print_help()
    "-M, --use-mem=<mem[K|M|G]>  Set the lower and upper memory bounds to the same value.\n"
    "-I, --iterations=<num>      Set the number of times to iterate the KDF.\n"
    "-T, --threads=<num>         Set the degree of parallelism for the KDF.\n"
+   "-1, --enter-password-once   Disable password-reentry for correctness verification during encrypts.\n"
    "-P, --use-phi               Enable the Phi function for each KDF thread.\n"
    "WARNING: The phi function hardens the key-derivation function against\n"
    "parallel adversaries, greatly increasing the work necessary to brute-force\n"
@@ -202,6 +203,14 @@ encrypt_argproc(const int, char** R_ argv, const int offset, void* R_ data)
 {
   PlainOldData* pod = static_cast<PlainOldData*>(data);
   return set_exemode(pod, ExeMode::ENCRYPT, argv[0], offset);
+}
+
+int
+enter_password_once_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
+{
+  PlainOldData* pod = static_cast<PlainOldData*>(data);
+  pod->flags |= FourCrypt::ENTER_PASS_ONCE;
+  return SSC_1opt(argv[0][offset]);
 }
 
 int

@@ -22,14 +22,15 @@ class FourCrypt
 {
   public:
     // Public constants and types.
-    static constexpr size_t MAX_PW_BYTES = 125;
-    static constexpr size_t PW_BUFFER_BYTES = MAX_PW_BYTES + 1;
+    static constexpr const size_t MAX_PW_BYTES = 125;
+    static constexpr const size_t PW_BUFFER_BYTES = MAX_PW_BYTES + 1;
     static_assert(SSC_ENDIAN == SSC_ENDIAN_LITTLE || SSC_ENDIAN == SSC_ENDIAN_BIG, "Only big and little endian supported!");
     static constexpr const bool is_little_endian = []() -> bool { return (SSC_ENDIAN == SSC_ENDIAN_LITTLE); }();
     static constexpr const uint8_t magic[4] = { 0xe2, 0x2a, 0x1e, 0x9b };
 
     static constexpr const SSC_BitFlag8_t ENABLE_PHI =         0b00000001; // Enable the Phi function.
     static constexpr const SSC_BitFlag8_t SUPPLEMENT_ENTROPY = 0b00000010; // Supplement entropy from stdin.
+    static constexpr const SSC_BitFlag8_t ENTER_PASS_ONCE    = 0b00000100; // Don't re-enter password during encrypt.
 
     // 4crypt Code Errors.
     static constexpr const SSC_CodeError_t ERROR_NO_INPUT_FILENAME          =  -1;
