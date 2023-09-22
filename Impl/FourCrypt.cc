@@ -424,6 +424,10 @@ SSC_CodeError_t FourCrypt::decrypt(ErrType* err_type, InOutDir* err_io_dir)
       return ERROR_INPUT_MEMMAP_FAILED;
     }
   }
+  if (!FourCrypt::verifyBasicMetadata(mypod, InOutDir::INPUT)) {
+    *err_io_dir = InOutDir::INPUT;
+    return ERROR_INVALID_4CRYPT_FILE;
+  }
   // Get the decryption password.
   this->getPassword(false, false);
   const uint8_t* in = mypod->input_map.ptr;
@@ -549,28 +553,6 @@ const uint8_t* FourCrypt::readHeaderPlaintext(
     return from;
   }
   from += 8;
-  #if 0
-  // 8 Ciphered padding size bytes; 8 ciphered reserve bytes.
-  {
-    uint64_t tmp[2];
-    PPQ_Threefish512CounterMode_xorKeystream(
-     &mypod->tf_ctr,
-     tmp,
-     from,
-     sizeof(tmp),
-     mypod->tf_ctr_idx);
-    mypod->tf_ctr_idx += sizeof(tmp);
-    from += sizeof(tmp);
-    if constexpr(FourCrypt::is_little_endian)
-      mypod->padding_size = tmp[0];
-    else
-      mypod->padding_size = SSC_swap64(tmp[0]);
-    if (tmp[1] != 0) {
-      *err = ERROR_RESERVED_BYTES_USED;
-      return from;
-    }
-  }
-  #endif
   return from;
 }
 
@@ -644,21 +626,23 @@ SSC_CodeError_t FourCrypt::describe(ErrType* errtype, InOutDir* errdir)
   // Print plaintext header information from beginning to end.
   if (mypod->flags & FourCrypt::ENABLE_PHI)
     puts("The Phi function IS USED! Beware cache-timing attacks!");
-  printf("The file size is................%" PRIu64 " byte(s).\n", static_cast<uint64_t>(mypod->input_map.size));
+  printf(
+   "The file size is................%s.\n",
+   FourCrypt::makeMemoryString(mypod->input_map.size).c_str());
   if (mypod->memory_low == mypod->memory_high) {
     printf(
      "The KDF Memory Bound is.........%s\n",
-     FourCrypt::makeMemoryString(
+     FourCrypt::makeMemoryStringBitShift(
       mypod->memory_low + 6).c_str());
   }
   else {
     printf(
      "The KDF Lower Memory Bound is...%s\n",
-     FourCrypt::makeMemoryString(
+     FourCrypt::makeMemoryStringBitShift(
       mypod->memory_low + 6).c_str());
     printf(
      "The KDF Upper Memory Bound is...%s\n",
-     FourCrypt::makeMemoryString(
+     FourCrypt::makeMemoryStringBitShift(
       mypod->memory_high + 6).c_str());
   }
   printf("The KDF Thread Count is.........%" PRIu64 " thread(s).\n", mypod->thread_count);
@@ -915,7 +899,12 @@ bool FourCrypt::verifyBasicMetadata(
   return true;
 }
 
-std::string FourCrypt::makeMemoryString(const uint8_t mem_bitshift)
+std::string FourCrypt::makeMemoryStringBitShift(const uint8_t mem_bitshift)
+{
+  return FourCrypt::makeMemoryString(static_cast<uint64_t>(1) << mem_bitshift);
+}
+
+std::string FourCrypt::makeMemoryString(const uint64_t value)
 {
   constexpr const uint64_t kibibyte = 1024;
   constexpr const uint64_t mebibyte = kibibyte * kibibyte;
@@ -928,7 +917,6 @@ std::string FourCrypt::makeMemoryString(const uint8_t mem_bitshift)
     "Byte(s)", "Kibibyte(s)", "Mebibyte(s)", "Gibibyte(s)", "Tebibyte(s)"
   };
 
-  uint64_t    value;
   uint64_t    size;
   uint64_t    size_count;
   double      size_fraction;
@@ -936,7 +924,6 @@ std::string FourCrypt::makeMemoryString(const uint8_t mem_bitshift)
   std::string s;
   
   // Set initial values.
-  value = (static_cast<uint64_t>(1) << mem_bitshift);
   size = 1;
   size_count = 0;
   size_fraction = 0.0;
@@ -980,4 +967,3 @@ std::string FourCrypt::makeMemoryString(const uint8_t mem_bitshift)
 
   return s;
 }
-
