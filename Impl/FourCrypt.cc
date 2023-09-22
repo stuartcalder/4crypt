@@ -642,6 +642,8 @@ SSC_CodeError_t FourCrypt::describe(ErrType* errtype, InOutDir* errdir)
   memcpy(mac, mypod->input_map.ptr + num_in - sizeof(mac), sizeof(mac));
 
   // Print plaintext header information from beginning to end.
+  if (mypod->flags & FourCrypt::ENABLE_PHI)
+    puts("The Phi function IS USED! Beware cache-timing attacks!");
   printf("The file size is................%" PRIu64 " byte(s).\n", static_cast<uint64_t>(mypod->input_map.size));
   if (mypod->memory_low == mypod->memory_high) {
     printf(
@@ -651,19 +653,17 @@ SSC_CodeError_t FourCrypt::describe(ErrType* errtype, InOutDir* errdir)
   }
   else {
     printf(
-     "Lower Memory Bound: %s\n",
+     "The KDF Lower Memory Bound is...%s\n",
      FourCrypt::makeMemoryString(
       mypod->memory_low + 6).c_str());
     printf(
-     "Upper Memory Bound: %s\n",
+     "The KDF Upper Memory Bound is...%s\n",
      FourCrypt::makeMemoryString(
       mypod->memory_high + 6).c_str());
   }
   printf("The KDF Thread Count is.........%" PRIu64 " thread(s).\n", mypod->thread_count);
   printf(
    "Each KDF thread iterates........%" PRIu8 " time(s).\n", mypod->iterations);
-  if (mypod->flags & FourCrypt::ENABLE_PHI)
-    puts("The Phi function IS USED! Beware cache-timing attacks!");
   printf("The Threefish512 Tweak is.......0x");
   SSC_printBytes(
    mypod->tf_tweak,

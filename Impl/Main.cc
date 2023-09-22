@@ -11,7 +11,7 @@ using InOutDir = FourCrypt::InOutDir;
 using ExeMode  = FourCrypt::ExeMode;
 using PadMode  = FourCrypt::PadMode;
 
-const std::array<SSC_ArgShort, 13> shorts = {{
+const std::array<SSC_ArgShort, 14> shorts = {{
   SSC_ARGSHORT_LITERAL(describe_argproc  , 'D'),
   SSC_ARGSHORT_LITERAL(entropy_argproc   , 'E'),
   SSC_ARGSHORT_LITERAL(high_mem_argproc  , 'H'),
@@ -25,9 +25,10 @@ const std::array<SSC_ArgShort, 13> shorts = {{
   SSC_ARGSHORT_LITERAL(help_argproc      , 'h'),
   SSC_ARGSHORT_LITERAL(input_argproc     , 'i'),
   SSC_ARGSHORT_LITERAL(output_argproc    , 'o'),
+  SSC_ARGSHORT_NULL_LITERAL
 }};
 
-const std::array<SSC_ArgLong, 19> longs = {{
+const std::array<SSC_ArgLong, 20> longs = {{
   SSC_ARGLONG_LITERAL(decrypt_argproc   , "decrypt"),
   SSC_ARGLONG_LITERAL(describe_argproc  , "describe"),
   SSC_ARGLONG_LITERAL(encrypt_argproc   , "encrypt"),
@@ -47,6 +48,7 @@ const std::array<SSC_ArgLong, 19> longs = {{
   SSC_ARGLONG_LITERAL(use_mem_argproc   , "use-mem"),
   SSC_ARGLONG_LITERAL(use_mem_argproc   , "use-memory"),
   SSC_ARGLONG_LITERAL(use_phi_argproc   , "use-phi"),
+  SSC_ARGLONG_NULL_LITERAL
 }};
 
 static void handle_fourcrypt_errors(PlainOldData* pod, SSC_CodeError_t err, InOutDir err_io_dir)
