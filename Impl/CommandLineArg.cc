@@ -176,7 +176,11 @@ print_help()
    "-U, --use-mem=<mem[K|M|G]>  Set the lower and upper memory bounds to the same value.\n"
    "-I, --iterations=<num>      Set the number of times to iterate the KDF.\n"
    "-T, --threads=<num>         Set the degree of parallelism for the KDF.\n"
-   "-P, --use-phi               Use the Phi function.");
+   "-P, --use-phi               Use the Phi function.\n"
+   "WARNING: The phi function hardens the key-derivation function against\n"
+   "parallel adversaries, greatly increasing the work necessary to brute-force\n"
+   "your password, but introduces the potential for cache-timing attacks.\n"
+   "Do NOT use this feature unless you understand the security implications!");
 }
 
 int
