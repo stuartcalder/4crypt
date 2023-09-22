@@ -32,18 +32,19 @@ class FourCrypt
     static constexpr const SSC_BitFlag8_t SUPPLEMENT_ENTROPY = 0b00000010; // Supplement entropy from stdin.
 
     // 4crypt Code Errors.
-    static constexpr const SSC_CodeError_t ERROR_NO_INPUT_FILENAME        =  -1;
-    static constexpr const SSC_CodeError_t ERROR_NO_OUTPUT_FILENAME       =  -2;
-    static constexpr const SSC_CodeError_t ERROR_INPUT_MEMMAP_FAILED      =  -3;
-    static constexpr const SSC_CodeError_t ERROR_OUTPUT_MEMMAP_FAILED     =  -4;
-    static constexpr const SSC_CodeError_t ERROR_GETTING_INPUT_FILESIZE   =  -5;
-    static constexpr const SSC_CodeError_t ERROR_INPUT_FILESIZE_TOO_SMALL =  -6;
-    static constexpr const SSC_CodeError_t ERROR_INVALID_4CRYPT_FILE      =  -7;
-    static constexpr const SSC_CodeError_t ERROR_INPUT_SIZE_MISMATCH      =  -8;
-    static constexpr const SSC_CodeError_t ERROR_RESERVED_BYTES_USED      =  -9;
-    static constexpr const SSC_CodeError_t ERROR_OUTPUT_FILE_EXISTS       = -10;
-    static constexpr const SSC_CodeError_t ERROR_MAC_VALIDATION_FAILED    = -11;
-    static constexpr const SSC_CodeError_t ERROR_KDF_FAILED               = -12;
+    static constexpr const SSC_CodeError_t ERROR_NO_INPUT_FILENAME          =  -1;
+    static constexpr const SSC_CodeError_t ERROR_NO_OUTPUT_FILENAME         =  -2;
+    static constexpr const SSC_CodeError_t ERROR_INPUT_MEMMAP_FAILED        =  -3;
+    static constexpr const SSC_CodeError_t ERROR_OUTPUT_MEMMAP_FAILED       =  -4;
+    static constexpr const SSC_CodeError_t ERROR_GETTING_INPUT_FILESIZE     =  -5;
+    static constexpr const SSC_CodeError_t ERROR_INPUT_FILESIZE_TOO_SMALL   =  -6;
+    static constexpr const SSC_CodeError_t ERROR_INVALID_4CRYPT_FILE        =  -7;
+    static constexpr const SSC_CodeError_t ERROR_INPUT_SIZE_MISMATCH        =  -8;
+    static constexpr const SSC_CodeError_t ERROR_RESERVED_BYTES_USED        =  -9;
+    static constexpr const SSC_CodeError_t ERROR_OUTPUT_FILE_EXISTS         = -10;
+    static constexpr const SSC_CodeError_t ERROR_MAC_VALIDATION_FAILED      = -11;
+    static constexpr const SSC_CodeError_t ERROR_KDF_FAILED                 = -12;
+    static constexpr const SSC_CodeError_t ERROR_METADATA_VALIDATION_FAILED = -13;
 
     static constexpr const uint8_t  MEM_DEFAULT = 24;
     static constexpr const uint64_t PAD_FACTOR = 64;
@@ -108,7 +109,7 @@ class FourCrypt
     PlainOldData*   getPod();
     SSC_CodeError_t encrypt(ErrType* err_type, InOutDir* err_dir);
     SSC_CodeError_t decrypt(ErrType* err_type, InOutDir* err_dir);
-    SSC_CodeError_t describe(ErrType* err_type); //TODO
+    SSC_CodeError_t describe(ErrType* err_type, InOutDir* err_dir); //TODO
     static consteval uint64_t getHeaderSize();
     static consteval uint64_t getMetadataSize();
     static consteval uint64_t getMinimumOutputSize();
@@ -122,6 +123,9 @@ class FourCrypt
     static std::string password_prompt;
     static std::string reentry_prompt;
     static std::string entropy_prompt;
+    // Static methods.
+    static bool     verifyBasicMetadata(PlainOldData* extpod, InOutDir dir);
+    static std::string makeMemoryString(const uint8_t mem_bitshift);
     // Private methods.
     void            getPassword(bool enter_twice, bool entropy);
     SSC_Error_t     normalizePadding(const uint64_t input_filesize);

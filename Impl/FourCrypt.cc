@@ -1,8 +1,10 @@
 #include "FourCrypt.hh"
 #include <SSC/Terminal.h>
+#include <SSC/Print.h>
 #include <PPQ/Skein512.h>
 #include <thread>
 #include <memory>
+#include <cinttypes>
 
 #define R_ SSC_RESTRICT
 
@@ -602,9 +604,83 @@ const uint8_t* FourCrypt::readHeaderCiphertext(const uint8_t* R_ from, SSC_CodeE
   return from;
 }
 
-SSC_CodeError_t FourCrypt::describe(ErrType* etyp)
+SSC_CodeError_t FourCrypt::describe(ErrType* errtype, InOutDir* errdir)
 {
-  //TODO
+  PlainOldData* mypod = this->getPod();
+  if (mypod->input_filename == nullptr) {
+    *errdir = InOutDir::INPUT;
+    *errtype = ErrType::FOURCRYPT;
+    return ERROR_NO_INPUT_FILENAME;
+  }
+  SSC_CodeError_t err = 0;
+  InOutDir        err_dir = InOutDir::NONE;
+  err = this->mapFiles(
+   &err_dir,
+   0,
+   0,
+   InOutDir::INPUT);
+  if (err) {
+    *errdir = err_dir;
+    *errtype = ErrType::MEMMAP;
+    return err;
+  }
+  const uint8_t* in = mypod->input_map.ptr;
+  const uint64_t num_in = mypod->input_map.size;
+  in = this->readHeaderPlaintext(in, &err);
+  if (err) {
+    *errdir = InOutDir::NONE;
+    *errtype = ErrType::FOURCRYPT;
+    return err;
+  }
+  if (!FourCrypt::verifyBasicMetadata(mypod, InOutDir::INPUT)) {
+    *errdir = InOutDir::INPUT;
+    *errtype = ErrType::FOURCRYPT;
+    return ERROR_METADATA_VALIDATION_FAILED;
+  }
+
+  alignas(uint64_t) uint8_t mac [PPQ_THREEFISH512_BLOCK_BYTES];
+  memcpy(mac, mypod->input_map.ptr + num_in - sizeof(mac), sizeof(mac));
+
+  // Print plaintext header information from beginning to end.
+  printf(
+   "4crypt encrypted file %s:\n",
+   mypod->input_filename);
+  if (mypod->memory_low == mypod->memory_high) {
+    printf(
+     "Memory Bound: %s\n",
+     FourCrypt::makeMemoryString(
+      mypod->memory_low).c_str());
+  }
+  else {
+    printf(
+     "Lower Memory Bound: %s\n",
+     FourCrypt::makeMemoryString(
+      mypod->memory_low).c_str());
+    printf(
+     "Upper Memory Bound: %s\n",
+     FourCrypt::makeMemoryString(
+      mypod->memory_high).c_str());
+  }
+  printf(
+   "The KDF is iterated %" PRIu8 " times.\n", mypod->iterations);
+  if (mypod->flags & FourCrypt::ENABLE_PHI)
+    puts("The Phi function IS USED! Beware cache-timing attacks!");
+  printf(
+   "The file is %" PRIu64 " bytes.\n",
+   static_cast<uint64_t>(mypod->input_map.size));
+  printf("Threefish512 Tweak:       0x");
+  SSC_printBytes(
+   mypod->tf_tweak,
+   PPQ_THREEFISH512_TWEAK_BYTES);
+  printf("\nCatena512 Salt:           0x");
+  SSC_printBytes(
+   mypod->catena_salt,
+   sizeof(mypod->catena_salt));
+  printf("\nThreefish512 CTR-mode IV: 0x");
+  SSC_printBytes(
+   mypod->tf_ctr_iv,
+   sizeof(mypod->tf_ctr_iv));
+  printf("\nThread count: %" PRIu64 "\n", mypod->thread_count);
   return 0;
 }
 
@@ -810,3 +886,102 @@ void FourCrypt::writeMAC(uint8_t* R_ to, const uint8_t* R_ from, const size_t nu
    num,
    sizeof(mypod->mac_key));
 }
+
+bool FourCrypt::verifyBasicMetadata(
+ PlainOldData* mypod,
+ InOutDir      dir)
+{
+  const char* fpath;
+  SSC_MemMap* map;
+  switch (dir) {
+    case InOutDir::INPUT:
+      fpath = mypod->input_filename;
+      map   = &mypod->input_map;
+      break;
+    case InOutDir::OUTPUT:
+      fpath = mypod->output_filename;
+      map   = &mypod->output_map;
+      break;
+    default:
+      return false;
+  }
+  if (map->size < FourCrypt::getMinimumOutputSize())
+    return false;
+  if (memcmp(map->ptr, FourCrypt::magic, sizeof(FourCrypt::magic)))
+    return false;
+  size_t fp_sz;
+  if (SSC_FilePath_getSize(fpath, &fp_sz))
+    return false;
+  if (map->size != fp_sz)
+    return false;
+  if (map->size % PAD_FACTOR)
+    return false;
+  return true;
+}
+
+std::string FourCrypt::makeMemoryString(const uint8_t mem_bitshift)
+{
+  constexpr const uint64_t kibibyte = 1024;
+  constexpr const uint64_t mebibyte = kibibyte * kibibyte;
+  constexpr const uint64_t gibibyte = mebibyte * kibibyte;
+  constexpr const uint64_t tebibyte = gibibyte * kibibyte;
+  enum class Size {
+    None = 0, Kibi = 1, Mebi = 2, Gibi = 3, Tebi = 4
+  };
+  static const char* size_strings[] = {
+    "Byte(s)", "Kibibyte(s)", "Mebibyte(s)", "Gibibyte(s)", "Tebibyte(s)"
+  };
+
+  uint64_t    value;
+  uint64_t    size;
+  uint64_t    size_count;
+  double      size_fraction;
+  Size        size_enum;
+  std::string s;
+  
+  // Set initial values.
+  value = static_cast<uint64_t>(1) << mem_bitshift;
+  size = 1;
+  size_count = 0;
+  size_fraction = 0.0;
+  size_enum = Size::None;
+  // Determine which size class the value belongs to.
+  if (value >= tebibyte) {
+    size = tebibyte;
+    size_enum = Size::Tebi;
+  }
+  else if (value >= gibibyte) {
+    size = gibibyte;
+    size_enum = Size::Gibi;
+  }
+  else if (value >= mebibyte) {
+    size = mebibyte;
+    size_enum = Size::Mebi;
+  }
+  else if (value >= kibibyte) {
+    size = kibibyte;
+    size_enum = Size::Kibi;
+  }
+  // Determine the number of "sizes" in the value.
+  size_count = value / size;
+  // Determine what fraction of a size the value contains.
+  if (size != 1) {
+    size_fraction = static_cast<double>(value - (size_count * size)) / size;
+  }
+  s += std::to_string(size_count); // Append the number of "sizes".
+  // If applicable, append the size fraction.
+  if (size_fraction != 0.0) {
+    s += ".";
+    {
+      auto tmp = std::to_string(size_fraction * 100);
+      tmp.resize(2);
+      s += tmp;
+    }
+  }
+  s += ' ';
+  // Append the size string.
+  s += size_strings[static_cast<int>(size_enum)];
+
+  return s;
+}
+
