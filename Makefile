@@ -8,10 +8,7 @@ Compile  := c++ $(Includes) $(LinkLibs) -std=$(CppStd) $(Lto) $(Optimize) -march
 
 include Sources.mk
 
-Obj/%.o: Impl/%.cc %.hh
-	$(Compile) -c -o $@ $<
-
-Obj/CommandLineArg.o: Obj/%.o: Impl/%.cc $(Deps_CommandLineArg_cc)
+Obj/%.o: Impl/%.cc $(Deps_$%_cc)
 	$(Compile) -c -o $@ $<
 
 Bin/4crypt: Impl/Main.cc $(Objects) $(Deps_Main_cc)
