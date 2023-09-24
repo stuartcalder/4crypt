@@ -28,9 +28,10 @@ const std::array<SSC_ArgShort, 14> shorts = {{
   SSC_ARGSHORT_LITERAL(output_argproc             , 'o'),
 }};
 
-const std::array<SSC_ArgLong, 20> longs = {{
+const std::array<SSC_ArgLong, 21> longs = {{
   SSC_ARGLONG_LITERAL(decrypt_argproc            , "decrypt"),
   SSC_ARGLONG_LITERAL(describe_argproc           , "describe"),
+  SSC_ARGLONG_LITERAL(describe_argproc           , "dump"),
   SSC_ARGLONG_LITERAL(encrypt_argproc            , "encrypt"),
   SSC_ARGLONG_LITERAL(enter_password_once_argproc, "enter-password-once"),
   SSC_ARGLONG_LITERAL(entropy_argproc            , "entropy"),

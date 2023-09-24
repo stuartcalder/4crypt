@@ -83,7 +83,7 @@ class FourCrypt
       uint8_t                     verify_buffer   [PW_BUFFER_BYTES]; // Verify @password_buffer here when encrypting.
       uint8_t                     entropy_buffer  [PW_BUFFER_BYTES]; // Store entropy characters here before hashing them into the @rng.
       SSC_MemMap                  input_map;  // Memory-map the input file.
-      SSC_MemMap                  output_map; // memory-map the output file.
+      SSC_MemMap                  output_map; // Memory-map the output file.
       char*                       input_filename;  // Where is the input file?
       char*                       output_filename; // Where is the output file?
       PPQ_UBI512*                 ubi512; // Point to the PPQ_UBI512 struct internal to @rng.
@@ -124,7 +124,7 @@ class FourCrypt
     static std::string password_prompt;
     static std::string reentry_prompt;
     static std::string entropy_prompt;
-    // Static methods.
+    // Static procedures.
     static bool        verifyBasicMetadata(PlainOldData* extpod, InOutDir dir);
     static std::string makeMemoryStringBitShift(const uint8_t mem_bitshift);
     static std::string makeMemoryString(const uint64_t value);

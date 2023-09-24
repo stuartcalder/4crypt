@@ -4,7 +4,7 @@ LinkLibs := -lSSC -lPPQ
 CppStd   := c++20
 Lto      := -flto
 Optimize := -O3
-Compile  := c++ $(Includes) $(LinkLibs) -std=$(CppStd) $(Lto) $(Optimize)
+Compile  := c++ $(Includes) $(LinkLibs) -std=$(CppStd) $(Lto) $(Optimize) -march=native
 
 include Sources.mk
 
