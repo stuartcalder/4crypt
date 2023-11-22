@@ -110,7 +110,7 @@ class FourCrypt
     PlainOldData*   getPod();
     SSC_CodeError_t encrypt(ErrType* err_type, InOutDir* err_dir);
     SSC_CodeError_t decrypt(ErrType* err_type, InOutDir* err_dir);
-    SSC_CodeError_t describe(ErrType* err_type, InOutDir* err_dir); //TODO
+    SSC_CodeError_t describe(ErrType* err_type, InOutDir* err_dir);
     static consteval uint64_t getHeaderSize();
     static consteval uint64_t getMetadataSize();
     static consteval uint64_t getMinimumOutputSize();
@@ -136,7 +136,7 @@ class FourCrypt
     SSC_Error_t     verifyMAC(const uint8_t* R_ mac, const uint8_t* R_ begin, const uint64_t size);
     SSC_CodeError_t mapFiles(InOutDir* map_err_idx, size_t input_size = 0, size_t output_size = 0, InOutDir only_map = InOutDir::NONE);
     SSC_Error_t     syncMaps();
-    void            unmapFiles();//TODO
+    void            unmapFiles();
     uint8_t*        writeHeader(uint8_t* to);
     const uint8_t*  readHeaderPlaintext(const uint8_t* R_ from, SSC_CodeError_t* R_ err);
     const uint8_t*  readHeaderCiphertext(const uint8_t* R_ from, SSC_CodeError_t* R_ err);

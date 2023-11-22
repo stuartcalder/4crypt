@@ -24,7 +24,6 @@ const std::array<SSC_ArgShort, 14> shorts = {{
   SSC_ARGSHORT_LITERAL(decrypt_argproc            , 'd'),
   SSC_ARGSHORT_LITERAL(encrypt_argproc            , 'e'),
   SSC_ARGSHORT_LITERAL(help_argproc               , 'h'),
-  SSC_ARGSHORT_LITERAL(input_argproc              , 'i'),
   SSC_ARGSHORT_LITERAL(output_argproc             , 'o'),
 }};
 
@@ -38,7 +37,6 @@ const std::array<SSC_ArgLong, 21> longs = {{
   SSC_ARGLONG_LITERAL(help_argproc               , "help"),
   SSC_ARGLONG_LITERAL(high_mem_argproc           , "high-mem"),
   SSC_ARGLONG_LITERAL(high_mem_argproc           , "high-memory"),
-  SSC_ARGLONG_LITERAL(input_argproc              , "input"),
   SSC_ARGLONG_LITERAL(iterations_argproc         , "iterations"),
   SSC_ARGLONG_LITERAL(low_mem_argproc            , "low-mem"),
   SSC_ARGLONG_LITERAL(low_mem_argproc            , "low-memory"),
@@ -167,13 +165,13 @@ int main(int argc, char* argv[])
   
   switch (pod->execute_mode) {
     case ExeMode::ENCRYPT:
-      code_error = fc.encrypt(&code_type, &code_io_dir); //TODO: Implement.
+      code_error = fc.encrypt(&code_type, &code_io_dir);
       break;
     case ExeMode::DECRYPT:
-      code_error = fc.decrypt(&code_type, &code_io_dir); //TODO: Implement.
+      code_error = fc.decrypt(&code_type, &code_io_dir);
       break;
     case ExeMode::DESCRIBE:
-      code_error = fc.describe(&code_type, &code_io_dir); //TODO: Implement.
+      code_error = fc.describe(&code_type, &code_io_dir);
       break;
     default:
       SSC_errx("Invalid execute_mode in pod.\n");

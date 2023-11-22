@@ -6,6 +6,10 @@ Lto      := -flto
 Optimize := -O3
 Compile  := c++ $(Includes) $(LinkLibs) -std=$(CppStd) $(Lto) $(Optimize) -march=native
 
+Dir    := /ram/$(USER)/4crypt
+BinDir := $(Dir)/Bin
+ObjDir := $(Dir)/Obj
+
 include Sources.mk
 
 Obj/%.o: Impl/%.cc $(Deps_$%_cc)
@@ -14,6 +18,11 @@ Obj/%.o: Impl/%.cc $(Deps_$%_cc)
 Bin/4crypt: Impl/Main.cc $(Objects) $(Deps_Main_cc)
 	$(Compile) -o $@ $< $(Objects)
 
-all: Bin/4crypt
+dirs:
+	[ -d $(Dir)    ] || mkdir $(Dir)
+	[ -d $(BinDir) ] || mkdir $(BinDir)
+	[ -d $(ObjDir) ] || mkdir $(ObjDir)
+4crypt: dirs Bin/4crypt
+all: 4crypt
 clean:
 	rm -f Obj/*.o Bin/4crypt

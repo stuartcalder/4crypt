@@ -5,6 +5,10 @@ using PadMode = FourCrypt::PadMode;
 using PlainOldData = FourCrypt::PlainOldData;
 #define R_ SSC_RESTRICT
 
+static const char* mode_strings[] = {
+  "NONE", "ENCRYPT", "DECRYPT", "DESCRIBE"
+};
+
 static int
 set_exemode(
  PlainOldData* R_ ctx,
@@ -12,14 +16,21 @@ set_exemode(
  char* R_         str,
  const int        off)
 {
-  static const char* mode_strings[] = {
-    "NONE", "ENCRYPT", "DECRYPT", "DESCRIBE"
-  };
   SSC_assertMsg(
    ctx->execute_mode == ExeMode::NONE,
    "Execute mode already set to %s!\n", mode_strings[static_cast<int>(ctx->execute_mode)]);
   ctx->execute_mode = em;
   return SSC_1opt(str[off]); // Continue processing if invoked by a short op, otherwise terminate.
+}
+
+static SSC_Error_t
+input_argproc_processor(SSC_ArgParser* R_ ap, void* R_ dt)
+{
+  PlainOldData* pod = static_cast<PlainOldData*>(dt);
+  pod->input_filename = new char[ap->size + 1];
+  pod->input_filename_size = ap->size;
+  memcpy(pod->input_filename, ap->to_read, ap->size + 1);
+  return 0;
 }
 
 static void
@@ -40,7 +51,6 @@ constexpr uint64_t KIBIBYTE = 1024;
 constexpr uint64_t MEBIBYTE = KIBIBYTE * KIBIBYTE;
 constexpr uint64_t GIBIBYTE = MEBIBYTE * KIBIBYTE;
 
-//TODO: Test me.
 static uint8_t
 parse_memory(const char* R_ str, const size_t len)
 {
@@ -103,7 +113,6 @@ have_multiplier:
   return mem;
 }
 
-//TODO: Test me.
 static uint8_t
 parse_iterations(const char* R_ str, const size_t len)
 {
@@ -165,18 +174,17 @@ print_help()
    "|4crypt|\n"
    "'------'\n"
    "-h, --help                  Print help output.\n"
-   "-e, --encrypt               Encrypt a file.\n"
-   "-d, --decrypt               Decrypt a file.\n"
-   "-D, --describe              Describe the header of an ecrypted file.\n"
-   "-i, --input=<filepath>      Specify an input file's path.\n"
-   "-o, --output=<filepath>     Specify an output file's path.\n"
+   "-e, --encrypt=<filepath>    Encrypt the file at the filepath.\n"
+   "-d, --decrypt=<filepath>    Decrypt the file at the filepath.\n"
+   "-D, --describe=<filepath>   Describe the header of encrypted file at the filepath.\n"
+   "-o, --output=<filepath>     Specify an output filepath.\n"
    "-E, --entropy               Provide addition entropy to the RNG from stdin.\n"
    "-H, --high-mem=<mem[K|M|G]> Provide an upper memory bound for key derivation.\n"
    "-L, --low-mem=<mem[K|M|G]>  Provide a lower memory bound for key derivation.\n"
    "-M, --use-mem=<mem[K|M|G]>  Set the lower and upper memory bounds to the same value.\n"
    "-I, --iterations=<num>      Set the number of times to iterate the KDF.\n"
    "-T, --threads=<num>         Set the degree of parallelism for the KDF.\n"
-   "-1, --enter-password-once   Disable password-reentry for correctness verification during encrypts.\n"
+   "-1, --enter-password-once   Disable password-reentry for correctness verification during encryption.\n"
    "-P, --use-phi               Enable the Phi function for each KDF thread.\n"
    "WARNING: The phi function hardens the key-derivation function against\n"
    "parallel adversaries, greatly increasing the work necessary to brute-force\n"
@@ -185,24 +193,60 @@ print_help()
 }
 
 int
-decrypt_argproc(const int, char** R_ argv, const int offset, void* R_ data)
+decrypt_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
 {
   PlainOldData* pod = static_cast<PlainOldData*>(data);
-  return set_exemode(pod, ExeMode::DECRYPT, argv[0], offset);
+  SSC_assertMsg(
+   pod->execute_mode == ExeMode::NONE,
+   "Execute mode already set to %s!\n", mode_strings[static_cast<int>(pod->execute_mode)]);
+  pod->execute_mode = ExeMode::DECRYPT;
+  SSC_ArgParser parser;
+  return SSC_ArgParser_process(
+   &parser,
+   argc,
+   argv,
+   offset,
+   data,
+   nullptr,
+   &input_argproc_processor);
 }
 
 int
-describe_argproc(const int, char** R_ argv, const int offset, void* R_ data)
+describe_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
 {
   PlainOldData* pod = static_cast<PlainOldData*>(data);
-  return set_exemode(pod, ExeMode::DESCRIBE, argv[0], offset);
+  SSC_assertMsg(
+   pod->execute_mode == ExeMode::NONE,
+   "Execute mode already set to %s!\n", mode_strings[static_cast<int>(pod->execute_mode)]);
+  pod->execute_mode = ExeMode::DESCRIBE;
+  SSC_ArgParser parser;
+  return SSC_ArgParser_process(
+   &parser,
+   argc,
+   argv,
+   offset,
+   data,
+   nullptr,
+   &input_argproc_processor);
 }
 
 int
-encrypt_argproc(const int, char** R_ argv, const int offset, void* R_ data)
+encrypt_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
 {
   PlainOldData* pod = static_cast<PlainOldData*>(data);
-  return set_exemode(pod, ExeMode::ENCRYPT, argv[0], offset);
+  SSC_assertMsg(
+   pod->execute_mode == ExeMode::NONE,
+   "Execute mode already set to %s!\n", mode_strings[static_cast<int>(pod->execute_mode)]);
+  pod->execute_mode = ExeMode::ENCRYPT;
+  SSC_ArgParser parser;
+  return SSC_ArgParser_process(
+   &parser,
+   argc,
+   argv,
+   offset,
+   data,
+   nullptr,
+   &input_argproc_processor);
 }
 
 int
@@ -245,26 +289,6 @@ high_mem_argproc(const int argc, char** R_ argv, const int offset, void* R_ data
      pod->memory_high = parse_memory(ap->to_read, ap->size);
      if (pod->memory_low > pod->memory_high)
        pod->memory_low = pod->memory_high;
-     return 0;
-   });
-}
-
-int
-input_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
-{
-  SSC_ArgParser parser;
-  return SSC_ArgParser_process(
-   &parser,
-   argc,
-   argv,
-   offset,
-   data,
-   nullptr,
-   [](SSC_ArgParser* R_ ap, void* R_ dt) -> SSC_Error_t {
-     PlainOldData* pod = static_cast<PlainOldData*>(dt);
-     pod->input_filename = new char[ap->size + 1];
-     pod->input_filename_size = ap->size;
-     memcpy(pod->input_filename, ap->to_read, ap->size + 1);
      return 0;
    });
 }

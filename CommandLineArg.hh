@@ -12,7 +12,6 @@ int enter_password_once_argproc(const int, char** R_, const int, void* R_);
 int entropy_argproc(const int, char** R_, const int, void* R_);
 int help_argproc(const int, char** R_, const int, void* R_);
 int high_mem_argproc(const int, char** R_, const int, void* R_);
-int input_argproc(const int, char** R_, const int, void* R_);
 int iterations_argproc(const int, char** R_, const int, void* R_);
 int low_mem_argproc(const int, char** R_, const int, void* R_);
 int output_argproc(const int, char** R_, const int, void* R_);
