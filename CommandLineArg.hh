@@ -3,24 +3,24 @@
 
 #include <SSC/CommandLineArg.h>
 #include "FourCrypt.hh"
-#define R_ SSC_RESTRICT
+#define ARGS_ const int argc, char** SSC_RESTRICT argv, const int offset, void* SSC_RESTRICT data
 
-int decrypt_argproc(const int, char** R_, const int, void* R_);
-int describe_argproc(const int, char** R_, const int, void* R_);
-int encrypt_argproc(const int, char** R_, const int, void* R_);
-int enter_password_once_argproc(const int, char** R_, const int, void* R_);
-int entropy_argproc(const int, char** R_, const int, void* R_);
-int help_argproc(const int, char** R_, const int, void* R_);
-int high_mem_argproc(const int, char** R_, const int, void* R_);
-int iterations_argproc(const int, char** R_, const int, void* R_);
-int low_mem_argproc(const int, char** R_, const int, void* R_);
-int output_argproc(const int, char** R_, const int, void* R_);
-int pad_as_if_argproc(const int, char** R_, const int, void* R_);
-int pad_by_argproc(const int, char** R_, const int, void* R_);
-int pad_to_argproc(const int, char** R_, const int, void* R_);
-int threads_argproc(const int, char** R_, const int, void* R_);
-int use_mem_argproc(const int, char** R_, const int, void* R_);
-int use_phi_argproc(const int, char** R_, const int, void* R_);
+int decrypt_argproc(ARGS_);
+int describe_argproc(ARGS_);
+int encrypt_argproc(ARGS_);
+int enter_password_once_argproc(ARGS_);
+int entropy_argproc(ARGS_);
+int help_argproc(ARGS_);
+int high_mem_argproc(ARGS_);
+int iterations_argproc(ARGS_);
+int low_mem_argproc(ARGS_);
+int output_argproc(ARGS_);
+int pad_as_if_argproc(ARGS_);
+int pad_by_argproc(ARGS_);
+int pad_to_argproc(ARGS_);
+int threads_argproc(ARGS_);
+int use_mem_argproc(ARGS_);
+int use_phi_argproc(ARGS_);
 
-#undef R_
+#undef ARGS_
 #endif
