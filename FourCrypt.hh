@@ -94,6 +94,7 @@ class FourCrypt
       uint64_t                    entropy_size;  // How many entropy bytes were provided?
       uint64_t                    padding_size;  // How many bytes of padding?
       uint64_t                    thread_count;  // How many KDF threads?
+      uint64_t                    thread_batch_size; // How many KDF threads per batch? i.e. How many threads execute concurrently?
       ExeMode                     execute_mode;  // What shall we do? Encrypt? Decrypt? Describe?
       PadMode                     padding_mode;  // What context were the padding bytes specified for?
       uint8_t                     memory_low;    // What is the lower memory bound of the KDF?
@@ -101,8 +102,9 @@ class FourCrypt
       uint8_t                     iterations;    // How many times will each thread of the KDF iterate?
       SSC_BitFlag8_t              flags;         // Bit Flag parameters, such as whether to enable entropy supplementation.
 
-      static void init(PlainOldData& pod);
-      static void del(PlainOldData& pod);
+      static void init(PlainOldData& pod);    // Initialize the values of a PlainOldData object.
+      static void del(PlainOldData& pod);     // Destroy a PlainOldData object.
+      static void touchup(PlainOldData& pod); // Ensure the values inside a PlainOldData object are valid & consistent.
     };
     // Public Static Data
     static bool memlock_initialized;

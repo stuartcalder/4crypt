@@ -13,6 +13,7 @@ using PadMode  = FourCrypt::PadMode;
 
 const std::array<SSC_ArgShort, 14> shorts = {{
   SSC_ARGSHORT_LITERAL(enter_password_once_argproc, '1'),
+  SSC_ARGSHORT_LITERAL(batch_size_argproc         , 'B'),
   SSC_ARGSHORT_LITERAL(describe_argproc           , 'D'),
   SSC_ARGSHORT_LITERAL(entropy_argproc            , 'E'),
   SSC_ARGSHORT_LITERAL(high_mem_argproc           , 'H'),
@@ -28,6 +29,7 @@ const std::array<SSC_ArgShort, 14> shorts = {{
 }};
 
 const std::array<SSC_ArgLong, 21> longs = {{
+  SSC_ARGLONG_LITERAL(batch_size_argproc         , "batch-size"),
   SSC_ARGLONG_LITERAL(decrypt_argproc            , "decrypt"),
   SSC_ARGLONG_LITERAL(describe_argproc           , "describe"),
   SSC_ARGLONG_LITERAL(describe_argproc           , "dump"),
@@ -165,6 +167,7 @@ int main(int argc, char* argv[])
   
   switch (pod->execute_mode) {
     case ExeMode::ENCRYPT:
+      PlainOldData::touchup(*pod);
       code_error = fc.encrypt(&code_type, &code_io_dir);
       break;
     case ExeMode::DECRYPT:

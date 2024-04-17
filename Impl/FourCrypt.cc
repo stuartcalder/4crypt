@@ -158,6 +158,7 @@ void FourCrypt::PlainOldData::init(PlainOldData& pod)
   pod.entropy_size  = 0;
   pod.padding_size  = 0;
   pod.thread_count  = 1;
+  pod.thread_batch_size = 0;
   pod.execute_mode = ExeMode::NONE;
   pod.padding_mode = PadMode::ADD;
   pod.memory_low  = MEM_DEFAULT;
@@ -171,6 +172,12 @@ void FourCrypt::PlainOldData::del(PlainOldData& pod)
   delete pod.input_filename;
   delete pod.output_filename;
   SSC_secureZero(&pod, sizeof(pod));
+}
+
+void FourCrypt::PlainOldData::touchup(PlainOldData& pod)
+{
+  if (pod.thread_batch_size == 0 || pod.thread_batch_size > pod.thread_count)
+    pod.thread_batch_size = pod.thread_count;
 }
 
 PlainOldData* FourCrypt::getPod()
@@ -297,25 +304,36 @@ SSC_Error_t FourCrypt::runKDF()
 {
   PlainOldData*  mypod = this->getPod();
   const uint64_t num_threads = mypod->thread_count;
+  const uint64_t batch_size  = mypod->thread_batch_size;
   const uint64_t output_bytes = num_threads * PPQ_THREEFISH512_BLOCK_BYTES;
   PPQ_Catena512* const catenas = new PPQ_Catena512[num_threads];
   SSC_Error_t* const   errors  = new SSC_Error_t[num_threads];
   uint8_t* const       outputs = new uint8_t[output_bytes];
   {
     std::thread* threads = new std::thread[num_threads];
-    for (uint64_t i = 0; i < num_threads; ++i) {
-      std::construct_at(
-       threads + i,
-       kdf,
-       outputs + (i * PPQ_THREEFISH512_BLOCK_BYTES),
-       mypod,
-       catenas + i,
-       errors  + i,
-       i);
-    }
-    for (uint64_t i = 0; i < num_threads; ++i) {
-      threads[i].join();
-      std::destroy_at(threads + i);
+    uint64_t j_stop;
+
+    for (uint64_t i = 0; i < num_threads; i += j_stop) {
+      if (i + batch_size < num_threads)
+        j_stop = batch_size;
+      else
+        j_stop = num_threads - i;
+      for (uint64_t j = 0; j < j_stop; ++j) {
+        const uint64_t offset = i + j;
+        std::construct_at(
+         threads + offset,
+         kdf,
+         outputs + (offset * PPQ_THREEFISH512_BLOCK_BYTES),
+         mypod,
+         catenas + offset,
+         errors  + offset,
+         offset);
+      }
+      for (uint64_t j = 0; j < j_stop; ++j) {
+        const uint64_t offset = i + j;
+        threads[offset].join();
+        std::destroy_at(threads + offset);
+      }
     }
     delete[] threads;
   }
@@ -437,6 +455,8 @@ SSC_CodeError_t FourCrypt::decrypt(ErrType* err_type, InOutDir* err_io_dir)
   in = this->readHeaderPlaintext(in, &err);
   if (err)
     return err;
+  // TODO: Verify the header's parameters as sane, or rely on the MAC to reject invalid headers?
+  PlainOldData::touchup(*mypod);
   // Run the KDF to generate secret values.
   this->runKDF();
   // Check the MAC for integrity and authentication.

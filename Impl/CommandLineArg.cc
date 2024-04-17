@@ -1,5 +1,5 @@
 #include "CommandLineArg.hh"
-#include <inttypes.h>
+#include <cinttypes>
 using ExeMode = FourCrypt::ExeMode;
 using PadMode = FourCrypt::PadMode;
 using PlainOldData = FourCrypt::PlainOldData;
@@ -127,14 +127,26 @@ parse_iterations(const char* R_ str, const size_t len)
 }
 
 static uint64_t
-parse_threads(const char* R_ str, const size_t len)
+parse_integer(const char* R_ str, const size_t len)
 {
   char* const temp = new char[len + 1];
   memcpy(temp, str, len + 1);
   SSC_Cstr_shiftDigitsToFront(temp, len);
-  uint64_t threads = static_cast<uint64_t>(strtoumax(temp, nullptr, 10));
+  uint64_t integer = static_cast<uint64_t>(strtoumax(temp, nullptr, 10));
   delete temp;
-  return threads;
+  return integer;
+}
+
+SSC_INLINE uint64_t
+parse_threads(const char* R_ str, const size_t len)
+{
+  return parse_integer(str, len);
+}
+
+SSC_INLINE uint64_t
+parse_batch(const char* R_ str, const size_t len)
+{
+  return parse_integer(str, len);
 }
 
 static uint64_t
@@ -184,6 +196,7 @@ print_help()
    "-M, --use-mem=<mem[K|M|G]>  Set the lower and upper memory bounds to the same value.\n"
    "-I, --iterations=<num>      Set the number of times to iterate the KDF.\n"
    "-T, --threads=<num>         Set the degree of parallelism for the KDF.\n"
+   "-B, --batch-size=<num>      Set the number of KDF threads to execute concurrently.\n"
    "-1, --enter-password-once   Disable password-reentry for correctness verification during encryption.\n"
    "-P, --use-phi               Enable the Phi function for each KDF thread.\n"
    "--pad-as-if=<size>          Pad the output ciphertext as if it were an unpadded encrypted file of this size.\n"
@@ -434,4 +447,22 @@ use_phi_argproc(const int, char** R_ argv, const int offset, void* R_ data)
   PlainOldData* pod = static_cast<PlainOldData*>(data);
   pod->flags |= FourCrypt::ENABLE_PHI;
   return SSC_1opt(argv[0][offset]);
+}
+
+int
+batch_size_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
+{
+  SSC_ArgParser parser;
+  return SSC_ArgParser_process(
+   &parser,
+   argc,
+   argv,
+   offset,
+   data,
+   nullptr,
+   [](SSC_ArgParser* R_ ap, void* R_ dt) -> SSC_Error_t {
+     PlainOldData* pod = static_cast<PlainOldData*>(dt);
+     pod->thread_batch_size = parse_batch(ap->to_read, ap->size);
+     return 0;
+   });
 }
