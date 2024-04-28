@@ -17,12 +17,15 @@ Obj/%.o: Impl/%.cc $(Deps_$%_cc)
 
 Bin/4crypt: Impl/Main.cc $(Objects) $(Deps_Main_cc)
 	$(Compile) -o $@ $< $(Objects)
+Bin/4gcrypt: Impl/Gui.cc $(Objects) $(Deps_Gui_cc)
+	$(Compile) `pkg-config --cflags --libs gtk4` -o $@ $< $(Objects)
 
 dirs:
 	[ -d $(Dir)    ] || mkdir $(Dir)
 	[ -d $(BinDir) ] || mkdir $(BinDir)
 	[ -d $(ObjDir) ] || mkdir $(ObjDir)
-4crypt: dirs Bin/4crypt
-all: 4crypt
+4crypt:  dirs Bin/4crypt
+4gcrypt: dirs Bin/4gcrypt
+all: 4crypt 4gcrypt
 clean:
-	rm -f Obj/*.o Bin/4crypt
+	rm -f Obj/*.o Bin/4crypt Bin/4gcrypt
