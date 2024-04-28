@@ -124,6 +124,7 @@ consteval uint64_t FourCrypt::getHeaderSize()
 
 consteval uint64_t FourCrypt::getMetadataSize()
 {
+  static_assert(MAC_SIZE == 64);
   return FourCrypt::getHeaderSize() + MAC_SIZE;
 }
 
@@ -222,11 +223,14 @@ SSC_CodeError_t FourCrypt::encrypt(ErrType* err_typ, InOutDir* err_dir)
     *err_dir = err_io_dir;
     return err;
   }
-  // Get the encryption password.
-  this->getPassword(!(mypod->flags & FourCrypt::ENTER_PASS_ONCE), false);
-  if (mypod->flags & FourCrypt::SUPPLEMENT_ENTROPY)
-    // Get the entropy password and hash it into the RNG.
-    this->getPassword(false, true);
+  // If the password has not already been initialized, then initialize it.
+  if (mypod->password_size == 0) {
+    // Get the encryption password.
+    this->getPassword(!(mypod->flags & FourCrypt::ENTER_PASS_ONCE), false);
+    if (mypod->flags & FourCrypt::SUPPLEMENT_ENTROPY)
+      // Get the entropy password and hash it into the RNG.
+      this->getPassword(false, true);
+  }
   // Generate pseudorandom values.
   this->genRandomElements();
   // Run the key derivation function and get our secret values.
@@ -379,7 +383,7 @@ SSC_Error_t FourCrypt::runKDF()
 
 SSC_Error_t FourCrypt::verifyMAC(const uint8_t* R_ mac, const uint8_t* R_ begin, const uint64_t size)
 {
-  alignas(uint64_t) uint8_t tmp_mac [PPQ_THREEFISH512_BLOCK_BYTES];
+  alignas(uint64_t) uint8_t tmp_mac [MAC_SIZE];
   PlainOldData* mypod = this->getPod();
   PPQ_Skein512_mac(
    mypod->ubi512,
@@ -388,7 +392,7 @@ SSC_Error_t FourCrypt::verifyMAC(const uint8_t* R_ mac, const uint8_t* R_ begin,
    mypod->mac_key,
    size,
    sizeof(tmp_mac));
-  if (SSC_constTimeMemDiff(tmp_mac, mac, PPQ_THREEFISH512_BLOCK_BYTES))
+  if (SSC_constTimeMemDiff(tmp_mac, mac, MAC_SIZE))
     return -1;
   return 0;
 }
@@ -446,8 +450,9 @@ SSC_CodeError_t FourCrypt::decrypt(ErrType* err_type, InOutDir* err_io_dir)
     *err_io_dir = InOutDir::INPUT;
     return ERROR_INVALID_4CRYPT_FILE;
   }
-  // Get the decryption password.
-  this->getPassword(false, false);
+  // If the decryption password has not already been initialized, then initialize it.
+  if (mypod->password_size == 0)
+    this->getPassword(false, false);
   const uint8_t* in = mypod->input_map.ptr;
   const size_t   num_in = mypod->input_map.size;
   SSC_CodeError_t err = 0;
@@ -455,7 +460,6 @@ SSC_CodeError_t FourCrypt::decrypt(ErrType* err_type, InOutDir* err_io_dir)
   in = this->readHeaderPlaintext(in, &err);
   if (err)
     return err;
-  // TODO: Verify the header's parameters as sane, or rely on the MAC to reject invalid headers?
   PlainOldData::touchup(*mypod);
   // Run the KDF to generate secret values.
   this->runKDF();
@@ -689,13 +693,13 @@ SSC_CodeError_t FourCrypt::mapFiles(InOutDir* map_err_idx, size_t input_size, si
   constexpr const SSC_BitFlag_t input_flag = SSC_MEMMAP_INIT_READONLY |
    SSC_MEMMAP_INIT_FORCE_EXIST | SSC_MEMMAP_INIT_FORCE_EXIST_YES;
   constexpr const SSC_BitFlag_t output_flag = SSC_MEMMAP_INIT_FORCE_EXIST;
-  PlainOldData&   mypod = *this->getPod();
+  PlainOldData*   mypod = this->getPod();
   SSC_CodeError_t err = 0;
   // Input and output filenames have been checked for NULL. Map these filepaths.
   if (only_map != InOutDir::OUTPUT) {
     err = SSC_MemMap_init(
-     &mypod.input_map,
-     mypod.input_filename,
+     &mypod->input_map,
+     mypod->input_filename,
      input_size,
      input_flag);
     if (err) {
@@ -706,8 +710,8 @@ SSC_CodeError_t FourCrypt::mapFiles(InOutDir* map_err_idx, size_t input_size, si
   }
   if (only_map != InOutDir::INPUT) {
     err = SSC_MemMap_init(
-     &mypod.output_map,
-     mypod.output_filename,
+     &mypod->output_map,
+     mypod->output_filename,
      output_size,
      output_flag);
     if (err) {
