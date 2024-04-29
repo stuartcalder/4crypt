@@ -1,16 +1,93 @@
 #include "Gui.hh"
 #include <gtk/gtk.h>
+#include <string>
+#include <cstring>
+#include <cstdlib>
+#include <cstdio>
+#include <algorithm>
+#ifdef __gnu_linux__
+ #include <filesystem>
+#endif
+
+#if !defined(SSC_LANG_CPP)
+ #error "We need C++!"
+#elif SSC_LANG_CPP < SSC_CPP_17
+ #error "We need at least C++17!"
+#endif
+
+#ifdef SSC_OS_WINDOWS
+using Dw32_t = DWORD;
+#endif
 
 static const char* FOURCRYPT_IMG_FPATH = "/ram/u/4crypt_cutout_export.png";
-constexpr int FOURCRYPT_IMG_WIDTH_ORIGINAL  = 313;
+constexpr int FOURCRYPT_IMG_WIDTH_ORIGINAL  = 309;
 constexpr int FOURCRYPT_IMG_WIDTH = FOURCRYPT_IMG_WIDTH_ORIGINAL - 100;
-constexpr int FOURCRYPT_IMG_HEIGHT = 200;
+constexpr int FOURCRYPT_IMG_HEIGHT = 195;
+
+static const char* FOURCRYPT_TITLE_FPATH = "/ram/u/4crypt_title.png";
+constexpr int FOURCRYPT_TITLE_WIDTH  = 309;
+constexpr int FOURCRYPT_TITLE_HEIGHT = 195;
+
+constexpr int WINDOW_WIDTH  = FOURCRYPT_IMG_WIDTH;
+constexpr int WINDOW_HEIGHT = FOURCRYPT_IMG_HEIGHT * 3; 
+
+static std::string getExecutablePath(void)
+{
+  #if defined(__gnu_linux__)
+  return std::filesystem::canonical("/proc/self/exe").string();
+  #elif defined(SSC_OS_WINDOWS)
+  wchar_t wide_path[MAX_PATH + 1] = {0};
+  char    path     [MAX_PATH + 1] = {0};
+  Dw32_t len = GetModuleFileNameW(nullptr, wide_path, MAX_PATH);
+  SSC_assertMsg(len != 0, "Error: GetModuleFileNameW failed!\n");
+  std::sprintf(path, "%ws", wide_path);
+  return std::string{path};
+  #else
+   #error "Unsupported OS!"
+  #endif
+}
+
+static std::string getExecutableDirPath(void)
+{
+  std::string str{getExecutablePath()};
+  auto size{str.size()};
+  SSC_assertMsg(size > FOURCRYPT_GUI_BINARY_LENGTH, "Error: ExecutableDirPath invalid size!\n");
+  auto pos{str.rfind(
+   FOURCRYPT_GUI_BINARY,
+   std::string::npos, 
+   FOURCRYPT_GUI_BINARY_LENGTH)};
+  SSC_assertMsg(
+   pos != std::string::npos,
+   "Error: %s was not found at the end of the path!\n",
+   FOURCRYPT_GUI_BINARY);
+  str.erase(str.end() - FOURCRYPT_GUI_BINARY_LENGTH, str.end());
+  return str;
+
+  #if 0
+  if (str.substr(size - FOURCRYPT_GUI_BINARY_LENGTH, FOURCRYPT_GUI_BINARY_LENGTH) == FOURCRYPT_GUI_BINARY) {
+    str.erase(str.end() - (FOURCRYPT_GUI_BINARY_LENGTH + 1));
+  }
+  auto iter = std::find(
+   str.begin(),
+   str.end(), 
+   FOURCRYPT_GUI_BINARY);
+  #endif
+  #if 0
+  size_t      cstr_size;
+  const char* cstr = getExecutablePath(&cstr_size);
+  std::string std{cstr};
+  delete[] cstr;
+  return str;
+  #endif
+}
 
 static void callback_todo(
  GtkWidget* widget,
  gpointer   data
  )
 {
+  std::printf("Executable path is %s\n", getExecutablePath().c_str());
+  std::printf("Executable dir path is %s\n", getExecutableDirPath().c_str());
 }
 
 static void on_app_activate(
@@ -18,19 +95,24 @@ static void on_app_activate(
 {
   GtkWidget* window;
   GtkWidget* grid;
-  GtkWidget* image  = gtk_image_new_from_file(FOURCRYPT_IMG_FPATH);
+  GtkWidget* logo_image;
+  GtkWidget* title_image;
   GtkWidget* encrypt_button;
   GtkWidget* decrypt_button;
 
   window = gtk_application_window_new(app);
   gtk_window_set_title(GTK_WINDOW(window), "4crypt");
+  gtk_widget_set_size_request(window, WINDOW_WIDTH, WINDOW_HEIGHT);
 
   grid = gtk_grid_new();
   gtk_widget_set_valign(grid, GTK_ALIGN_START);
   gtk_window_set_child(GTK_WINDOW(window), grid);
 
-  image = gtk_image_new_from_file(FOURCRYPT_IMG_FPATH);
-  gtk_widget_set_size_request(image, FOURCRYPT_IMG_WIDTH, FOURCRYPT_IMG_HEIGHT);
+  logo_image = gtk_image_new_from_file(FOURCRYPT_IMG_FPATH);
+  gtk_widget_set_size_request(logo_image, FOURCRYPT_IMG_WIDTH, FOURCRYPT_IMG_HEIGHT);
+
+  title_image = gtk_image_new_from_file(FOURCRYPT_TITLE_FPATH);
+  gtk_widget_set_size_request(title_image, FOURCRYPT_TITLE_WIDTH, FOURCRYPT_TITLE_HEIGHT);
 
   encrypt_button = gtk_button_new_with_label("Encrypt");
   g_signal_connect(encrypt_button, "clicked", G_CALLBACK(callback_todo), nullptr); //TODO
@@ -38,19 +120,24 @@ static void on_app_activate(
   decrypt_button = gtk_button_new_with_label("Decrypt");
   g_signal_connect(decrypt_button, "clicked", G_CALLBACK(callback_todo), nullptr); //TODO
 
-  /* Place the image in the grid cell (0, 0), and make it fill
+  /* Place the logo_image in the grid cell (0, 0), and make it fill
    * just 2 cells horizontally and vertically.
    * Occupies (0,0), (0,1), (1,0), (1,1).
    */
-  gtk_grid_attach(GTK_GRID(grid), image , 0, 0, 2, 2);
+  gtk_grid_attach(GTK_GRID(grid), logo_image , 0, 0, 2, 2);
+  /* Place the title_image in the grid cell (2, 0), and make it fill
+   * just 2 cells horizontally and vertically.
+   * Occupies (2,0), (3,0), (2,1), (2,2).
+   */
+  gtk_grid_attach(GTK_GRID(grid), title_image, 2, 0, 2, 2);
   /* Place the encrypt_button in the grid cell (0, 2) and make it fill
-   * two cells horizontally and one cell vertically.
+   * four cells horizontally and two cells vertically.
    */
-  gtk_grid_attach(GTK_GRID(grid), encrypt_button, 0, 2, 2, 1);
+  gtk_grid_attach(GTK_GRID(grid), encrypt_button, 0, 2, 4, 1);
   /* Place the decrypt_button in the grid cell (0, 3) and make it fill
-   * two cells horizontally and one cell vertically.
+   * four cells horizontally and two cells vertically.
    */
-  gtk_grid_attach(GTK_GRID(grid), decrypt_button, 0, 3, 2, 1);
+  gtk_grid_attach(GTK_GRID(grid), decrypt_button, 0, 3, 4, 1);
 
   gtk_window_set_child(GTK_WINDOW(window), grid);
   gtk_window_present(GTK_WINDOW(window));
