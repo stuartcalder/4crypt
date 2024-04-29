@@ -38,9 +38,11 @@ static std::string getExecutablePath(void)
   #elif defined(SSC_OS_WINDOWS)
   wchar_t wide_path[MAX_PATH + 1] = {0};
   char    path     [MAX_PATH + 1] = {0};
-  Dw32_t len = GetModuleFileNameW(nullptr, wide_path, MAX_PATH);
+
+  Dw32_t len{GetModuleFileNameW(nullptr, wide_path, MAX_PATH)};
   SSC_assertMsg(len != 0, "Error: GetModuleFileNameW failed!\n");
-  std::sprintf(path, "%ws", wide_path);
+
+  std::sprintf(path, "%ls", wide_path);
   return std::string{path};
   #else
    #error "Unsupported OS!"
@@ -52,6 +54,7 @@ static std::string getExecutableDirPath(void)
   std::string str{getExecutablePath()};
   auto size{str.size()};
   SSC_assertMsg(size > FOURCRYPT_GUI_BINARY_LENGTH, "Error: ExecutableDirPath invalid size!\n");
+
   auto pos{str.rfind(
    FOURCRYPT_GUI_BINARY,
    std::string::npos, 
@@ -60,25 +63,9 @@ static std::string getExecutableDirPath(void)
    pos != std::string::npos,
    "Error: %s was not found at the end of the path!\n",
    FOURCRYPT_GUI_BINARY);
+
   str.erase(str.end() - FOURCRYPT_GUI_BINARY_LENGTH, str.end());
   return str;
-
-  #if 0
-  if (str.substr(size - FOURCRYPT_GUI_BINARY_LENGTH, FOURCRYPT_GUI_BINARY_LENGTH) == FOURCRYPT_GUI_BINARY) {
-    str.erase(str.end() - (FOURCRYPT_GUI_BINARY_LENGTH + 1));
-  }
-  auto iter = std::find(
-   str.begin(),
-   str.end(), 
-   FOURCRYPT_GUI_BINARY);
-  #endif
-  #if 0
-  size_t      cstr_size;
-  const char* cstr = getExecutablePath(&cstr_size);
-  std::string std{cstr};
-  delete[] cstr;
-  return str;
-  #endif
 }
 
 static void callback_todo(
@@ -131,11 +118,11 @@ static void on_app_activate(
    */
   gtk_grid_attach(GTK_GRID(grid), title_image, 2, 0, 2, 2);
   /* Place the encrypt_button in the grid cell (0, 2) and make it fill
-   * four cells horizontally and two cells vertically.
+   * four cells horizontally and one cell vertically.
    */
   gtk_grid_attach(GTK_GRID(grid), encrypt_button, 0, 2, 4, 1);
   /* Place the decrypt_button in the grid cell (0, 3) and make it fill
-   * four cells horizontally and two cells vertically.
+   * four cells horizontally and one cell vertically.
    */
   gtk_grid_attach(GTK_GRID(grid), decrypt_button, 0, 3, 4, 1);
 
