@@ -5,8 +5,12 @@
 #include <cstdlib>
 #include <cstdio>
 #include <algorithm>
-#ifdef __gnu_linux__
- #include <filesystem>
+#include <SSC/Process.h>
+
+#ifndef SSC_HAS_GETEXECUTABLEPATH
+ #warning "This SSC implementation does not provide SSC_getExecutablePath()!"
+ #warning "Therefore this file cannot be compiled!"
+ #error   "Unsatisfied SSC requirements."
 #endif
 
 #if !defined(SSC_LANG_CPP)
@@ -15,16 +19,14 @@
  #error "We need at least C++17!"
 #endif
 
-#ifdef SSC_OS_WINDOWS
-using Dw32_t = DWORD;
-#endif
+#define FOURCRYPT_ART_PFX "/home/u/4crypt_artwork/"
 
-static const char* FOURCRYPT_IMG_FPATH = "/ram/u/4crypt_cutout_export.png";
+static const char* FOURCRYPT_IMG_FPATH = FOURCRYPT_ART_PFX "4crypt_cutout_export.png";
 constexpr int FOURCRYPT_IMG_WIDTH_ORIGINAL  = 309;
 constexpr int FOURCRYPT_IMG_WIDTH = FOURCRYPT_IMG_WIDTH_ORIGINAL - 100;
 constexpr int FOURCRYPT_IMG_HEIGHT = 195;
 
-static const char* FOURCRYPT_TITLE_FPATH = "/ram/u/4crypt_title.png";
+static const char* FOURCRYPT_TITLE_FPATH = FOURCRYPT_ART_PFX "4crypt_title.png";
 constexpr int FOURCRYPT_TITLE_WIDTH  = 309;
 constexpr int FOURCRYPT_TITLE_HEIGHT = 195;
 
@@ -33,20 +35,12 @@ constexpr int WINDOW_HEIGHT = FOURCRYPT_IMG_HEIGHT * 3;
 
 static std::string getExecutablePath(void)
 {
-  #if defined(__gnu_linux__)
-  return std::filesystem::canonical("/proc/self/exe").string();
-  #elif defined(SSC_OS_WINDOWS)
-  wchar_t wide_path[MAX_PATH + 1] = {0};
-  char    path     [MAX_PATH + 1] = {0};
-
-  Dw32_t len{GetModuleFileNameW(nullptr, wide_path, MAX_PATH)};
-  SSC_assertMsg(len != 0, "Error: GetModuleFileNameW failed!\n");
-
-  std::sprintf(path, "%ls", wide_path);
-  return std::string{path};
-  #else
-   #error "Unsupported OS!"
-  #endif
+  size_t pathsize;
+  char* c_execpath = SSC_getExecutablePath(nullptr);
+  SSC_assertMsg(c_execpath, "Error: getExecutablePath(): c_execpath was NULL!\n");
+  std::string s{c_execpath};
+  free(c_execpath);
+  return s;
 }
 
 static std::string getExecutableDirPath(void)
