@@ -64,8 +64,7 @@ static std::string getExecutableDirPath(void)
 
 static void callback_todo(
  GtkWidget* widget,
- gpointer   data
- )
+ gpointer   data)
 {
   std::printf("Executable path is %s\n", getExecutablePath().c_str());
   std::printf("Executable dir path is %s\n", getExecutableDirPath().c_str());
@@ -80,6 +79,7 @@ static void on_app_activate(
   GtkWidget* title_image;
   GtkWidget* encrypt_button;
   GtkWidget* decrypt_button;
+  GtkWidget* pass_entry;
 
   window = gtk_application_window_new(app);
   gtk_window_set_title(GTK_WINDOW(window), "4crypt");
@@ -101,24 +101,42 @@ static void on_app_activate(
   decrypt_button = gtk_button_new_with_label("Decrypt");
   g_signal_connect(decrypt_button, "clicked", G_CALLBACK(callback_todo), nullptr); //TODO
 
-  /* Place the logo_image in the grid cell (0, 0), and make it fill
-   * just 2 cells horizontally and vertically.
-   * Occupies (0,0), (0,1), (1,0), (1,1).
-   */
+  pass_entry = gtk_password_entry_new();
+
+  // Check it out! You can use C++ lambdas for the GTK callbacks!
+  g_signal_connect(
+   pass_entry,
+   "activate",
+   G_CALLBACK(
+    static_cast<void(*)(GtkPasswordEntry*, gpointer)>(
+     [](GtkPasswordEntry* self, gpointer user_data) -> void {
+      std::printf(
+       "The input password was %s!\n",
+       gtk_editable_get_text(GTK_EDITABLE(self)));
+     })),
+   nullptr);
+
+  // Place the logo_image in the grid cell (0, 0), and make it fill
+  // just 2 cells horizontally and vertically.
+  // Occupies (0,0), (0,1), (1,0), (1,1).
   gtk_grid_attach(GTK_GRID(grid), logo_image , 0, 0, 2, 2);
-  /* Place the title_image in the grid cell (2, 0), and make it fill
-   * just 2 cells horizontally and vertically.
-   * Occupies (2,0), (3,0), (2,1), (2,2).
-   */
+
+  // Place the title_image in the grid cell (2, 0), and make it fill
+  // just 2 cells horizontally and vertically.
+  // Occupies (2,0), (3,0), (2,1), (2,2).
   gtk_grid_attach(GTK_GRID(grid), title_image, 2, 0, 2, 2);
-  /* Place the encrypt_button in the grid cell (0, 2) and make it fill
-   * four cells horizontally and one cell vertically.
-   */
+
+  // Place the encrypt_button in the grid cell (0, 2) and make it fill
+  // four cells horizontally and one cell vertically.
   gtk_grid_attach(GTK_GRID(grid), encrypt_button, 0, 2, 4, 1);
-  /* Place the decrypt_button in the grid cell (0, 3) and make it fill
-   * four cells horizontally and one cell vertically.
-   */
+
+  // Place the decrypt_button in the grid cell (0, 3) and make it fill
+  // four cells horizontally and one cell vertically.
   gtk_grid_attach(GTK_GRID(grid), decrypt_button, 0, 3, 4, 1);
+
+  // Place the pass_entry in the grid cell (0, 4) and make it fill
+  // four cells horizontally and one cell vertically.
+  gtk_grid_attach(GTK_GRID(grid), pass_entry, 0, 4, 4, 1);
 
   gtk_window_set_child(GTK_WINDOW(window), grid);
   gtk_window_present(GTK_WINDOW(window));
