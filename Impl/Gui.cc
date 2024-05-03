@@ -73,39 +73,42 @@ static void callback_todo(
 static void on_app_activate(
  GtkApplication* app)
 {
-  GtkWidget* window;
-  GtkWidget* grid;
-  GtkWidget* logo_image;
-  GtkWidget* title_image;
-  GtkWidget* encrypt_button;
-  GtkWidget* decrypt_button;
-  GtkWidget* pass_entry;
+  struct {
+    GtkWidget* app_window;
+    GtkWidget* pass_window;
+    GtkWidget* grid;
+    GtkWidget* logo_image;
+    GtkWidget* title_image;
+    GtkWidget* encrypt_button;
+    GtkWidget* decrypt_button;
+    GtkWidget* pass_entry;
+  } data;
 
-  window = gtk_application_window_new(app);
-  gtk_window_set_title(GTK_WINDOW(window), "4crypt");
-  gtk_widget_set_size_request(window, WINDOW_WIDTH, WINDOW_HEIGHT);
+  data.app_window = gtk_application_window_new(app);
+  gtk_window_set_title(GTK_WINDOW(data.app_window), "4crypt");
+  gtk_widget_set_size_request(data.app_window, WINDOW_WIDTH, WINDOW_HEIGHT);
 
-  grid = gtk_grid_new();
-  gtk_widget_set_valign(grid, GTK_ALIGN_START);
-  gtk_window_set_child(GTK_WINDOW(window), grid);
+  data.grid = gtk_grid_new();
+  gtk_widget_set_valign(data.grid, GTK_ALIGN_START);
+  gtk_window_set_child(GTK_WINDOW(data.app_window), data.grid);
 
-  logo_image = gtk_image_new_from_file(FOURCRYPT_IMG_FPATH);
-  gtk_widget_set_size_request(logo_image, FOURCRYPT_IMG_WIDTH, FOURCRYPT_IMG_HEIGHT);
+  data.logo_image = gtk_image_new_from_file(FOURCRYPT_IMG_FPATH);
+  gtk_widget_set_size_request(data.logo_image, FOURCRYPT_IMG_WIDTH, FOURCRYPT_IMG_HEIGHT);
 
-  title_image = gtk_image_new_from_file(FOURCRYPT_TITLE_FPATH);
-  gtk_widget_set_size_request(title_image, FOURCRYPT_TITLE_WIDTH, FOURCRYPT_TITLE_HEIGHT);
+  data.title_image = gtk_image_new_from_file(FOURCRYPT_TITLE_FPATH);
+  gtk_widget_set_size_request(data.title_image, FOURCRYPT_TITLE_WIDTH, FOURCRYPT_TITLE_HEIGHT);
 
-  encrypt_button = gtk_button_new_with_label("Encrypt");
-  g_signal_connect(encrypt_button, "clicked", G_CALLBACK(callback_todo), nullptr); //TODO
+  data.encrypt_button = gtk_button_new_with_label("Encrypt");
+  g_signal_connect(data.encrypt_button, "clicked", G_CALLBACK(callback_todo), nullptr); //TODO
 
-  decrypt_button = gtk_button_new_with_label("Decrypt");
-  g_signal_connect(decrypt_button, "clicked", G_CALLBACK(callback_todo), nullptr); //TODO
+  data.decrypt_button = gtk_button_new_with_label("Decrypt");
+  g_signal_connect(data.decrypt_button, "clicked", G_CALLBACK(callback_todo), nullptr); //TODO
 
-  pass_entry = gtk_password_entry_new();
+  data.pass_entry = gtk_password_entry_new();
 
   // Check it out! You can use C++ lambdas for the GTK callbacks!
   g_signal_connect(
-   pass_entry,
+   data.pass_entry,
    "activate",
    G_CALLBACK(
     static_cast<void(*)(GtkPasswordEntry*, gpointer)>(
@@ -119,27 +122,27 @@ static void on_app_activate(
   // Place the logo_image in the grid cell (0, 0), and make it fill
   // just 2 cells horizontally and vertically.
   // Occupies (0,0), (0,1), (1,0), (1,1).
-  gtk_grid_attach(GTK_GRID(grid), logo_image , 0, 0, 2, 2);
+  gtk_grid_attach(GTK_GRID(data.grid), data.logo_image , 0, 0, 2, 2);
 
   // Place the title_image in the grid cell (2, 0), and make it fill
   // just 2 cells horizontally and vertically.
   // Occupies (2,0), (3,0), (2,1), (2,2).
-  gtk_grid_attach(GTK_GRID(grid), title_image, 2, 0, 2, 2);
+  gtk_grid_attach(GTK_GRID(data.grid), data.title_image, 2, 0, 2, 2);
 
   // Place the encrypt_button in the grid cell (0, 2) and make it fill
   // four cells horizontally and one cell vertically.
-  gtk_grid_attach(GTK_GRID(grid), encrypt_button, 0, 2, 4, 1);
+  gtk_grid_attach(GTK_GRID(data.grid), data.encrypt_button, 0, 2, 4, 1);
 
   // Place the decrypt_button in the grid cell (0, 3) and make it fill
   // four cells horizontally and one cell vertically.
-  gtk_grid_attach(GTK_GRID(grid), decrypt_button, 0, 3, 4, 1);
+  gtk_grid_attach(GTK_GRID(data.grid), data.decrypt_button, 0, 3, 4, 1);
 
   // Place the pass_entry in the grid cell (0, 4) and make it fill
   // four cells horizontally and one cell vertically.
-  gtk_grid_attach(GTK_GRID(grid), pass_entry, 0, 4, 4, 1);
+  gtk_grid_attach(GTK_GRID(data.grid), data.pass_entry, 0, 4, 4, 1);
 
-  gtk_window_set_child(GTK_WINDOW(window), grid);
-  gtk_window_present(GTK_WINDOW(window));
+  gtk_window_set_child(GTK_WINDOW(data.app_window), data.grid);
+  gtk_window_present(GTK_WINDOW(data.app_window));
 }
 
 int main(
