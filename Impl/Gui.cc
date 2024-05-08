@@ -73,7 +73,7 @@ static void callback_todo(
 static void on_app_activate(
  GtkApplication* app)
 {
-  struct {
+  struct Data {
     GtkWidget* app_window;
     GtkWidget* pass_window;
     GtkWidget* grid;
@@ -82,7 +82,16 @@ static void on_app_activate(
     GtkWidget* encrypt_button;
     GtkWidget* decrypt_button;
     GtkWidget* pass_entry;
-  } data;
+  } data {
+    nullptr, // app_window;
+    nullptr, // pass_window;
+    nullptr, // grid;
+    nullptr, // logo_image;
+    nullptr, // title_image;
+    nullptr, // encrypt_button;
+    nullptr, // decrypt_button;
+    nullptr  // pass_entry;
+  };
 
   data.app_window = gtk_application_window_new(app);
   gtk_window_set_title(GTK_WINDOW(data.app_window), "4crypt");
@@ -99,25 +108,22 @@ static void on_app_activate(
   gtk_widget_set_size_request(data.title_image, FOURCRYPT_TITLE_WIDTH, FOURCRYPT_TITLE_HEIGHT);
 
   data.encrypt_button = gtk_button_new_with_label("Encrypt");
-  g_signal_connect(data.encrypt_button, "clicked", G_CALLBACK(callback_todo), nullptr); //TODO
+  g_signal_connect(
+   data.encrypt_button,
+   "clicked",
+   G_CALLBACK(
+    static_cast<void(*)(GtkWidget*, gpointer)>(
+     [](GtkWidget* self, gpointer user_data) -> void {
+       Data* d = static_cast<Data*>(user_data);
+       d->pass_window = gtk_window_new();
+       d->pass_entry  = gtk_password_entry_new();
+       gtk_window_set_child(GTK_WINDOW(d->pass_window), d->pass_entry);
+       gtk_window_present(GTK_WINDOW(d->pass_window));
+     })),
+   (gpointer)&data);
 
   data.decrypt_button = gtk_button_new_with_label("Decrypt");
   g_signal_connect(data.decrypt_button, "clicked", G_CALLBACK(callback_todo), nullptr); //TODO
-
-  data.pass_entry = gtk_password_entry_new();
-
-  // Check it out! You can use C++ lambdas for the GTK callbacks!
-  g_signal_connect(
-   data.pass_entry,
-   "activate",
-   G_CALLBACK(
-    static_cast<void(*)(GtkPasswordEntry*, gpointer)>(
-     [](GtkPasswordEntry* self, gpointer user_data) -> void {
-      std::printf(
-       "The input password was %s!\n",
-       gtk_editable_get_text(GTK_EDITABLE(self)));
-     })),
-   nullptr);
 
   // Place the logo_image in the grid cell (0, 0), and make it fill
   // just 2 cells horizontally and vertically.
@@ -136,10 +142,6 @@ static void on_app_activate(
   // Place the decrypt_button in the grid cell (0, 3) and make it fill
   // four cells horizontally and one cell vertically.
   gtk_grid_attach(GTK_GRID(data.grid), data.decrypt_button, 0, 3, 4, 1);
-
-  // Place the pass_entry in the grid cell (0, 4) and make it fill
-  // four cells horizontally and one cell vertically.
-  gtk_grid_attach(GTK_GRID(data.grid), data.pass_entry, 0, 4, 4, 1);
 
   gtk_window_set_child(GTK_WINDOW(data.app_window), data.grid);
   gtk_window_present(GTK_WINDOW(data.app_window));
