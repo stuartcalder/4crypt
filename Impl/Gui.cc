@@ -33,18 +33,20 @@ constexpr int FOURCRYPT_TITLE_HEIGHT = 195;
 constexpr int WINDOW_WIDTH  = FOURCRYPT_IMG_WIDTH;
 constexpr int WINDOW_HEIGHT = FOURCRYPT_IMG_HEIGHT * 3; 
 
-static std::string getExecutablePath(void)
-{
+std::string
+Gui::getExecutablePath(void)
+ {
   size_t pathsize;
   char* c_execpath = SSC_getExecutablePath(nullptr);
-  SSC_assertMsg(c_execpath, "Error: getExecutablePath(): c_execpath was NULL!\n");
+  SSC_assertMsg(c_execpath != nullptr, "Error: getExecutablePath(): c_execpath was NULL!\n");
   std::string s{c_execpath};
   free(c_execpath);
   return s;
-}
+ }
 
-static std::string getExecutableDirPath(void)
-{
+std::string
+Gui::getExecutableDirPath(void)
+ {
   std::string str{getExecutablePath()};
   auto size{str.size()};
   SSC_assertMsg(size > FOURCRYPT_GUI_BINARY_LENGTH, "Error: ExecutableDirPath invalid size!\n");
@@ -60,7 +62,88 @@ static std::string getExecutableDirPath(void)
 
   str.erase(str.end() - FOURCRYPT_GUI_BINARY_LENGTH, str.end());
   return str;
-}
+ }
+
+Gui::Gui()
+: application{nullptr},
+  app_window{nullptr},     password_window{nullptr}, 
+  grid{nullptr},           logo_image{nullptr},
+  title_image{nullptr},    encrypt_button{nullptr},
+  decrypt_button{nullptr}, password_entry{nullptr},
+  mode{Mode::NONE}
+ {
+  application = gtk_application_new("cc.calder.fourcrypt", G_APPLICATION_DEFAULT_FLAGS);
+  g_signal_connect(application, "activate", G_CALLBACK(on_application_activate), this);
+  int run_result = g_application_run(G_APPLICATION(application), argc, argv);
+  if (run_result != 0)
+    fprintf(stderr, "Error: g_application_run() returned %i!\n", run_result);
+ }
+
+static void
+Gui::on_encrypt_button_clicked(GtkWidget* button, gpointer self)
+ {
+  Gui* myself = static_cast<Gui*>(self);
+  //TODO
+ }
+
+static void
+Gui::on_decrypt_button_clicked(GtkWidget* button, gpointer self)
+ {
+  Gui* myself = static_cast<Gui*>(self);
+  //TODO
+ }
+
+static void
+Gui::on_application_activate(GtkApplication* gtk_app, gpointer self)
+ {
+  Gui* myself = static_cast<Gui*>(self);
+  gui->app_window = gtk_application_window_new(gui->app);
+  gtk_window_set_title(GTK_WINDOW(gui->app_window), "4crypt");
+  gtk_widget_set_size_request(gui->app_window, WINDOW_WIDTH, WINDOW_HEIGHT);
+
+  gui->grid = gtk_grid_new();
+  gtk_widget_set_valign(gtk->grid, GTK_ALIGN_START);
+  gtk_window_set_child(GTK_WINDOW(gui->app_window), gui->grid);
+
+  gui->logo_image = gtk_image_new_from_file(FOURCRYPT_IMG_FPATH);
+  gtk_widget_set_size_request(gui->logo_image, FOURCRYPT_IMG_WIDTH, FOURCRYPT_IMG_HEIGHT);
+
+  gui->title_image = gtk_image_new_from_file(FOURCRYPT_TITLE_FPATH);
+  gtk_widget_set_size_request(gtk->title_image, FOURCRYPT_TITLE_WIDTH, FOURCRYPT_TITLE_HEIGHT);
+
+  gui->encrypt_button = gtk_button_new_with_label("Encrypt");
+  gui->encrypt_button(gui->encrypt_button, "clicked", G_CALLBACK(on_encrypt_button_clicked), myself);
+
+  gui->decrypt_button = gtk_button_new_with_label("Decrypt");
+  gui->decrypt_button(gui->encrypt_button, "clicked", G_CALLBACK(on_decrypt_button_clicked), myself);
+
+  // Place the logo_image in the grid cell (0, 0), and make it fill
+  // just 2 cells horizontally and vertically.
+  // Occupies (0,0), (0,1), (1,0), (1,1).
+  gtk_grid_attach(GTK_GRID(gui->grid), gui->logo_image , 0, 0, 2, 2);
+
+  // Place the title_image in the grid cell (2, 0), and make it fill
+  // just 2 cells horizontally and vertically.
+  // Occupies (2,0), (3,0), (2,1), (2,2).
+  gtk_grid_attach(GTK_GRID(gui->grid), gui->title_image, 2, 0, 2, 2);
+
+  // Place the encrypt_button in the grid cell (0, 2) and make it fill
+  // four cells horizontally and one cell vertically.
+  gtk_grid_attach(GTK_GRID(gui->grid), gui->encrypt_button, 0, 2, 4, 1);
+
+  // Place the decrypt_button in the grid cell (0, 3) and make it fill
+  // four cells horizontally and one cell vertically.
+  gtk_grid_attach(GTK_GRID(gui->grid), gui->decrypt_button, 0, 3, 4, 1);
+
+  gtk_window_set_child(GTK_WINDOW(gui->app_window), gui->grid);
+  gtk_window_present(GTK_WINDOW(gui->app_window));
+ }
+
+void
+Gui::set_mode(Mode m)
+ {
+  //TODO
+ }
 
 static void callback_todo(
  GtkWidget* widget,
@@ -152,6 +235,6 @@ int main(
  char* argv[])
 {
   GtkApplication* app = gtk_application_new("cc.calder.fourcrypt", G_APPLICATION_DEFAULT_FLAGS);
-  g_signal_connect(app, "activate", G_CALLBACK(on_app_activate), nullptr);
+  g_signal_connect(app, "activate", G_CALLBACK(on_application_activate), nullptr);
   return g_application_run(G_APPLICATION(app), argc, argv);
 }
