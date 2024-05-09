@@ -22,22 +22,18 @@ class Gui
  enum class Mode
   {
    NONE, ENCRYPT, DECRYPT
-  }
+  };
  // Public Static Procedures //
-  static std::string getExecutablePath(void)
-  static std::string getExecutableDirPath(void)
- //// Public Static Pseudo-Methods.
-  static void on_application_activate(GtkApplication*, gpointer);
-  static void on_encrypt_button_clicked(GtkWidget*, gpointer);
-  static void on_decrypt_button_clicked(GtkWidget*, gpointer);
+  static std::string getExecutablePath(void);
+  static std::string getExecutableDirPath(void);
  // Constructors //
-  Gui();
+  Gui(int param_argc, char** param_argv);
  // Public Methods //
- // (TODO)
+ int run(void);
  private:
  // Private Data //
-  GtkApplication* app;
-  GtkWidget* app_window;
+  GtkApplication* application;
+  GtkWidget* application_window;
   GtkWidget* password_window;
   GtkWidget* grid;
   GtkWidget* logo_image;
@@ -46,8 +42,14 @@ class Gui
   GtkWidget* decrypt_button;
   GtkWidget* password_entry;
   Mode       mode;
+  int        argc;
+  char**     argv;
  // Private Methods //
-  void set_mode(Mode);
+  void set_mode(Mode);//TODO
+ //// Private Static Pseudo-Methods.
+  static void on_application_activate(GtkApplication*, gpointer);
+  static void on_encrypt_button_clicked(GtkWidget*,    gpointer);
+  static void on_decrypt_button_clicked(GtkWidget*,    gpointer);
  };
 
 #endif
