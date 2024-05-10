@@ -15,6 +15,12 @@
  #error "Unsupported OS".
 #endif
 
+#if defined(FOURCRYPT_IS_PORTABLE)
+#elif defined(__gnu_linux__)
+#else
+ #error "Unsupported!"
+#endif
+
 class Gui
  {
  public:
@@ -26,6 +32,7 @@ class Gui
  // Public Static Procedures //
   static std::string getExecutablePath(void);
   static std::string getExecutableDirPath(void);
+  static std::string getResourcePath(void);
  // Constructors //
   Gui(int param_argc, char** param_argv);
  // Public Methods //
@@ -40,6 +47,7 @@ class Gui
   GtkWidget* title_image;
   GtkWidget* encrypt_button;
   GtkWidget* decrypt_button;
+  GtkWidget* go_button;
   GtkWidget* password_entry;
   Mode       mode;
   int        argc;
@@ -47,9 +55,11 @@ class Gui
  // Private Methods //
   void set_mode(Mode);//TODO
  //// Private Static Pseudo-Methods.
+  static void apply_css_to_provider(GtkCssProvider* provider, const std::string& filepath);
   static void on_application_activate(GtkApplication*, gpointer);
   static void on_encrypt_button_clicked(GtkWidget*,    gpointer);
   static void on_decrypt_button_clicked(GtkWidget*,    gpointer);
+  static void on_go_button_clicked(GtkWidget*, gpointer);
  };
 
 #endif
