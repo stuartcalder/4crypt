@@ -49,8 +49,10 @@ class Gui
   GtkWidget* title_image;
   GtkWidget* encrypt_button;
   GtkWidget* decrypt_button;
+  GtkWidget* input_box;
   GtkWidget* input_label;
   GtkWidget* input_text;
+  GtkWidget* output_box;
   GtkWidget* output_label;
   GtkWidget* output_text;
   GtkWidget* go_button;

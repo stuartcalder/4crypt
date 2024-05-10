@@ -78,9 +78,9 @@ Gui::getResourcePath(void)
 
 Gui::Gui(int param_argc, char** param_argv)
 : application{nullptr},application_window{nullptr},password_window{nullptr},grid{nullptr},
-  logo_image{nullptr},title_image{nullptr},encrypt_button{nullptr},decrypt_button{nullptr},
-  input_label{nullptr},output_label{nullptr},go_button{nullptr},password_entry{nullptr},
-  mode{Mode::NONE},argc{param_argc},argv{param_argv}
+  logo_image{nullptr},title_image{nullptr},encrypt_button{nullptr},decrypt_button{nullptr},input_box{nullptr},
+  input_label{nullptr},input_text{nullptr},output_box{nullptr},output_label{nullptr},output_text{nullptr},
+  go_button{nullptr},password_entry{nullptr},mode{Mode::NONE},argc{param_argc},argv{param_argv}
  {
   gtk_init();
   // Initialize some CSS stuff.
@@ -139,10 +139,17 @@ Gui::on_application_activate(GtkApplication* gtk_app, gpointer self)
   myself->decrypt_button = gtk_button_new_with_label("Decrypt");
   g_signal_connect(myself->decrypt_button, "clicked", G_CALLBACK(on_decrypt_button_clicked), myself);
 
+  myself->input_box    = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
   myself->input_label  = gtk_label_new("Input:");
   myself->input_text   = gtk_text_new();
+  gtk_box_append(GTK_BOX(myself->input_box), myself->input_label);
+  gtk_box_append(GTK_BOX(myself->input_box), myself->input_text);
+
+  myself->output_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
   myself->output_label = gtk_label_new("Output:");
   myself->output_text  = gtk_text_new();
+  gtk_box_append(GTK_BOX(myself->output_box), myself->output_label);
+  gtk_box_append(GTK_BOX(myself->output_box), myself->output_text);
 
   myself->go_button = gtk_button_new_with_label("GO!");
   g_signal_connect(myself->go_button, "clicked", G_CALLBACK(on_go_button_clicked), myself);
@@ -150,23 +157,21 @@ Gui::on_application_activate(GtkApplication* gtk_app, gpointer self)
   int grid_y_idx = 0;
 
   // Place the @logo_image in the grid cell (0, @grid_y_idx), and make it fill
-  // just 2 cells horizontally and vertically.
-  gtk_grid_attach(GTK_GRID(myself->grid), myself->logo_image , 0, grid_y_idx, 2, 2);
+  // just 4 cells horizontally and 2 vertically.
+  gtk_grid_attach(GTK_GRID(myself->grid), myself->logo_image , 0, grid_y_idx, 4, 2);
   grid_y_idx += 2;
 
-  gtk_grid_attach(GTK_GRID(myself->grid), myself->encrypt_button, 0, grid_y_idx, 1, 1);
-  gtk_grid_attach(GTK_GRID(myself->grid), myself->decrypt_button, 1, grid_y_idx, 1, 1);
+  gtk_grid_attach(GTK_GRID(myself->grid), myself->encrypt_button, 0, grid_y_idx, 2, 1);
+  gtk_grid_attach(GTK_GRID(myself->grid), myself->decrypt_button, 2, grid_y_idx, 2, 1);
   ++grid_y_idx;
 
-  gtk_grid_attach(GTK_GRID(myself->grid), myself->input_label, 0, grid_y_idx, 1, 1);
-  gtk_grid_attach(GTK_GRID(myself->grid), myself->input_text , 1, grid_y_idx, 2, 1);
+  gtk_grid_attach(GTK_GRID(myself->grid), myself->input_box  , 0, grid_y_idx, 4, 1);
   ++grid_y_idx;
 
-  gtk_grid_attach(GTK_GRID(myself->grid), myself->output_label, 0, grid_y_idx, 1, 1);
-  gtk_grid_attach(GTK_GRID(myself->grid), myself->output_text , 1, grid_y_idx, 2, 1);
+  gtk_grid_attach(GTK_GRID(myself->grid), myself->output_box  , 0, grid_y_idx, 4, 1);
   ++grid_y_idx;
 
-  gtk_grid_attach(GTK_GRID(myself->grid), myself->go_button, 0, grid_y_idx, 2, 1);
+  gtk_grid_attach(GTK_GRID(myself->grid), myself->go_button, 0, grid_y_idx, 4, 1);
 
   gtk_window_set_child(GTK_WINDOW(myself->application_window), myself->grid);
   gtk_window_present(GTK_WINDOW(myself->application_window));
