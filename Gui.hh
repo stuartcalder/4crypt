@@ -30,8 +30,10 @@ class Gui
    NONE, ENCRYPT, DECRYPT
   };
  // Public Static Procedures //
+  #ifdef FOURCRYPT_IS_PORTABLE
   static std::string getExecutablePath(void);
   static std::string getExecutableDirPath(void);
+  #endif
   static std::string getResourcePath(void);
  // Constructors //
   Gui(int param_argc, char** param_argv);

@@ -8,10 +8,9 @@
 #include <algorithm>
 #include <SSC/Process.h>
 
-#ifndef SSC_HAS_GETEXECUTABLEPATH
- #warning "This SSC implementation does not provide SSC_getExecutablePath()!"
- #warning "Therefore this file cannot be compiled!"
- #error   "Unsatisfied SSC requirements."
+#if !defined(SSC_HAS_GETEXECUTABLEPATH) && !defined(FOURCRYPT_IS_PORTABLE)
+ #warning "Trying to build a non-portable 4crypt while SSC does not support SSC_getExecutablePath()!"
+ #error   "Unsatisfiable build requirements."
 #endif
 
 #if !defined(SSC_LANG_CPP)
@@ -30,6 +29,7 @@ constexpr int FOURCRYPT_TITLE_HEIGHT = 195;
 constexpr int WINDOW_WIDTH  = FOURCRYPT_IMG_WIDTH * 2;
 constexpr int WINDOW_HEIGHT = FOURCRYPT_IMG_HEIGHT * 4; 
 
+#ifdef FOURCRYPT_IS_PORTABLE
 std::string
 Gui::getExecutablePath(void)
  {
@@ -62,6 +62,7 @@ Gui::getExecutableDirPath(void)
    str.end());
   return str;
  }
+#endif
 
 std::string
 Gui::getResourcePath(void)
