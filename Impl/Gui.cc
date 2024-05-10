@@ -76,19 +76,16 @@ Gui::getResourcePath(void)
  }
 
 Gui::Gui(int param_argc, char** param_argv)
-: application{nullptr},
-  application_window{nullptr}, password_window{nullptr}, 
-  grid{nullptr},               logo_image{nullptr},
-  title_image{nullptr},        encrypt_button{nullptr},
-  decrypt_button{nullptr},     go_button{nullptr},
-  password_entry{nullptr},     mode{Mode::NONE},
-  argc{param_argc},            argv{param_argv}
+: application{nullptr},application_window{nullptr},password_window{nullptr},grid{nullptr},
+  logo_image{nullptr},title_image{nullptr},encrypt_button{nullptr},decrypt_button{nullptr},
+  input_label{nullptr},output_label{nullptr},go_button{nullptr},password_entry{nullptr},
+  mode{Mode::NONE},argc{param_argc},argv{param_argv}
  {
   gtk_init();
   // Initialize some CSS stuff.
   SSC_assertMsg(gdk_display_get_default(), "DEFAULT DISPLAY IS NULL\n");
   GtkCssProvider* provider = gtk_css_provider_new();
-  apply_css_to_provider(provider, getResourcePath() + "/style.css");
+  gtk_css_provider_load_from_path(provider, (getResourcePath() + "/style.css").c_str());
   gtk_style_context_add_provider_for_display(
    gdk_display_get_default(),
    GTK_STYLE_PROVIDER(provider),
@@ -120,12 +117,6 @@ Gui::on_go_button_clicked(GtkWidget* button, gpointer self)
  }
 
 void
-Gui::apply_css_to_provider(GtkCssProvider* provider, const std::string& filepath)
- {
-  gtk_css_provider_load_from_path(provider, filepath.c_str());
- }
-
-void
 Gui::on_application_activate(GtkApplication* gtk_app, gpointer self)
  {
   Gui* myself = static_cast<Gui*>(self);
@@ -147,23 +138,34 @@ Gui::on_application_activate(GtkApplication* gtk_app, gpointer self)
   myself->decrypt_button = gtk_button_new_with_label("Decrypt");
   g_signal_connect(myself->decrypt_button, "clicked", G_CALLBACK(on_decrypt_button_clicked), myself);
 
+  myself->input_label  = gtk_label_new("Input:");
+  myself->input_text   = gtk_text_new();
+  myself->output_label = gtk_label_new("Output:");
+  myself->output_text  = gtk_text_new();
+
   myself->go_button = gtk_button_new_with_label("GO!");
   g_signal_connect(myself->go_button, "clicked", G_CALLBACK(on_go_button_clicked), myself);
 
-  // Place the logo_image in the grid cell (0, 0), and make it fill
+  int grid_y_idx = 0;
+
+  // Place the @logo_image in the grid cell (0, @grid_y_idx), and make it fill
   // just 2 cells horizontally and vertically.
-  // Occupies (0,0), (0,1), (1,0), (1,1).
-  gtk_grid_attach(GTK_GRID(myself->grid), myself->logo_image , 0, 0, 2, 2);
+  gtk_grid_attach(GTK_GRID(myself->grid), myself->logo_image , 0, grid_y_idx, 2, 2);
+  grid_y_idx += 2;
 
-  // Place the encrypt_button in the grid cell (0, 2) and make it fill
-  // one cell horizontally and one cell vertically.
-  gtk_grid_attach(GTK_GRID(myself->grid), myself->encrypt_button, 0, 2, 1, 1);
+  gtk_grid_attach(GTK_GRID(myself->grid), myself->encrypt_button, 0, grid_y_idx, 1, 1);
+  gtk_grid_attach(GTK_GRID(myself->grid), myself->decrypt_button, 1, grid_y_idx, 1, 1);
+  ++grid_y_idx;
 
-  // Place the decrypt_button in the grid cell (1, 2) and make it fill
-  // one cell horizontally and one cell vertically.
-  gtk_grid_attach(GTK_GRID(myself->grid), myself->decrypt_button, 1, 2, 1, 1);
+  gtk_grid_attach(GTK_GRID(myself->grid), myself->input_label, 0, grid_y_idx, 1, 1);
+  gtk_grid_attach(GTK_GRID(myself->grid), myself->input_text , 1, grid_y_idx, 2, 1);
+  ++grid_y_idx;
 
-  gtk_grid_attach(GTK_GRID(myself->grid), myself->go_button, 0, 3, 2, 1);
+  gtk_grid_attach(GTK_GRID(myself->grid), myself->output_label, 0, grid_y_idx, 1, 1);
+  gtk_grid_attach(GTK_GRID(myself->grid), myself->output_text , 1, grid_y_idx, 2, 1);
+  ++grid_y_idx;
+
+  gtk_grid_attach(GTK_GRID(myself->grid), myself->go_button, 0, grid_y_idx, 2, 1);
 
   gtk_window_set_child(GTK_WINDOW(myself->application_window), myself->grid);
   gtk_window_present(GTK_WINDOW(myself->application_window));

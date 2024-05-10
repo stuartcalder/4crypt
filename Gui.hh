@@ -47,6 +47,10 @@ class Gui
   GtkWidget* title_image;
   GtkWidget* encrypt_button;
   GtkWidget* decrypt_button;
+  GtkWidget* input_label;
+  GtkWidget* input_text;
+  GtkWidget* output_label;
+  GtkWidget* output_text;
   GtkWidget* go_button;
   GtkWidget* password_entry;
   Mode       mode;
@@ -55,7 +59,6 @@ class Gui
  // Private Methods //
   void set_mode(Mode);//TODO
  //// Private Static Pseudo-Methods.
-  static void apply_css_to_provider(GtkCssProvider* provider, const std::string& filepath);
   static void on_application_activate(GtkApplication*, gpointer);
   static void on_encrypt_button_clicked(GtkWidget*,    gpointer);
   static void on_decrypt_button_clicked(GtkWidget*,    gpointer);
