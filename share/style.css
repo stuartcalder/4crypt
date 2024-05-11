@@ -1,9 +1,9 @@
 button.highlight {
     background-color: #007BFF; /* blue */
-    color:        blue;
-    border:       solid 2px blue;
-    border-width: 14;
-    font-weight: bold;
+    color:            blue;
+    border:           solid 2px blue;
+    border-width:     2px;
+    font-weight:      bold;
 }
 
 label {
@@ -13,8 +13,7 @@ label {
 
 text {
     font-family:  'Monospace';
-    font-size:    14px;
+    font-size:    12px;
     border:       solid 1px black;
-    border-width: 2;
-    height:       30px;
+    border-width: 1px;
 }

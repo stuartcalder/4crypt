@@ -8,8 +8,8 @@
 #include <algorithm>
 #include <SSC/Process.h>
 
-#if !defined(SSC_HAS_GETEXECUTABLEPATH) && !defined(FOURCRYPT_IS_PORTABLE)
- #warning "Trying to build a non-portable 4crypt while SSC does not support SSC_getExecutablePath()!"
+#if defined(FOURCRYPT_IS_PORTABLE) && !defined(SSC_HAS_GETEXECUTABLEPATH)
+ #warning "Trying to build a portable 4crypt while SSC does not support SSC_getExecutablePath()!"
  #error   "Unsatisfiable build requirements."
 #endif
 
@@ -77,10 +77,7 @@ Gui::getResourcePath(void)
  }
 
 Gui::Gui(int param_argc, char** param_argv)
-: application{nullptr},application_window{nullptr},password_window{nullptr},grid{nullptr},
-  logo_image{nullptr},title_image{nullptr},encrypt_button{nullptr},decrypt_button{nullptr},input_box{nullptr},
-  input_label{nullptr},input_text{nullptr},output_box{nullptr},output_label{nullptr},output_text{nullptr},
-  go_button{nullptr},password_entry{nullptr},mode{Mode::NONE},argc{param_argc},argv{param_argv}
+: mode{Mode::NONE},argc{param_argc},argv{param_argv}
  {
   gtk_init();
   // Initialize some CSS stuff.
@@ -94,7 +91,7 @@ Gui::Gui(int param_argc, char** param_argv)
  }
 
 void
-Gui::on_encrypt_button_clicked(GtkWidget* button, gpointer self)
+Gui::on_encrypt_button_clicked(GtkWidget* button, void* self)
  {
   Gui* myself = static_cast<Gui*>(self);
   std::puts("Encrypt button was pushed.");
@@ -102,7 +99,7 @@ Gui::on_encrypt_button_clicked(GtkWidget* button, gpointer self)
  }
 
 void
-Gui::on_decrypt_button_clicked(GtkWidget* button, gpointer self)
+Gui::on_decrypt_button_clicked(GtkWidget* button, void* self)
  {
   Gui* myself = static_cast<Gui*>(self);
   std::puts("Decrypt button was pushed.");
@@ -111,14 +108,14 @@ Gui::on_decrypt_button_clicked(GtkWidget* button, gpointer self)
  }
 
 void
-Gui::on_go_button_clicked(GtkWidget* button, gpointer self)
+Gui::on_go_button_clicked(GtkWidget* button, void* self)
  {
   Gui* myself = static_cast<Gui*>(self);
   std::puts("GO! button was pushed.");
  }
 
 void
-Gui::on_application_activate(GtkApplication* gtk_app, gpointer self)
+Gui::on_application_activate(GtkApplication* gtk_app, void* self)
  {
   constexpr int TEXT_HEIGHT = 25;
   // Create the application window.
@@ -165,10 +162,9 @@ Gui::on_application_activate(GtkApplication* gtk_app, gpointer self)
 
   int grid_y_idx = 0;
 
-  // Place the @logo_image in the grid cell (0, @grid_y_idx), and make it fill
-  // just 4 cells horizontally and 2 vertically.
+  // gtk_grid_attach(grid, widget, x, y, horiz_fill, vert_fill);
   gtk_grid_attach(GTK_GRID(myself->grid), myself->logo_image , 0, grid_y_idx, 4, 1);
-  grid_y_idx += 1;
+  ++grid_y_idx;
 
   gtk_grid_attach(GTK_GRID(myself->grid), myself->encrypt_button, 0, grid_y_idx, 2, 1);
   gtk_grid_attach(GTK_GRID(myself->grid), myself->decrypt_button, 2, grid_y_idx, 2, 1);
