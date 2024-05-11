@@ -65,7 +65,7 @@ class Gui
   char**          argv;
  // Private Methods //
   void set_mode(Mode);//TODO
-  void verify_inputs(void);
+  bool verify_inputs(void);
  //// Private Static Pseudo-Methods.
   static void on_application_activate(GtkApplication*, void*);
   static void on_encrypt_button_clicked(GtkWidget*,    void*);

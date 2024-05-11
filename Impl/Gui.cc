@@ -145,20 +145,37 @@ Gui::on_start_button_clicked(GtkWidget* button, void* self)
    }
  }
 
-void
+bool
 Gui::verify_inputs(void)
  {
   GtkEntryBuffer* text_buffer {
    gtk_text_get_buffer(GTK_TEXT(input_text))
   };
-  const char* input_filepath {
+  const char* filepath_cstr {
    gtk_entry_buffer_get_text(text_buffer)
   };
-  if (SSC_FilePath_exists(input_filepath))
-    std::printf("The file path %s exists!\n", input_filepath);
-  else
-    std::printf("The file path %s does not seem to exist.\n", input_filepath);
-  //TODO
+  std::string filepath {filepath_cstr};
+  make_os_path(filepath);
+
+  //TODO: Explain to the user that it's invalid for the input file to not exist.
+  if (!SSC_FilePath_exists(filepath.c_str()))
+   {
+    std::fprintf(stderr, "%s did not exist!\n", filepath.c_str());
+    return false;
+   }
+
+  text_buffer   = gtk_text_get_buffer(GTK_TEXT(output_text));
+  filepath_cstr = gtk_entry_buffer_get_text(text_buffer);
+  filepath      = filepath_cstr;
+  make_os_path(filepath);
+
+  //TODO: Explain to the user that it's invalid for the output file to already exist.
+  if (SSC_FilePath_exists(filepath.c_str()))
+   {
+    std::fprintf(stderr, "%s already exists!\n", filepath.c_str());
+    return false;
+   }
+  return true;
  }
 
 void
