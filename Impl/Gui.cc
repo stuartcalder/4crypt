@@ -19,15 +19,15 @@
  #error "We need at least C++17!"
 #endif
 
-constexpr int FOURCRYPT_IMG_WIDTH_ORIGINAL  = 309;
+constexpr int FOURCRYPT_IMG_WIDTH_ORIGINAL  = 300;
 constexpr int FOURCRYPT_IMG_WIDTH = FOURCRYPT_IMG_WIDTH_ORIGINAL - 100;
-constexpr int FOURCRYPT_IMG_HEIGHT = 195;
+constexpr int FOURCRYPT_IMG_HEIGHT = 300;
 
 constexpr int FOURCRYPT_TITLE_WIDTH  = 309;
 constexpr int FOURCRYPT_TITLE_HEIGHT = 195;
 
 constexpr int WINDOW_WIDTH  = FOURCRYPT_IMG_WIDTH * 2;
-constexpr int WINDOW_HEIGHT = FOURCRYPT_IMG_HEIGHT * 4; 
+constexpr int WINDOW_HEIGHT = FOURCRYPT_IMG_HEIGHT * 2; 
 
 #ifdef FOURCRYPT_IS_PORTABLE
 std::string
@@ -120,6 +120,8 @@ Gui::on_go_button_clicked(GtkWidget* button, gpointer self)
 void
 Gui::on_application_activate(GtkApplication* gtk_app, gpointer self)
  {
+  constexpr int TEXT_HEIGHT = 25;
+  // Create the application window.
   Gui* myself = static_cast<Gui*>(self);
   myself->application_window = gtk_application_window_new(myself->application);
   gtk_window_set_title(GTK_WINDOW(myself->application_window), "4crypt");
@@ -131,7 +133,10 @@ Gui::on_application_activate(GtkApplication* gtk_app, gpointer self)
   gtk_grid_set_column_homogeneous(GTK_GRID(myself->grid), TRUE);
 
   myself->logo_image = gtk_image_new_from_file((getResourcePath() + "/4crypt_cutout_export.png").c_str());
+  gtk_image_set_icon_size(GTK_IMAGE(myself->logo_image), GTK_ICON_SIZE_LARGE);
   gtk_widget_set_size_request(myself->logo_image, FOURCRYPT_IMG_WIDTH, FOURCRYPT_IMG_HEIGHT);
+  gtk_widget_set_hexpand(myself->logo_image, TRUE);
+  gtk_widget_set_vexpand(myself->logo_image, TRUE);
 
   myself->encrypt_button = gtk_button_new_with_label("Encrypt");
   g_signal_connect(myself->encrypt_button, "clicked", G_CALLBACK(on_encrypt_button_clicked), myself);
@@ -140,16 +145,20 @@ Gui::on_application_activate(GtkApplication* gtk_app, gpointer self)
   g_signal_connect(myself->decrypt_button, "clicked", G_CALLBACK(on_decrypt_button_clicked), myself);
 
   myself->input_box    = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
-  myself->input_label  = gtk_label_new("Input:");
+  myself->input_label  = gtk_label_new(" Input:");
   myself->input_text   = gtk_text_new();
   gtk_box_append(GTK_BOX(myself->input_box), myself->input_label);
   gtk_box_append(GTK_BOX(myself->input_box), myself->input_text);
+  gtk_widget_set_size_request(myself->input_box, -1, TEXT_HEIGHT);
+  gtk_widget_set_hexpand(myself->input_text, TRUE);
 
   myself->output_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
   myself->output_label = gtk_label_new("Output:");
   myself->output_text  = gtk_text_new();
   gtk_box_append(GTK_BOX(myself->output_box), myself->output_label);
   gtk_box_append(GTK_BOX(myself->output_box), myself->output_text);
+  gtk_widget_set_size_request(myself->output_box, -1, TEXT_HEIGHT);
+  gtk_widget_set_hexpand(myself->output_text, TRUE);
 
   myself->go_button = gtk_button_new_with_label("GO!");
   g_signal_connect(myself->go_button, "clicked", G_CALLBACK(on_go_button_clicked), myself);
@@ -158,8 +167,8 @@ Gui::on_application_activate(GtkApplication* gtk_app, gpointer self)
 
   // Place the @logo_image in the grid cell (0, @grid_y_idx), and make it fill
   // just 4 cells horizontally and 2 vertically.
-  gtk_grid_attach(GTK_GRID(myself->grid), myself->logo_image , 0, grid_y_idx, 4, 2);
-  grid_y_idx += 2;
+  gtk_grid_attach(GTK_GRID(myself->grid), myself->logo_image , 0, grid_y_idx, 4, 1);
+  grid_y_idx += 1;
 
   gtk_grid_attach(GTK_GRID(myself->grid), myself->encrypt_button, 0, grid_y_idx, 2, 1);
   gtk_grid_attach(GTK_GRID(myself->grid), myself->decrypt_button, 2, grid_y_idx, 2, 1);
