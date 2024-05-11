@@ -20,15 +20,15 @@
 #endif
 
 using Pod_t = Gui::Pod_t;
-constexpr int FOURCRYPT_IMG_WIDTH_ORIGINAL  = 300;
-constexpr int FOURCRYPT_IMG_WIDTH = FOURCRYPT_IMG_WIDTH_ORIGINAL - 100;
-constexpr int FOURCRYPT_IMG_HEIGHT = 300;
+constexpr int FOURCRYPT_IMG_WIDTH_ORIGINAL {300};
+constexpr int FOURCRYPT_IMG_WIDTH    {FOURCRYPT_IMG_WIDTH_ORIGINAL - 100};
+constexpr int FOURCRYPT_IMG_HEIGHT   {300};
 
-constexpr int FOURCRYPT_TITLE_WIDTH  = 309;
-constexpr int FOURCRYPT_TITLE_HEIGHT = 195;
+constexpr int FOURCRYPT_TITLE_WIDTH  {309};
+constexpr int FOURCRYPT_TITLE_HEIGHT {195};
 
-constexpr int WINDOW_WIDTH  = FOURCRYPT_IMG_WIDTH * 2;
-constexpr int WINDOW_HEIGHT = FOURCRYPT_IMG_HEIGHT * 2; 
+constexpr int WINDOW_WIDTH  {FOURCRYPT_IMG_WIDTH  * 2};
+constexpr int WINDOW_HEIGHT {FOURCRYPT_IMG_HEIGHT * 2}; 
 
 void
 make_os_path(std::string& str)
@@ -52,9 +52,9 @@ std::string
 Gui::getExecutablePath(void)
  {
   size_t pathsize;
-  char* c_execpath = SSC_getExecutablePath(nullptr);
+  char* c_execpath {SSC_getExecutablePath(nullptr)};
   SSC_assertMsg(c_execpath != nullptr, "Error: getExecutablePath(): c_execpath was NULL!\n");
-  std::string s{c_execpath};
+  std::string s {c_execpath};
   free(c_execpath);
   return s;
  }
@@ -100,8 +100,8 @@ Gui::Gui(Pod_t* param_pod, int param_argc, char** param_argv)
   gtk_init();
   // Initialize some CSS stuff.
   SSC_assertMsg(gdk_display_get_default(), "DEFAULT DISPLAY IS NULL\n");
-  GtkCssProvider* provider = gtk_css_provider_new();
-  std::string provider_path{getResourcePath() + "/style.css"};
+  GtkCssProvider* provider  {gtk_css_provider_new()};
+  std::string provider_path {getResourcePath() + "/style.css"};
   make_os_path(provider_path);
   gtk_css_provider_load_from_path(provider, provider_path.c_str());
   gtk_style_context_add_provider_for_display(
@@ -113,7 +113,7 @@ Gui::Gui(Pod_t* param_pod, int param_argc, char** param_argv)
 void
 Gui::on_encrypt_button_clicked(GtkWidget* button, void* self)
  {
-  Gui* myself = static_cast<Gui*>(self);
+  Gui* myself {static_cast<Gui*>(self)};
   std::puts("Encrypt button was pushed.");
   myself->set_mode(Mode::ENCRYPT);
  }
@@ -121,24 +121,52 @@ Gui::on_encrypt_button_clicked(GtkWidget* button, void* self)
 void
 Gui::on_decrypt_button_clicked(GtkWidget* button, void* self)
  {
-  Gui* myself = static_cast<Gui*>(self);
+  Gui* myself {static_cast<Gui*>(self)};
   std::puts("Decrypt button was pushed.");
   myself->set_mode(Mode::DECRYPT);
  }
 
 void
-Gui::on_go_button_clicked(GtkWidget* button, void* self)
+Gui::on_start_button_clicked(GtkWidget* button, void* self)
  {
-  Gui* myself = static_cast<Gui*>(self);
-  std::puts("GO! button was pushed.");
+  Gui* myself {static_cast<Gui*>(self)};
+  std::puts("Start button was pushed.");
+  myself->verify_inputs();
+  switch (myself->mode)
+   {
+    case Mode::ENCRYPT:
+     {
+      //TODO
+     } break;
+    case Mode::DECRYPT:
+     {
+      //TODO
+     } break;
+   }
+ }
+
+void
+Gui::verify_inputs(void)
+ {
+  GtkEntryBuffer* text_buffer {
+   gtk_text_get_buffer(GTK_TEXT(input_text))
+  };
+  const char* input_filepath {
+   gtk_entry_buffer_get_text(text_buffer)
+  };
+  if (SSC_FilePath_exists(input_filepath))
+    std::printf("The file path %s exists!\n", input_filepath);
+  else
+    std::printf("The file path %s does not seem to exist.\n", input_filepath);
+  //TODO
  }
 
 void
 Gui::on_application_activate(GtkApplication* gtk_app, void* self)
  {
-  constexpr int TEXT_HEIGHT = 25;
+  constexpr int TEXT_HEIGHT {25};
   // Create the application window.
-  Gui* myself = static_cast<Gui*>(self);
+  Gui* myself {static_cast<Gui*>(self)};
   myself->application_window = gtk_application_window_new(myself->application);
   gtk_window_set_title(GTK_WINDOW(myself->application_window), "4crypt");
   gtk_widget_set_size_request(myself->application_window, WINDOW_WIDTH, WINDOW_HEIGHT);
@@ -150,7 +178,7 @@ Gui::on_application_activate(GtkApplication* gtk_app, void* self)
   gtk_grid_set_column_homogeneous(GTK_GRID(myself->grid), TRUE);
 
   // Add the FourCrypt dragon logo.
-  std::string logo_path{getResourcePath() + "/4crypt_cutout_export.png"};
+  std::string logo_path {getResourcePath() + "/4crypt_cutout_export.png"};
   make_os_path(logo_path);
   myself->logo_image = gtk_image_new_from_file(logo_path.c_str());
   gtk_image_set_icon_size(GTK_IMAGE(myself->logo_image), GTK_ICON_SIZE_LARGE);
@@ -186,10 +214,10 @@ Gui::on_application_activate(GtkApplication* gtk_app, void* self)
   gtk_widget_set_size_request(myself->output_box, -1, TEXT_HEIGHT);
   gtk_widget_set_hexpand(myself->output_text, TRUE);
 
-  myself->go_button = gtk_button_new_with_label("GO!");
-  g_signal_connect(myself->go_button, "clicked", G_CALLBACK(on_go_button_clicked), myself);
+  myself->start_button = gtk_button_new_with_label("Start");
+  g_signal_connect(myself->start_button, "clicked", G_CALLBACK(on_start_button_clicked), myself);
 
-  int grid_y_idx = 0;
+  int grid_y_idx{0};
 
   // Attach the widgets to the grid according to the following syntax:
   // gtk_grid_attach(grid, widget, grid_x_idx, grid_y_idx, horizontal_fill, vertical_fill)
@@ -206,7 +234,7 @@ Gui::on_application_activate(GtkApplication* gtk_app, void* self)
   gtk_grid_attach(GTK_GRID(myself->grid), myself->output_box  , 0, grid_y_idx, 4, 1);
   ++grid_y_idx;
 
-  gtk_grid_attach(GTK_GRID(myself->grid), myself->go_button, 0, grid_y_idx, 4, 1);
+  gtk_grid_attach(GTK_GRID(myself->grid), myself->start_button, 0, grid_y_idx, 4, 1);
 
   // Set the grid as a child of the application window, then present the application window.
   gtk_window_set_child(GTK_WINDOW(myself->application_window), myself->grid);
@@ -218,7 +246,7 @@ Gui::run(void)
  {
   application = gtk_application_new("cc.calder.fourcrypt", G_APPLICATION_DEFAULT_FLAGS);
   g_signal_connect(application, "activate", G_CALLBACK(on_application_activate), this);
-  int run_result = g_application_run(G_APPLICATION(application), argc, argv);
+  int run_result {g_application_run(G_APPLICATION(application), argc, argv)};
   if (run_result != 0)
     fprintf(stderr, "Error: g_application_run() returned %i!\n", run_result);
   return run_result;

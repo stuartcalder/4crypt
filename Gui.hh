@@ -58,18 +58,19 @@ class Gui
   GtkWidget*      output_box;
   GtkWidget*      output_label;
   GtkWidget*      output_text;
-  GtkWidget*      go_button;
+  GtkWidget*      start_button;
   Pod_t*          pod;
   Mode            mode;
   int             argc;
   char**          argv;
  // Private Methods //
   void set_mode(Mode);//TODO
+  void verify_inputs(void);
  //// Private Static Pseudo-Methods.
   static void on_application_activate(GtkApplication*, void*);
   static void on_encrypt_button_clicked(GtkWidget*,    void*);
   static void on_decrypt_button_clicked(GtkWidget*,    void*);
-  static void on_go_button_clicked(GtkWidget*, void*);
+  static void on_start_button_clicked(GtkWidget*, void*);
  };
 
 #endif
