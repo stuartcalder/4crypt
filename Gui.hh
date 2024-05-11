@@ -21,14 +21,18 @@
  #error "Unsupported!"
 #endif
 
+void make_os_path(std::string& str);
+
 class Gui
  {
  public:
+ // Public Types //
+  using Pod_t = FourCrypt::PlainOldData;
  // Public Constants //
- enum class Mode
-  {
-   NONE, ENCRYPT, DECRYPT
-  };
+  enum class Mode
+   {
+    NONE, ENCRYPT, DECRYPT
+   };
  // Public Static Procedures //
   #ifdef FOURCRYPT_IS_PORTABLE
   static std::string getExecutablePath(void);
@@ -36,30 +40,29 @@ class Gui
   #endif
   static std::string getResourcePath(void);
  // Constructors //
-  Gui(int param_argc, char** param_argv);
+  Gui(Pod_t* param_pod, int param_argc, char** param_argv);
  // Public Methods //
- int run(void);
+  int run(void);
  private:
  // Private Data //
   GtkApplication* application;
-  GtkWidget* application_window;
-  GtkWidget* password_window;
-  GtkWidget* grid;
-  GtkWidget* logo_image;
-  GtkWidget* title_image;
-  GtkWidget* encrypt_button;
-  GtkWidget* decrypt_button;
-  GtkWidget* input_box;
-  GtkWidget* input_label;
-  GtkWidget* input_text;
-  GtkWidget* output_box;
-  GtkWidget* output_label;
-  GtkWidget* output_text;
-  GtkWidget* go_button;
-  GtkWidget* password_entry;
-  Mode       mode;
-  int        argc;
-  char**     argv;
+  GtkWidget*      application_window;
+  GtkWidget*      password_window;
+  GtkWidget*      grid;
+  GtkWidget*      logo_image;
+  GtkWidget*      encrypt_button;
+  GtkWidget*      decrypt_button;
+  GtkWidget*      input_box;
+  GtkWidget*      input_label;
+  GtkWidget*      input_text;
+  GtkWidget*      output_box;
+  GtkWidget*      output_label;
+  GtkWidget*      output_text;
+  GtkWidget*      go_button;
+  Pod_t*          pod;
+  Mode            mode;
+  int             argc;
+  char**          argv;
  // Private Methods //
   void set_mode(Mode);//TODO
  //// Private Static Pseudo-Methods.

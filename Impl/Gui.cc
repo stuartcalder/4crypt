@@ -19,6 +19,7 @@
  #error "We need at least C++17!"
 #endif
 
+using Pod_t = Gui::Pod_t;
 constexpr int FOURCRYPT_IMG_WIDTH_ORIGINAL  = 300;
 constexpr int FOURCRYPT_IMG_WIDTH = FOURCRYPT_IMG_WIDTH_ORIGINAL - 100;
 constexpr int FOURCRYPT_IMG_HEIGHT = 300;
@@ -28,6 +29,23 @@ constexpr int FOURCRYPT_TITLE_HEIGHT = 195;
 
 constexpr int WINDOW_WIDTH  = FOURCRYPT_IMG_WIDTH * 2;
 constexpr int WINDOW_HEIGHT = FOURCRYPT_IMG_HEIGHT * 2; 
+
+void
+make_os_path(std::string& str)
+ {
+  for (char& c : str)
+   {
+   #if   defined(SSC_OS_UNIXLIKE)
+    if (c == '\\')
+      c = '/';
+   #elif defined(SSC_OS_WINDOWS)
+    if (c == '/')
+      c = '\\';
+   #else
+    #error "Unsupported!"
+   #endif
+   }
+ }
 
 #ifdef FOURCRYPT_IS_PORTABLE
 std::string
@@ -76,14 +94,16 @@ Gui::getResourcePath(void)
  #endif
  }
 
-Gui::Gui(int param_argc, char** param_argv)
-: mode{Mode::NONE},argc{param_argc},argv{param_argv}
+Gui::Gui(Pod_t* param_pod, int param_argc, char** param_argv)
+: mode{Mode::NONE}, pod{param_pod}, argc{param_argc}, argv{param_argv}
  {
   gtk_init();
   // Initialize some CSS stuff.
   SSC_assertMsg(gdk_display_get_default(), "DEFAULT DISPLAY IS NULL\n");
   GtkCssProvider* provider = gtk_css_provider_new();
-  gtk_css_provider_load_from_path(provider, (getResourcePath() + "/style.css").c_str());
+  std::string provider_path{getResourcePath() + "/style.css"};
+  make_os_path(provider_path);
+  gtk_css_provider_load_from_path(provider, provider_path.c_str());
   gtk_style_context_add_provider_for_display(
    gdk_display_get_default(),
    GTK_STYLE_PROVIDER(provider),
@@ -104,7 +124,6 @@ Gui::on_decrypt_button_clicked(GtkWidget* button, void* self)
   Gui* myself = static_cast<Gui*>(self);
   std::puts("Decrypt button was pushed.");
   myself->set_mode(Mode::DECRYPT);
-  //TODO
  }
 
 void
@@ -123,35 +142,45 @@ Gui::on_application_activate(GtkApplication* gtk_app, void* self)
   myself->application_window = gtk_application_window_new(myself->application);
   gtk_window_set_title(GTK_WINDOW(myself->application_window), "4crypt");
   gtk_widget_set_size_request(myself->application_window, WINDOW_WIDTH, WINDOW_HEIGHT);
-
+  
+  // Create the grid and configure it.
   myself->grid = gtk_grid_new();
   gtk_widget_set_valign(myself->grid, GTK_ALIGN_START);
   gtk_window_set_child(GTK_WINDOW(myself->application_window), myself->grid);
   gtk_grid_set_column_homogeneous(GTK_GRID(myself->grid), TRUE);
 
-  myself->logo_image = gtk_image_new_from_file((getResourcePath() + "/4crypt_cutout_export.png").c_str());
+  // Add the FourCrypt dragon logo.
+  std::string logo_path{getResourcePath() + "/4crypt_cutout_export.png"};
+  make_os_path(logo_path);
+  myself->logo_image = gtk_image_new_from_file(logo_path.c_str());
   gtk_image_set_icon_size(GTK_IMAGE(myself->logo_image), GTK_ICON_SIZE_LARGE);
   gtk_widget_set_size_request(myself->logo_image, FOURCRYPT_IMG_WIDTH, FOURCRYPT_IMG_HEIGHT);
   gtk_widget_set_hexpand(myself->logo_image, TRUE);
   gtk_widget_set_vexpand(myself->logo_image, TRUE);
 
+  // Create the Encrypt button.
   myself->encrypt_button = gtk_button_new_with_label("Encrypt");
   g_signal_connect(myself->encrypt_button, "clicked", G_CALLBACK(on_encrypt_button_clicked), myself);
 
+  // Create the Decrypt button.
   myself->decrypt_button = gtk_button_new_with_label("Decrypt");
   g_signal_connect(myself->decrypt_button, "clicked", G_CALLBACK(on_decrypt_button_clicked), myself);
 
+  // Create a Box for input.
   myself->input_box    = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
   myself->input_label  = gtk_label_new(" Input:");
   myself->input_text   = gtk_text_new();
+  // Fill the box with a label and text.
   gtk_box_append(GTK_BOX(myself->input_box), myself->input_label);
   gtk_box_append(GTK_BOX(myself->input_box), myself->input_text);
   gtk_widget_set_size_request(myself->input_box, -1, TEXT_HEIGHT);
   gtk_widget_set_hexpand(myself->input_text, TRUE);
 
+  // Create a Box for output.
   myself->output_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
   myself->output_label = gtk_label_new("Output:");
   myself->output_text  = gtk_text_new();
+  // Fill the box with a label and text.
   gtk_box_append(GTK_BOX(myself->output_box), myself->output_label);
   gtk_box_append(GTK_BOX(myself->output_box), myself->output_text);
   gtk_widget_set_size_request(myself->output_box, -1, TEXT_HEIGHT);
@@ -162,7 +191,8 @@ Gui::on_application_activate(GtkApplication* gtk_app, void* self)
 
   int grid_y_idx = 0;
 
-  // gtk_grid_attach(grid, widget, x, y, horiz_fill, vert_fill);
+  // Attach the widgets to the grid according to the following syntax:
+  // gtk_grid_attach(grid, widget, grid_x_idx, grid_y_idx, horizontal_fill, vertical_fill)
   gtk_grid_attach(GTK_GRID(myself->grid), myself->logo_image , 0, grid_y_idx, 4, 1);
   ++grid_y_idx;
 
@@ -178,6 +208,7 @@ Gui::on_application_activate(GtkApplication* gtk_app, void* self)
 
   gtk_grid_attach(GTK_GRID(myself->grid), myself->go_button, 0, grid_y_idx, 4, 1);
 
+  // Set the grid as a child of the application window, then present the application window.
   gtk_window_set_child(GTK_WINDOW(myself->application_window), myself->grid);
   gtk_window_present(GTK_WINDOW(myself->application_window));
  }
@@ -216,6 +247,8 @@ int main(
  int   argc,
  char* argv[])
  {
-  Gui gui{argc, argv};
+  FourCrypt fc{};
+  Gui       gui{fc.getPod(), argc, argv};
+
   return gui.run();
  }
