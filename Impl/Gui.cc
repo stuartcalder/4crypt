@@ -30,6 +30,17 @@ constexpr int FOURCRYPT_TITLE_HEIGHT {195};
 constexpr int WINDOW_WIDTH  {FOURCRYPT_IMG_WIDTH  * 2};
 constexpr int WINDOW_HEIGHT {FOURCRYPT_IMG_HEIGHT * 2}; 
 
+static bool
+str_ends_with(const std::string& str, const std::string& with)
+ {
+  std::string::size_type position {
+   str.rfind(
+    with.c_str(),
+    std::string::npos,
+    with.size())};
+  return position != std::string::npos;
+ }
+
 void
 make_os_path(std::string& str)
  {
@@ -201,18 +212,38 @@ Gui::on_start_button_clicked(GtkWidget* button, void* self)
  {
   Gui* myself {static_cast<Gui*>(self)};
   std::puts("Start button was pushed.");
-  myself->verify_inputs();
-  switch (myself->mode)
+  if (myself->verify_inputs())
    {
-    case Mode::ENCRYPT:
+    switch (myself->mode)
      {
-      //TODO
-     } break;
-    case Mode::DECRYPT:
-     {
-      //TODO
-     } break;
+      case Mode::ENCRYPT:
+       {
+       } break;
+      case Mode::DECRYPT:
+       {
+       } break;
+     }
    }
+ }
+
+void
+Gui::on_input_text_activate(GtkWidget* text, void* self)
+ {
+  Gui* myself {static_cast<Gui*>(self)};
+
+  GtkEntryBuffer* buffer {gtk_text_get_buffer(GTK_TEXT(text))};
+  myself->input_filepath = gtk_entry_buffer_get_text(buffer);
+  myself->on_input_filepath_updated();
+ }
+
+void
+Gui::on_output_text_activate(GtkWidget* text, void* self)
+ {
+  Gui* myself {static_cast<Gui*>(self)};
+
+  GtkEntryBuffer* buffer {gtk_text_get_buffer(GTK_TEXT(text))};
+  myself->output_filepath = gtk_entry_buffer_get_text(buffer);
+  myself->output_text_activated = true;
  }
 
 bool
@@ -227,6 +258,7 @@ Gui::verify_inputs(void)
   };
   std::string filepath {filepath_cstr};
   make_os_path(filepath);
+  input_filepath = filepath;
 
   //TODO: Explain to the user that it's invalid for the input file to not exist.
   if (!SSC_FilePath_exists(filepath.c_str()))
@@ -240,6 +272,7 @@ Gui::verify_inputs(void)
   filepath_cstr = gtk_entry_buffer_get_text(text_buffer);
   filepath      = filepath_cstr;
   make_os_path(filepath);
+  output_filepath = filepath;
 
   //TODO: Explain to the user that it's invalid for the output file to already exist.
   if (SSC_FilePath_exists(filepath.c_str()))
@@ -253,46 +286,64 @@ Gui::verify_inputs(void)
 void
 Gui::on_input_filepath_updated(void)
  {
+   bool output_filepath_updated {};
+   std::printf("on_input_filepath_updated() called with mode %i\n", (int)mode);
    switch (mode)
     {
+     case Mode::NONE:
+      {
+       // The user has chosen an input filepath before selecting a mode.
+       // Assume the mode will be ENCRYPT when the filepath doesn't end in ".4c".
+       // Assume the mode will be DECRYPT when the filepath does end in ".4c".
+       // Do not make an assumption if the user has specified an output filepath.
+       if (!output_text_activated)
+        {
+         if (str_ends_with(input_filepath, ".4c"))
+           set_mode(Mode::DECRYPT);
+         else
+           set_mode(Mode::ENCRYPT);
+         on_input_filepath_updated();
+        }
+      } break;
      case Mode::ENCRYPT:
       {
        // The input filepath was set during encrypt mode. Assume that the output filepath
        // will be the same as the input filepath, but with ".4c" appended.
        output_filepath = input_filepath + ".4c";
+       output_filepath_updated = true;
       } break;
      case Mode::DECRYPT:
       {
        //TODO: The input filepath was set during decrypt mode. Assume that the output filepath
        // will be the same as the input filepath, but with ".4c" removed. (Assuming it ended in ".4c").
-       std::string::size_type pos{
-        input_filepath.rfind(
-         ".4c",
-         std::string::npos,
-         3)};
-       if (pos != std::string::npos)
+       if (str_ends_with(input_filepath, ".4c"))
         {
          output_filepath = input_filepath;
          output_filepath.erase(
-          output_filepath.end() - 4,
+          output_filepath.end() - 3,
           output_filepath.end());
-         //TODO
+         output_filepath_updated = true;
         }
-       else
-         output_filepath.clear();
       } break;
     }
    // After mode-specific updates, update the text in the text boxes.
+   std::printf("input_filepath was %s\n", input_filepath.c_str());
+   std::printf("output_filepath was %s\n", output_filepath.c_str());
    GtkEntryBuffer* buffer {gtk_text_get_buffer(GTK_TEXT(input_text))};
    gtk_entry_buffer_set_text(
     buffer,
     input_filepath.c_str(),
     input_filepath.size());
-   buffer = gtk_text_get_buffer(GTK_TEXT(output_text));
-   gtk_entry_buffer_set_text(
-    buffer,
-    output_filepath.c_str(),
-    output_filepath.size());
+   if (output_filepath_updated)
+     on_output_filepath_updated();
+ }
+
+void
+Gui::on_output_filepath_updated(void)
+ {
+  std::printf("on_output_filepath_updated() called with mode %i\n", (int)mode);
+  GtkEntryBuffer* buffer {gtk_text_get_buffer(GTK_TEXT(output_text))};
+  gtk_entry_buffer_set_text(buffer, output_filepath.c_str(), output_filepath.size());
  }
 
 void
@@ -332,8 +383,9 @@ Gui::on_application_activate(GtkApplication* gtk_app, void* self)
   myself->input_box    = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
   myself->input_label  = gtk_label_new(" Input:");
   myself->input_text   = gtk_text_new();
-  myself->input_button = gtk_button_new_with_label("...");
-  g_signal_connect(myself->input_button, "clicked", G_CALLBACK(on_input_button_clicked), myself);
+  myself->input_button = gtk_button_new_with_label("Pick File");
+  g_signal_connect(myself->input_text  , "activate", G_CALLBACK(on_input_text_activate) , myself);
+  g_signal_connect(myself->input_button, "clicked" , G_CALLBACK(on_input_button_clicked), myself);
   // Fill the box with a label and text.
   gtk_box_append(GTK_BOX(myself->input_box), myself->input_label);
   gtk_box_append(GTK_BOX(myself->input_box), myself->input_text);
@@ -345,8 +397,9 @@ Gui::on_application_activate(GtkApplication* gtk_app, void* self)
   myself->output_box    = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
   myself->output_label  = gtk_label_new("Output:");
   myself->output_text   = gtk_text_new();
-  myself->output_button = gtk_button_new_with_label("...");
-  g_signal_connect(myself->output_button, "clicked", G_CALLBACK(on_output_button_clicked), myself);
+  myself->output_button = gtk_button_new_with_label("Pick File");
+  g_signal_connect(myself->output_text  , "activate", G_CALLBACK(on_output_text_activate) , myself);
+  g_signal_connect(myself->output_button, "clicked" , G_CALLBACK(on_output_button_clicked), myself);
   // Fill the box with a label and text.
   gtk_box_append(GTK_BOX(myself->output_box), myself->output_label);
   gtk_box_append(GTK_BOX(myself->output_box), myself->output_text);

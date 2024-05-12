@@ -47,38 +47,42 @@ class Gui
   int run(void);
  private:
  // Private Data //
-  std::string     input_filepath;
-  std::string     output_filepath;
-  GtkApplication* application;
-  GtkFileDialog*  file_dialog;        // Input & Output file dialogs.
-  GtkWidget*      application_window; // Main window for displaying stuff.
-  GtkWidget*      grid;               // Organize UI elements using cells.
-  GtkWidget*      logo_image;         // Blue Dragon.
-  GtkWidget*      encrypt_button;     // Click me to switch to encrypt mode.
-  GtkWidget*      decrypt_button;     // Click me to switch to decrypt mode.
-  GtkWidget*      input_box;          // Contain the Label, Text, & Button for input.
-  GtkWidget*      input_label;
-  GtkWidget*      input_text;
-  GtkWidget*      input_button;
-  GtkWidget*      output_box;         // Contain the Label, Text, & Button for output.
-  GtkWidget*      output_label;
-  GtkWidget*      output_text;
-  GtkWidget*      output_button;
-  GtkWidget*      start_button;       // Click me to begin encrypting/decrypting.
-  Pod_t*          pod;                // Access the primary 4crypt data through me.
-  Mode            mode;               // Encrypt mode? Decrypt mode?
-  int             argc;               // "argc" passed in from main(int argc, char* argv[])
-  char**          argv;               // "argv" passed in from main(int argc, char* argv[])
+  std::string     input_filepath {};
+  std::string     output_filepath {};
+  GtkApplication* application {nullptr};
+  GtkFileDialog*  file_dialog {nullptr};        // Input & Output file dialogs.
+  GtkWidget*      application_window {nullptr}; // Main window for displaying stuff.
+  GtkWidget*      grid {nullptr};               // Organize UI elements using cells.
+  GtkWidget*      logo_image {nullptr};         // Blue Dragon.
+  GtkWidget*      encrypt_button {nullptr};     // Click me to switch to encrypt mode.
+  GtkWidget*      decrypt_button {nullptr};     // Click me to switch to decrypt mode.
+  GtkWidget*      input_box {nullptr};          // Contain the Label, Text, & Button for input.
+  GtkWidget*      input_label {nullptr};
+  GtkWidget*      input_text {nullptr};
+  GtkWidget*      input_button {nullptr};
+  GtkWidget*      output_box {nullptr};         // Contain the Label, Text, & Button for output.
+  GtkWidget*      output_label {nullptr};
+  GtkWidget*      output_text {nullptr};
+  GtkWidget*      output_button {nullptr};
+  GtkWidget*      start_button {nullptr};       // Click me to begin encrypting/decrypting.
+  Pod_t*          pod {nullptr};                // Access the primary 4crypt data through me.
+  Mode            mode {Mode::NONE};            // Encrypt mode? Decrypt mode?
+  int             argc {};                      // "argc" passed in from main(int argc, char* argv[])
+  char**          argv {};                      // "argv" passed in from main(int argc, char* argv[])
+  bool            output_text_activated {};     // Has the user pressed "enter" on the output text at least once?
  // Private Methods //
   void set_mode(Mode);
   bool verify_inputs(void);
   void on_input_filepath_updated(void);
+  void on_output_filepath_updated(void);
  //// Private Static Pseudo-Methods.
   static void on_application_activate(GtkApplication*, void*);
   static void on_encrypt_button_clicked(GtkWidget*,    void*);
   static void on_decrypt_button_clicked(GtkWidget*,    void*);
   static void on_input_button_clicked(GtkWidget*,      void*);
+  static void on_input_text_activate(GtkWidget*,       void*);
   static void on_output_button_clicked(GtkWidget*,     void*);
+  static void on_output_text_activate(GtkWidget*,      void*);
   static void on_start_button_clicked(GtkWidget*,      void*);
  };
 
