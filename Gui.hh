@@ -75,7 +75,9 @@ class Gui
   static void on_application_activate(GtkApplication*, void*);
   static void on_encrypt_button_clicked(GtkWidget*,    void*);
   static void on_decrypt_button_clicked(GtkWidget*,    void*);
-  static void on_start_button_clicked(GtkWidget*, void*);
+  static void on_input_button_clicked(GtkWidget*,      void*);
+  static void on_output_button_clicked(GtkWidget*,     void*);
+  static void on_start_button_clicked(GtkWidget*,      void*);
  };
 
 #endif

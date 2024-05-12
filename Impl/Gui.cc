@@ -134,6 +134,22 @@ Gui::on_decrypt_button_clicked(GtkWidget* button, void* self)
  }
 
 void
+Gui::on_input_button_clicked(GtkWidget* button, void* self)
+ {
+  Gui* myself {static_cast<Gui*>(self)};
+  std::puts("Input button was pushed.");
+  //TODO
+ }
+
+void
+Gui::on_output_button_clicked(GtkWidget* button, void* self)
+ {
+  Gui* myself {static_cast<Gui*>(self)};
+  std::puts("Output button was pushed.");
+  //TODO
+ }
+
+void
 Gui::on_start_button_clicked(GtkWidget* button, void* self)
  {
   Gui* myself {static_cast<Gui*>(self)};
@@ -190,7 +206,7 @@ Gui::verify_inputs(void)
 void
 Gui::on_application_activate(GtkApplication* gtk_app, void* self)
  {
-  constexpr int TEXT_HEIGHT {25};
+  constexpr int TEXT_HEIGHT {20};
   // Create the application window.
   Gui* myself {static_cast<Gui*>(self)};
   myself->application_window = gtk_application_window_new(myself->application);
@@ -225,6 +241,7 @@ Gui::on_application_activate(GtkApplication* gtk_app, void* self)
   myself->input_label  = gtk_label_new(" Input:");
   myself->input_text   = gtk_text_new();
   myself->input_button = gtk_button_new_with_label("...");
+  g_signal_connect(myself->input_button, "clicked", G_CALLBACK(on_input_button_clicked), myself);
   // Fill the box with a label and text.
   gtk_box_append(GTK_BOX(myself->input_box), myself->input_label);
   gtk_box_append(GTK_BOX(myself->input_box), myself->input_text);
@@ -237,6 +254,7 @@ Gui::on_application_activate(GtkApplication* gtk_app, void* self)
   myself->output_label  = gtk_label_new("Output:");
   myself->output_text   = gtk_text_new();
   myself->output_button = gtk_button_new_with_label("...");
+  g_signal_connect(myself->output_button, "clicked", G_CALLBACK(on_output_button_clicked), myself);
   // Fill the box with a label and text.
   gtk_box_append(GTK_BOX(myself->output_box), myself->output_label);
   gtk_box_append(GTK_BOX(myself->output_box), myself->output_text);
