@@ -92,6 +92,7 @@ class Gui
   void decrypt(void);
   void on_input_filepath_updated(void);
   void on_output_filepath_updated(void);
+  bool get_password(void);
  //// Private Static Pseudo-Methods.
   static void on_application_activate(GtkApplication*, void*);
   static void on_encrypt_button_clicked(GtkWidget*,    void*);

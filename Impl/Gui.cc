@@ -255,6 +255,9 @@ Gui::on_start_button_clicked(GtkWidget* button, void* self)
     Pod_t::init(*pod);
    }
 
+  if (not gui->get_password())
+    return;
+
   pod->input_filename = new char [gui->input_filepath.size() + 1];
   memcpy(pod->input_filename, gui->input_filepath.c_str(), gui->input_filepath.size() + 1);
   pod->output_filename = new char [gui->output_filepath.size() + 1];
@@ -414,6 +417,37 @@ Gui::on_output_filepath_updated(void)
   gtk_entry_buffer_set_text(buffer, output_filepath.c_str(), output_filepath.size());
  }
 
+bool
+Gui::get_password(void)
+ {
+  const char* pw_0 {gtk_editable_get_text(GTK_EDITABLE(password_entry))};
+  const char* pw_1 {gtk_editable_get_text(GTK_EDITABLE(reentry_entry))};
+  size_t pw_0_len = std::strlen(pw_0);
+  size_t pw_1_len = std::strlen(pw_1);
+  SSC_assertMsg(pw_0_len <= FourCrypt::MAX_PW_BYTES, "pw_0_len > MAX_PW_BYTES!\n");
+  SSC_assertMsg(pw_1_len <= FourCrypt::MAX_PW_BYTES, "pw_1_len > MAX_PW_BYTES!\n");
+  bool   equal = (pw_0_len == pw_1_len) and (not std::strcmp(pw_0, pw_1));
+  memset(pod->password_buffer, 0, sizeof(pod->password_buffer));
+
+  if (pw_0_len == 0)
+    return false;
+  switch (mode)
+   {
+    case Mode::ENCRYPT:
+      // ENCRYPT mode requires that we get the same password input at least twice.
+      if (not equal)
+        return false;
+      memcpy(pod->password_buffer, pw_0, pw_0_len);
+      pod->password_size = pw_0_len;
+      break;
+    case Mode::DECRYPT:
+      memcpy(pod->password_buffer, pw_0, pw_0_len);
+      pod->password_size = pw_0_len;
+      break;
+   }
+  return true;
+ }
+
 void
 Gui::on_application_activate(GtkApplication* gtk_app, void* self)
  {
@@ -490,18 +524,20 @@ Gui::on_application_activate(GtkApplication* gtk_app, void* self)
   gtk_widget_set_hexpand(gui->password_box,   TRUE);
   gtk_widget_set_hexpand(gui->password_entry, TRUE);
   gtk_widget_set_visible(gui->password_box,   FALSE);
+  gtk_editable_set_max_width_chars(GTK_EDITABLE(gui->password_entry), FourCrypt::MAX_PW_BYTES);
 
   // Create a Box for re-entering passwords.
   gui->reentry_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
   gui->reentry_label = gtk_label_new("Re-Entry:");
   gui->reentry_entry = gtk_password_entry_new();
-  g_signal_connect(gui->reentry_box, "activate", G_CALLBACK(on_reentry_entry_activate), gui); //TODO
+  g_signal_connect(gui->reentry_entry, "activate", G_CALLBACK(on_reentry_entry_activate), gui); //TODO
   gtk_box_append(GTK_BOX(gui->reentry_box), gui->reentry_label);
   gtk_box_append(GTK_BOX(gui->reentry_box), gui->reentry_entry);
   gtk_widget_set_size_request(gui->reentry_box, -1, TEXT_HEIGHT);
   gtk_widget_set_hexpand(gui->reentry_box,   TRUE);
   gtk_widget_set_hexpand(gui->reentry_entry, TRUE);
   gtk_widget_set_visible(gui->reentry_box,   FALSE);
+  gtk_editable_set_max_width_chars(GTK_EDITABLE(gui->reentry_entry), FourCrypt::MAX_PW_BYTES);
 
   gui->start_button = gtk_button_new_with_label("Start");
   g_signal_connect(gui->start_button, "clicked", G_CALLBACK(on_start_button_clicked), gui);
