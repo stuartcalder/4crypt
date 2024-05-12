@@ -453,6 +453,7 @@ Gui::on_application_activate(GtkApplication* gtk_app, void* self)
   gui->input_box    = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
   gui->input_label  = gtk_label_new(" Input:");
   gui->input_text   = gtk_text_new();
+  gtk_widget_add_css_class(gui->input_text, "basic");
   gui->input_button = gtk_button_new_with_label("Pick File");
   g_signal_connect(gui->input_text  , "activate", G_CALLBACK(on_input_text_activate) , gui);
   g_signal_connect(gui->input_button, "clicked" , G_CALLBACK(on_input_button_clicked), gui);
@@ -467,6 +468,7 @@ Gui::on_application_activate(GtkApplication* gtk_app, void* self)
   gui->output_box    = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
   gui->output_label  = gtk_label_new("Output:");
   gui->output_text   = gtk_text_new();
+  gtk_widget_add_css_class(gui->output_text, "basic");
   gui->output_button = gtk_button_new_with_label("Pick File");
   g_signal_connect(gui->output_text  , "activate", G_CALLBACK(on_output_text_activate) , gui);
   g_signal_connect(gui->output_button, "clicked" , G_CALLBACK(on_output_button_clicked), gui);
@@ -485,8 +487,9 @@ Gui::on_application_activate(GtkApplication* gtk_app, void* self)
   gtk_box_append(GTK_BOX(gui->password_box), gui->password_label);
   gtk_box_append(GTK_BOX(gui->password_box), gui->password_entry);
   gtk_widget_set_size_request(gui->password_box, -1, TEXT_HEIGHT);
-  gtk_widget_set_hexpand(gui->password_box, TRUE);
-  gtk_widget_set_visible(gui->password_box, FALSE);
+  gtk_widget_set_hexpand(gui->password_box,   TRUE);
+  gtk_widget_set_hexpand(gui->password_entry, TRUE);
+  gtk_widget_set_visible(gui->password_box,   FALSE);
 
   // Create a Box for re-entering passwords.
   gui->reentry_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
@@ -496,8 +499,9 @@ Gui::on_application_activate(GtkApplication* gtk_app, void* self)
   gtk_box_append(GTK_BOX(gui->reentry_box), gui->reentry_label);
   gtk_box_append(GTK_BOX(gui->reentry_box), gui->reentry_entry);
   gtk_widget_set_size_request(gui->reentry_box, -1, TEXT_HEIGHT);
-  gtk_widget_set_hexpand(gui->reentry_box, TRUE);
-  gtk_widget_set_visible(gui->reentry_box, FALSE);
+  gtk_widget_set_hexpand(gui->reentry_box,   TRUE);
+  gtk_widget_set_hexpand(gui->reentry_entry, TRUE);
+  gtk_widget_set_visible(gui->reentry_box,   FALSE);
 
   gui->start_button = gtk_button_new_with_label("Start");
   g_signal_connect(gui->start_button, "clicked", G_CALLBACK(on_start_button_clicked), gui);
