@@ -220,6 +220,8 @@ Gui::encrypt(void)
   Pod_t::touchup(*pod);
   code_err = fourcrypt->encrypt(&code_type, &code_io_dir);
   //TODO: Handle errors and error types.
+  Pod_t::del(*pod);
+  Pod_t::init(*pod);
  }
 
 void
@@ -232,6 +234,8 @@ Gui::decrypt(void)
   pod->execute_mode = ExeMode::DECRYPT;
   code_err = fourcrypt->decrypt(&code_type, &code_io_dir);
   //TODO: Handle errors and error types.
+  Pod_t::del(*pod);
+  Pod_t::init(*pod);
  }
 
 void
@@ -268,6 +272,20 @@ Gui::on_start_button_clicked(GtkWidget* button, void* self)
       gui->decrypt();
       break;
    }
+ }
+
+void
+Gui::on_password_entry_activate(GtkWidget* pwe, void* self)
+ {
+  Gui* gui {static_cast<Gui*>(self)};
+  //TODO
+ }
+
+void
+Gui::on_reentry_entry_activate(GtkWidget* ree, void* self)
+ {
+  Gui* gui {static_cast<Gui*>(self)};
+  //TODO
  }
 
 void
@@ -405,6 +423,8 @@ Gui::on_application_activate(GtkApplication* gtk_app, void* self)
   gui->application_window = gtk_application_window_new(gui->application);
   gtk_window_set_title(GTK_WINDOW(gui->application_window), "4crypt");
   gtk_widget_set_size_request(gui->application_window, WINDOW_WIDTH, WINDOW_HEIGHT);
+  gtk_widget_set_hexpand(gui->application_window, FALSE);
+  gtk_widget_set_vexpand(gui->application_window, FALSE);
   
   // Create the grid and configure it.
   gui->grid = gtk_grid_new();
@@ -457,6 +477,28 @@ Gui::on_application_activate(GtkApplication* gtk_app, void* self)
   gtk_widget_set_size_request(gui->output_box, -1, TEXT_HEIGHT);
   gtk_widget_set_hexpand(gui->output_text, TRUE);
 
+  // Create a Box for passwords.
+  gui->password_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
+  gui->password_label = gtk_label_new("Password:");
+  gui->password_entry = gtk_password_entry_new();
+  g_signal_connect(gui->password_entry, "activate", G_CALLBACK(on_password_entry_activate), gui); //TODO
+  gtk_box_append(GTK_BOX(gui->password_box), gui->password_label);
+  gtk_box_append(GTK_BOX(gui->password_box), gui->password_entry);
+  gtk_widget_set_size_request(gui->password_box, -1, TEXT_HEIGHT);
+  gtk_widget_set_hexpand(gui->password_box, TRUE);
+  gtk_widget_set_visible(gui->password_box, FALSE);
+
+  // Create a Box for re-entering passwords.
+  gui->reentry_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
+  gui->reentry_label = gtk_label_new("Re-Entry:");
+  gui->reentry_entry = gtk_password_entry_new();
+  g_signal_connect(gui->reentry_box, "activate", G_CALLBACK(on_reentry_entry_activate), gui); //TODO
+  gtk_box_append(GTK_BOX(gui->reentry_box), gui->reentry_label);
+  gtk_box_append(GTK_BOX(gui->reentry_box), gui->reentry_entry);
+  gtk_widget_set_size_request(gui->reentry_box, -1, TEXT_HEIGHT);
+  gtk_widget_set_hexpand(gui->reentry_box, TRUE);
+  gtk_widget_set_visible(gui->reentry_box, FALSE);
+
   gui->start_button = gtk_button_new_with_label("Start");
   g_signal_connect(gui->start_button, "clicked", G_CALLBACK(on_start_button_clicked), gui);
 
@@ -475,6 +517,12 @@ Gui::on_application_activate(GtkApplication* gtk_app, void* self)
   ++grid_y_idx;
 
   gtk_grid_attach(GTK_GRID(gui->grid), gui->output_box  , 0, grid_y_idx, 4, 1);
+  ++grid_y_idx;
+
+  gtk_grid_attach(GTK_GRID(gui->grid), gui->password_box, 0, grid_y_idx, 4, 1);
+  ++grid_y_idx;
+
+  gtk_grid_attach(GTK_GRID(gui->grid), gui->reentry_box , 0, grid_y_idx, 4, 1);
   ++grid_y_idx;
 
   gtk_grid_attach(GTK_GRID(gui->grid), gui->start_button, 0, grid_y_idx, 4, 1);
@@ -507,9 +555,13 @@ Gui::set_mode(Mode m)
    {
     case Mode::ENCRYPT:
       gtk_widget_add_css_class(encrypt_button, "highlight");
+      gtk_widget_set_visible(password_box, TRUE);
+      gtk_widget_set_visible(reentry_box,  TRUE);
       break;
     case Mode::DECRYPT:
       gtk_widget_add_css_class(decrypt_button, "highlight");
+      gtk_widget_set_visible(password_box, TRUE);
+      gtk_widget_set_visible(reentry_box,  FALSE);
       break;
    }
  }
@@ -518,7 +570,7 @@ int main(
  int   argc,
  char* argv[])
  {
-  FourCrypt fc{};
+  FourCrypt fc {};
   Gui       gui{&fc, argc, argv};
 
   return gui.run();

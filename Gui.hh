@@ -47,26 +47,40 @@ class Gui
   int run(void);
  private:
  // Private Data //
-  std::string     input_filepath {};
+  std::string     input_filepath  {};
   std::string     output_filepath {};
+
   GtkApplication* application {};
   GtkFileDialog*  file_dialog {};        // Input & Output file dialogs.
   GtkWidget*      application_window {}; // Main window for displaying stuff.
   GtkWidget*      grid {};               // Organize UI elements using cells.
+
   GtkWidget*      logo_image {};         // Blue Dragon.
+
   GtkWidget*      encrypt_button {};     // Click me to switch to encrypt mode.
   GtkWidget*      decrypt_button {};     // Click me to switch to decrypt mode.
-  GtkWidget*      input_box {};          // Contain the Label, Text, & Button for input.
-  GtkWidget*      input_label {};
-  GtkWidget*      input_text {};
+  GtkWidget*      start_button   {};     // Click me to begin encrypting/decrypting.
+
+  GtkWidget*      input_box    {};       // Contain the Label, Text, & Button for input.
+  GtkWidget*      input_label  {};
+  GtkWidget*      input_text   {};
   GtkWidget*      input_button {};
-  GtkWidget*      output_box {};         // Contain the Label, Text, & Button for output.
-  GtkWidget*      output_label {};
-  GtkWidget*      output_text {};
+
+  GtkWidget*      output_box    {};      // Contain the Label, Text, & Button for output.
+  GtkWidget*      output_label  {};
+  GtkWidget*      output_text   {};
   GtkWidget*      output_button {};
-  GtkWidget*      start_button {};       // Click me to begin encrypting/decrypting.
+
+  GtkWidget*      password_box   {};
+  GtkWidget*      password_label {};
+  GtkWidget*      password_entry {};
+
+  GtkWidget*      reentry_box   {};
+  GtkWidget*      reentry_label {};
+  GtkWidget*      reentry_entry {};
+
   FourCrypt*      fourcrypt {};          // Access the primary 4crypt methods through me.
-  Pod_t*          pod {};                // Access the primary 4crypt data through me.
+  Pod_t*          pod  {};               // Access the primary 4crypt data through me.
   Mode            mode {Mode::NONE};        // Encrypt mode? Decrypt mode?
   int             argc {};                  // "argc" passed in from main(int argc, char* argv[])
   char**          argv {};                  // "argv" passed in from main(int argc, char* argv[])
@@ -87,6 +101,8 @@ class Gui
   static void on_output_button_clicked(GtkWidget*,     void*);
   static void on_output_text_activate(GtkWidget*,      void*);
   static void on_start_button_clicked(GtkWidget*,      void*);
+  static void on_password_entry_activate(GtkWidget*,   void*);
+  static void on_reentry_entry_activate(GtkWidget*,    void*);
  };
 
 #endif
