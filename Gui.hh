@@ -41,11 +41,14 @@ class Gui
   static std::string getResourcePath(void);
  // Constructors //
   Gui(Pod_t* param_pod, int param_argc, char** param_argv);
+ // Destructor //
+  ~Gui();
  // Public Methods //
   int run(void);
  private:
  // Private Data //
   GtkApplication* application;
+  GtkFileDialog*  file_dialog;
   GtkWidget*      application_window;
   GtkWidget*      password_window;
   GtkWidget*      grid;
@@ -55,9 +58,11 @@ class Gui
   GtkWidget*      input_box;
   GtkWidget*      input_label;
   GtkWidget*      input_text;
+  GtkWidget*      input_button;
   GtkWidget*      output_box;
   GtkWidget*      output_label;
   GtkWidget*      output_text;
+  GtkWidget*      output_button;
   GtkWidget*      start_button;
   Pod_t*          pod;
   Mode            mode;

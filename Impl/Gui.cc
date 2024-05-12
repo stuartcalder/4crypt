@@ -98,6 +98,9 @@ Gui::Gui(Pod_t* param_pod, int param_argc, char** param_argv)
 : mode{Mode::NONE}, pod{param_pod}, argc{param_argc}, argv{param_argv}
  {
   gtk_init();
+
+  file_dialog = gtk_file_dialog_new();
+
   // Initialize some CSS stuff.
   SSC_assertMsg(gdk_display_get_default(), "DEFAULT DISPLAY IS NULL\n");
   GtkCssProvider* provider  {gtk_css_provider_new()};
@@ -108,6 +111,10 @@ Gui::Gui(Pod_t* param_pod, int param_argc, char** param_argv)
    gdk_display_get_default(),
    GTK_STYLE_PROVIDER(provider),
    GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+ }
+Gui::~Gui()
+ {
+  g_object_unref(file_dialog);
  }
 
 void
@@ -148,6 +155,7 @@ Gui::on_start_button_clicked(GtkWidget* button, void* self)
 bool
 Gui::verify_inputs(void)
  {
+  // Get the input text data.
   GtkEntryBuffer* text_buffer {
    gtk_text_get_buffer(GTK_TEXT(input_text))
   };
@@ -164,6 +172,7 @@ Gui::verify_inputs(void)
     return false;
    }
 
+  // Get the output text data.
   text_buffer   = gtk_text_get_buffer(GTK_TEXT(output_text));
   filepath_cstr = gtk_entry_buffer_get_text(text_buffer);
   filepath      = filepath_cstr;
@@ -215,19 +224,23 @@ Gui::on_application_activate(GtkApplication* gtk_app, void* self)
   myself->input_box    = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
   myself->input_label  = gtk_label_new(" Input:");
   myself->input_text   = gtk_text_new();
+  myself->input_button = gtk_button_new_with_label("...");
   // Fill the box with a label and text.
   gtk_box_append(GTK_BOX(myself->input_box), myself->input_label);
   gtk_box_append(GTK_BOX(myself->input_box), myself->input_text);
+  gtk_box_append(GTK_BOX(myself->input_box), myself->input_button);
   gtk_widget_set_size_request(myself->input_box, -1, TEXT_HEIGHT);
   gtk_widget_set_hexpand(myself->input_text, TRUE);
 
   // Create a Box for output.
-  myself->output_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
-  myself->output_label = gtk_label_new("Output:");
-  myself->output_text  = gtk_text_new();
+  myself->output_box    = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
+  myself->output_label  = gtk_label_new("Output:");
+  myself->output_text   = gtk_text_new();
+  myself->output_button = gtk_button_new_with_label("...");
   // Fill the box with a label and text.
   gtk_box_append(GTK_BOX(myself->output_box), myself->output_label);
   gtk_box_append(GTK_BOX(myself->output_box), myself->output_text);
+  gtk_box_append(GTK_BOX(myself->output_box), myself->output_button);
   gtk_widget_set_size_request(myself->output_box, -1, TEXT_HEIGHT);
   gtk_widget_set_hexpand(myself->output_text, TRUE);
 
