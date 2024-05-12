@@ -47,30 +47,32 @@ class Gui
   int run(void);
  private:
  // Private Data //
+  std::string     input_filepath;
+  std::string     output_filepath;
   GtkApplication* application;
-  GtkFileDialog*  file_dialog;
-  GtkWidget*      application_window;
-  GtkWidget*      password_window;
-  GtkWidget*      grid;
-  GtkWidget*      logo_image;
-  GtkWidget*      encrypt_button;
-  GtkWidget*      decrypt_button;
-  GtkWidget*      input_box;
+  GtkFileDialog*  file_dialog;        // Input & Output file dialogs.
+  GtkWidget*      application_window; // Main window for displaying stuff.
+  GtkWidget*      grid;               // Organize UI elements using cells.
+  GtkWidget*      logo_image;         // Blue Dragon.
+  GtkWidget*      encrypt_button;     // Click me to switch to encrypt mode.
+  GtkWidget*      decrypt_button;     // Click me to switch to decrypt mode.
+  GtkWidget*      input_box;          // Contain the Label, Text, & Button for input.
   GtkWidget*      input_label;
   GtkWidget*      input_text;
   GtkWidget*      input_button;
-  GtkWidget*      output_box;
+  GtkWidget*      output_box;         // Contain the Label, Text, & Button for output.
   GtkWidget*      output_label;
   GtkWidget*      output_text;
   GtkWidget*      output_button;
-  GtkWidget*      start_button;
-  Pod_t*          pod;
-  Mode            mode;
-  int             argc;
-  char**          argv;
+  GtkWidget*      start_button;       // Click me to begin encrypting/decrypting.
+  Pod_t*          pod;                // Access the primary 4crypt data through me.
+  Mode            mode;               // Encrypt mode? Decrypt mode?
+  int             argc;               // "argc" passed in from main(int argc, char* argv[])
+  char**          argv;               // "argv" passed in from main(int argc, char* argv[])
  // Private Methods //
-  void set_mode(Mode);//TODO
+  void set_mode(Mode);
   bool verify_inputs(void);
+  void on_input_filepath_updated(void);
  //// Private Static Pseudo-Methods.
   static void on_application_activate(GtkApplication*, void*);
   static void on_encrypt_button_clicked(GtkWidget*,    void*);

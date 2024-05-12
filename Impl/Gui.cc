@@ -138,7 +138,33 @@ Gui::on_input_button_clicked(GtkWidget* button, void* self)
  {
   Gui* myself {static_cast<Gui*>(self)};
   std::puts("Input button was pushed.");
-  //TODO
+  //TODO: Open a file dialog to choose an input file.
+  gtk_file_dialog_open(
+   myself->file_dialog,
+   GTK_WINDOW(myself->application_window),
+   nullptr, // (GCancellable*)
+   static_cast<GAsyncReadyCallback>([]
+    (GObject*      fdialog,
+     GAsyncResult* result,
+     void*         void_self)
+    {
+     Gui*    lambda_self {static_cast<Gui*>(void_self)};
+    /* This function initiates a file selection operation by presenting a file chooser
+     * dialog to the user.The callback will be called when the dialog is dismissed.
+     * It should call gtk_file_dialog_open_finish() to obtain
+     * the result. */
+     GFile* file {
+      gtk_file_dialog_open_finish(
+       GTK_FILE_DIALOG(fdialog),
+       result,
+       nullptr)};
+     if (file != nullptr)
+      {
+       lambda_self->input_filepath = g_file_get_path(file);
+       lambda_self->on_input_filepath_updated();
+      }
+    }),
+   myself); // (gpointer)
  }
 
 void
@@ -146,7 +172,28 @@ Gui::on_output_button_clicked(GtkWidget* button, void* self)
  {
   Gui* myself {static_cast<Gui*>(self)};
   std::puts("Output button was pushed.");
-  //TODO
+  gtk_file_dialog_save(
+   myself->file_dialog,
+   GTK_WINDOW(myself->application_window),
+   nullptr, // (GCancellable*)
+   static_cast<GAsyncReadyCallback>([]
+    (GObject*      fdialog,
+     GAsyncResult* result,
+     void*         void_self)
+    {
+     Gui* lambda_self {static_cast<Gui*>(void_self)};
+     
+     GFile* file {
+      gtk_file_dialog_save_finish(
+       GTK_FILE_DIALOG(fdialog),
+       result,
+       nullptr)};
+     if (file != nullptr)
+      {
+       lambda_self->output_filepath = g_file_get_path(file);
+      }
+    }),
+   myself);
  }
 
 void
@@ -201,6 +248,51 @@ Gui::verify_inputs(void)
     return false;
    }
   return true;
+ }
+
+void
+Gui::on_input_filepath_updated(void)
+ {
+   switch (mode)
+    {
+     case Mode::ENCRYPT:
+      {
+       // The input filepath was set during encrypt mode. Assume that the output filepath
+       // will be the same as the input filepath, but with ".4c" appended.
+       output_filepath = input_filepath + ".4c";
+      } break;
+     case Mode::DECRYPT:
+      {
+       //TODO: The input filepath was set during decrypt mode. Assume that the output filepath
+       // will be the same as the input filepath, but with ".4c" removed. (Assuming it ended in ".4c").
+       std::string::size_type pos{
+        input_filepath.rfind(
+         ".4c",
+         std::string::npos,
+         3)};
+       if (pos != std::string::npos)
+        {
+         output_filepath = input_filepath;
+         output_filepath.erase(
+          output_filepath.end() - 4,
+          output_filepath.end());
+         //TODO
+        }
+       else
+         output_filepath.clear();
+      } break;
+    }
+   // After mode-specific updates, update the text in the text boxes.
+   GtkEntryBuffer* buffer {gtk_text_get_buffer(GTK_TEXT(input_text))};
+   gtk_entry_buffer_set_text(
+    buffer,
+    input_filepath.c_str(),
+    input_filepath.size());
+   buffer = gtk_text_get_buffer(GTK_TEXT(output_text));
+   gtk_entry_buffer_set_text(
+    buffer,
+    output_filepath.c_str(),
+    output_filepath.size());
  }
 
 void
