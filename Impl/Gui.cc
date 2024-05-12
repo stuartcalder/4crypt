@@ -2,6 +2,7 @@
 #include <gtk/gtk.h>
 #include <gio/gio.h>
 #include <string>
+#include <utility>
 #include <cstring>
 #include <cstdlib>
 #include <cstdio>
@@ -73,18 +74,13 @@ Gui::getExecutablePath(void)
 std::string
 Gui::getExecutableDirPath(void)
  {
-  std::string str{getExecutablePath()};
-  auto size{str.size()};
+  std::string str {getExecutablePath()};
+  auto size {str.size()};
   SSC_assertMsg(size > FOURCRYPT_GUI_BINARY_LENGTH, "Error: ExecutableDirPath invalid size!\n");
 
-  auto pos{str.rfind(
-   FOURCRYPT_GUI_BINARY,
-   std::string::npos, 
-   FOURCRYPT_GUI_BINARY_LENGTH)};
   SSC_assertMsg(
-   pos != std::string::npos,
-   "Error: %s was not found at the end of the path!\n",
-   FOURCRYPT_GUI_BINARY);
+   str_ends_with(str, FOURCRYPT_GUI_BINARY),
+   "Error: " FOURCRYPT_GUI_BINARY "was not found at the end of the path!\n");
 
   str.erase(
    str.end() - (FOURCRYPT_GUI_BINARY_LENGTH + 1), // Also erase the trailing '/'.
@@ -105,9 +101,10 @@ Gui::getResourcePath(void)
  #endif
  }
 
-Gui::Gui(Pod_t* param_pod, int param_argc, char** param_argv)
-: mode{Mode::NONE}, pod{param_pod}, argc{param_argc}, argv{param_argv}
+Gui::Gui(FourCrypt* param_fc, int param_argc, char** param_argv)
+: fourcrypt{param_fc}, argc{param_argc}, argv{param_argv}
  {
+  pod = fourcrypt->getPod();
   gtk_init();
 
   file_dialog = gtk_file_dialog_new();
@@ -131,28 +128,28 @@ Gui::~Gui()
 void
 Gui::on_encrypt_button_clicked(GtkWidget* button, void* self)
  {
-  Gui* myself {static_cast<Gui*>(self)};
+  Gui* gui {static_cast<Gui*>(self)};
   std::puts("Encrypt button was pushed.");
-  myself->set_mode(Mode::ENCRYPT);
+  gui->set_mode(Mode::ENCRYPT);
  }
 
 void
 Gui::on_decrypt_button_clicked(GtkWidget* button, void* self)
  {
-  Gui* myself {static_cast<Gui*>(self)};
+  Gui* gui {static_cast<Gui*>(self)};
   std::puts("Decrypt button was pushed.");
-  myself->set_mode(Mode::DECRYPT);
+  gui->set_mode(Mode::DECRYPT);
  }
 
 void
 Gui::on_input_button_clicked(GtkWidget* button, void* self)
  {
-  Gui* myself {static_cast<Gui*>(self)};
+  Gui* gui {static_cast<Gui*>(self)};
   std::puts("Input button was pushed.");
   //TODO: Open a file dialog to choose an input file.
   gtk_file_dialog_open(
-   myself->file_dialog,
-   GTK_WINDOW(myself->application_window),
+   gui->file_dialog,
+   GTK_WINDOW(gui->application_window),
    nullptr, // (GCancellable*)
    static_cast<GAsyncReadyCallback>([]
     (GObject*      fdialog,
@@ -175,17 +172,17 @@ Gui::on_input_button_clicked(GtkWidget* button, void* self)
        lambda_self->on_input_filepath_updated();
       }
     }),
-   myself); // (gpointer)
+   gui); // (gpointer)
  }
 
 void
 Gui::on_output_button_clicked(GtkWidget* button, void* self)
  {
-  Gui* myself {static_cast<Gui*>(self)};
+  Gui* gui {static_cast<Gui*>(self)};
   std::puts("Output button was pushed.");
   gtk_file_dialog_save(
-   myself->file_dialog,
-   GTK_WINDOW(myself->application_window),
+   gui->file_dialog,
+   GTK_WINDOW(gui->application_window),
    nullptr, // (GCancellable*)
    static_cast<GAsyncReadyCallback>([]
     (GObject*      fdialog,
@@ -204,46 +201,93 @@ Gui::on_output_button_clicked(GtkWidget* button, void* self)
        lambda_self->output_filepath = g_file_get_path(file);
       }
     }),
-   myself);
+   gui);
+ }
+
+using ExeMode  = FourCrypt::ExeMode;
+using PadMode  = FourCrypt::PadMode;
+using InOutDir = FourCrypt::InOutDir;
+using ErrType  = FourCrypt::ErrType;
+
+void
+Gui::encrypt(void)
+ {
+  SSC_CodeError_t code_err    {0};
+  ErrType         code_type   {ErrType::FOURCRYPT};
+  InOutDir        code_io_dir {InOutDir::NONE};
+
+  pod->execute_mode = ExeMode::ENCRYPT;
+  Pod_t::touchup(*pod);
+  code_err = fourcrypt->encrypt(&code_type, &code_io_dir);
+  //TODO: Handle errors and error types.
+ }
+
+void
+Gui::decrypt(void)
+ {
+  SSC_CodeError_t code_err    {0};
+  ErrType         code_type   {ErrType::FOURCRYPT};
+  InOutDir        code_io_dir {InOutDir::NONE};
+
+  pod->execute_mode = ExeMode::DECRYPT;
+  code_err = fourcrypt->decrypt(&code_type, &code_io_dir);
+  //TODO: Handle errors and error types.
  }
 
 void
 Gui::on_start_button_clicked(GtkWidget* button, void* self)
  {
-  Gui* myself {static_cast<Gui*>(self)};
+  Gui*   gui {static_cast<Gui*>(self)};
+  Pod_t* pod {gui->pod};
+
   std::puts("Start button was pushed.");
-  if (myself->verify_inputs())
+  if (not gui->verify_inputs())
+    return;
+
+  // Reset the POD if it's been initialized.
+  if (pod->input_filename)
    {
-    switch (myself->mode)
-     {
-      case Mode::ENCRYPT:
-       {
-       } break;
-      case Mode::DECRYPT:
-       {
-       } break;
-     }
+    Pod_t::del(*pod);
+    Pod_t::init(*pod);
+   }
+
+  pod->input_filename = new char [gui->input_filepath.size() + 1];
+  memcpy(pod->input_filename, gui->input_filepath.c_str(), gui->input_filepath.size() + 1);
+  pod->output_filename = new char [gui->output_filepath.size() + 1];
+  memcpy(pod->output_filename, gui->output_filepath.c_str(), gui->output_filepath.size() + 1);
+
+  pod->input_filename_size  = gui->input_filepath.size();
+  pod->output_filename_size = gui->output_filepath.size();
+
+  switch (gui->mode)
+   {
+    case Mode::ENCRYPT:
+      gui->encrypt();
+      break;
+    case Mode::DECRYPT:
+      gui->decrypt();
+      break;
    }
  }
 
 void
 Gui::on_input_text_activate(GtkWidget* text, void* self)
  {
-  Gui* myself {static_cast<Gui*>(self)};
+  Gui* gui {static_cast<Gui*>(self)};
 
   GtkEntryBuffer* buffer {gtk_text_get_buffer(GTK_TEXT(text))};
-  myself->input_filepath = gtk_entry_buffer_get_text(buffer);
-  myself->on_input_filepath_updated();
+  gui->input_filepath = gtk_entry_buffer_get_text(buffer);
+  gui->on_input_filepath_updated();
  }
 
 void
 Gui::on_output_text_activate(GtkWidget* text, void* self)
  {
-  Gui* myself {static_cast<Gui*>(self)};
+  Gui* gui {static_cast<Gui*>(self)};
 
   GtkEntryBuffer* buffer {gtk_text_get_buffer(GTK_TEXT(text))};
-  myself->output_filepath = gtk_entry_buffer_get_text(buffer);
-  myself->output_text_activated = true;
+  gui->output_filepath = gtk_entry_buffer_get_text(buffer);
+  gui->output_text_activated = true;
  }
 
 bool
@@ -309,8 +353,12 @@ Gui::on_input_filepath_updated(void)
       {
        // The input filepath was set during encrypt mode. Assume that the output filepath
        // will be the same as the input filepath, but with ".4c" appended.
-       output_filepath = input_filepath + ".4c";
-       output_filepath_updated = true;
+       std::string ofp {input_filepath + ".4c"};
+       if (not SSC_FilePath_exists(ofp.c_str()))
+        {
+         output_filepath = std::move(ofp);
+         output_filepath_updated = true;
+        }
       } break;
      case Mode::DECRYPT:
       {
@@ -318,11 +366,13 @@ Gui::on_input_filepath_updated(void)
        // will be the same as the input filepath, but with ".4c" removed. (Assuming it ended in ".4c").
        if (str_ends_with(input_filepath, ".4c"))
         {
-         output_filepath = input_filepath;
-         output_filepath.erase(
-          output_filepath.end() - 3,
-          output_filepath.end());
-         output_filepath_updated = true;
+         std::string ofp {input_filepath};
+         ofp.erase(ofp.end() - 3, ofp.end());
+         if (not SSC_FilePath_exists(ofp.c_str()))
+          {
+           output_filepath = std::move(ofp);
+           output_filepath_updated = true;
+          }
         }
       } break;
     }
@@ -351,87 +401,87 @@ Gui::on_application_activate(GtkApplication* gtk_app, void* self)
  {
   constexpr int TEXT_HEIGHT {20};
   // Create the application window.
-  Gui* myself {static_cast<Gui*>(self)};
-  myself->application_window = gtk_application_window_new(myself->application);
-  gtk_window_set_title(GTK_WINDOW(myself->application_window), "4crypt");
-  gtk_widget_set_size_request(myself->application_window, WINDOW_WIDTH, WINDOW_HEIGHT);
+  Gui* gui {static_cast<Gui*>(self)};
+  gui->application_window = gtk_application_window_new(gui->application);
+  gtk_window_set_title(GTK_WINDOW(gui->application_window), "4crypt");
+  gtk_widget_set_size_request(gui->application_window, WINDOW_WIDTH, WINDOW_HEIGHT);
   
   // Create the grid and configure it.
-  myself->grid = gtk_grid_new();
-  gtk_widget_set_valign(myself->grid, GTK_ALIGN_START);
-  gtk_window_set_child(GTK_WINDOW(myself->application_window), myself->grid);
-  gtk_grid_set_column_homogeneous(GTK_GRID(myself->grid), TRUE);
+  gui->grid = gtk_grid_new();
+  gtk_widget_set_valign(gui->grid, GTK_ALIGN_START);
+  gtk_window_set_child(GTK_WINDOW(gui->application_window), gui->grid);
+  gtk_grid_set_column_homogeneous(GTK_GRID(gui->grid), TRUE);
 
   // Add the FourCrypt dragon logo.
-  std::string logo_path {getResourcePath() + "/4crypt_cutout_export.png"};
+  std::string logo_path {getResourcePath() + "/dragon.png"};
   make_os_path(logo_path);
-  myself->logo_image = gtk_image_new_from_file(logo_path.c_str());
-  gtk_image_set_icon_size(GTK_IMAGE(myself->logo_image), GTK_ICON_SIZE_LARGE);
-  gtk_widget_set_size_request(myself->logo_image, FOURCRYPT_IMG_WIDTH, FOURCRYPT_IMG_HEIGHT);
-  gtk_widget_set_hexpand(myself->logo_image, TRUE);
-  gtk_widget_set_vexpand(myself->logo_image, TRUE);
+  gui->logo_image = gtk_image_new_from_file(logo_path.c_str());
+  gtk_image_set_icon_size(GTK_IMAGE(gui->logo_image), GTK_ICON_SIZE_LARGE);
+  gtk_widget_set_size_request(gui->logo_image, FOURCRYPT_IMG_WIDTH, FOURCRYPT_IMG_HEIGHT);
+  gtk_widget_set_hexpand(gui->logo_image, TRUE);
+  gtk_widget_set_vexpand(gui->logo_image, TRUE);
 
   // Create the Encrypt button.
-  myself->encrypt_button = gtk_button_new_with_label("Encrypt");
-  g_signal_connect(myself->encrypt_button, "clicked", G_CALLBACK(on_encrypt_button_clicked), myself);
+  gui->encrypt_button = gtk_button_new_with_label("Encrypt");
+  g_signal_connect(gui->encrypt_button, "clicked", G_CALLBACK(on_encrypt_button_clicked), gui);
 
   // Create the Decrypt button.
-  myself->decrypt_button = gtk_button_new_with_label("Decrypt");
-  g_signal_connect(myself->decrypt_button, "clicked", G_CALLBACK(on_decrypt_button_clicked), myself);
+  gui->decrypt_button = gtk_button_new_with_label("Decrypt");
+  g_signal_connect(gui->decrypt_button, "clicked", G_CALLBACK(on_decrypt_button_clicked), gui);
 
   // Create a Box for input.
-  myself->input_box    = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
-  myself->input_label  = gtk_label_new(" Input:");
-  myself->input_text   = gtk_text_new();
-  myself->input_button = gtk_button_new_with_label("Pick File");
-  g_signal_connect(myself->input_text  , "activate", G_CALLBACK(on_input_text_activate) , myself);
-  g_signal_connect(myself->input_button, "clicked" , G_CALLBACK(on_input_button_clicked), myself);
+  gui->input_box    = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
+  gui->input_label  = gtk_label_new(" Input:");
+  gui->input_text   = gtk_text_new();
+  gui->input_button = gtk_button_new_with_label("Pick File");
+  g_signal_connect(gui->input_text  , "activate", G_CALLBACK(on_input_text_activate) , gui);
+  g_signal_connect(gui->input_button, "clicked" , G_CALLBACK(on_input_button_clicked), gui);
   // Fill the box with a label and text.
-  gtk_box_append(GTK_BOX(myself->input_box), myself->input_label);
-  gtk_box_append(GTK_BOX(myself->input_box), myself->input_text);
-  gtk_box_append(GTK_BOX(myself->input_box), myself->input_button);
-  gtk_widget_set_size_request(myself->input_box, -1, TEXT_HEIGHT);
-  gtk_widget_set_hexpand(myself->input_text, TRUE);
+  gtk_box_append(GTK_BOX(gui->input_box), gui->input_label);
+  gtk_box_append(GTK_BOX(gui->input_box), gui->input_text);
+  gtk_box_append(GTK_BOX(gui->input_box), gui->input_button);
+  gtk_widget_set_size_request(gui->input_box, -1, TEXT_HEIGHT);
+  gtk_widget_set_hexpand(gui->input_text, TRUE);
 
   // Create a Box for output.
-  myself->output_box    = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
-  myself->output_label  = gtk_label_new("Output:");
-  myself->output_text   = gtk_text_new();
-  myself->output_button = gtk_button_new_with_label("Pick File");
-  g_signal_connect(myself->output_text  , "activate", G_CALLBACK(on_output_text_activate) , myself);
-  g_signal_connect(myself->output_button, "clicked" , G_CALLBACK(on_output_button_clicked), myself);
+  gui->output_box    = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
+  gui->output_label  = gtk_label_new("Output:");
+  gui->output_text   = gtk_text_new();
+  gui->output_button = gtk_button_new_with_label("Pick File");
+  g_signal_connect(gui->output_text  , "activate", G_CALLBACK(on_output_text_activate) , gui);
+  g_signal_connect(gui->output_button, "clicked" , G_CALLBACK(on_output_button_clicked), gui);
   // Fill the box with a label and text.
-  gtk_box_append(GTK_BOX(myself->output_box), myself->output_label);
-  gtk_box_append(GTK_BOX(myself->output_box), myself->output_text);
-  gtk_box_append(GTK_BOX(myself->output_box), myself->output_button);
-  gtk_widget_set_size_request(myself->output_box, -1, TEXT_HEIGHT);
-  gtk_widget_set_hexpand(myself->output_text, TRUE);
+  gtk_box_append(GTK_BOX(gui->output_box), gui->output_label);
+  gtk_box_append(GTK_BOX(gui->output_box), gui->output_text);
+  gtk_box_append(GTK_BOX(gui->output_box), gui->output_button);
+  gtk_widget_set_size_request(gui->output_box, -1, TEXT_HEIGHT);
+  gtk_widget_set_hexpand(gui->output_text, TRUE);
 
-  myself->start_button = gtk_button_new_with_label("Start");
-  g_signal_connect(myself->start_button, "clicked", G_CALLBACK(on_start_button_clicked), myself);
+  gui->start_button = gtk_button_new_with_label("Start");
+  g_signal_connect(gui->start_button, "clicked", G_CALLBACK(on_start_button_clicked), gui);
 
-  int grid_y_idx{0};
+  int grid_y_idx {0};
 
   // Attach the widgets to the grid according to the following syntax:
   // gtk_grid_attach(grid, widget, grid_x_idx, grid_y_idx, horizontal_fill, vertical_fill)
-  gtk_grid_attach(GTK_GRID(myself->grid), myself->logo_image , 0, grid_y_idx, 4, 1);
+  gtk_grid_attach(GTK_GRID(gui->grid), gui->logo_image , 0, grid_y_idx, 4, 1);
   ++grid_y_idx;
 
-  gtk_grid_attach(GTK_GRID(myself->grid), myself->encrypt_button, 0, grid_y_idx, 2, 1);
-  gtk_grid_attach(GTK_GRID(myself->grid), myself->decrypt_button, 2, grid_y_idx, 2, 1);
+  gtk_grid_attach(GTK_GRID(gui->grid), gui->encrypt_button, 0, grid_y_idx, 2, 1);
+  gtk_grid_attach(GTK_GRID(gui->grid), gui->decrypt_button, 2, grid_y_idx, 2, 1);
   ++grid_y_idx;
 
-  gtk_grid_attach(GTK_GRID(myself->grid), myself->input_box  , 0, grid_y_idx, 4, 1);
+  gtk_grid_attach(GTK_GRID(gui->grid), gui->input_box  , 0, grid_y_idx, 4, 1);
   ++grid_y_idx;
 
-  gtk_grid_attach(GTK_GRID(myself->grid), myself->output_box  , 0, grid_y_idx, 4, 1);
+  gtk_grid_attach(GTK_GRID(gui->grid), gui->output_box  , 0, grid_y_idx, 4, 1);
   ++grid_y_idx;
 
-  gtk_grid_attach(GTK_GRID(myself->grid), myself->start_button, 0, grid_y_idx, 4, 1);
+  gtk_grid_attach(GTK_GRID(gui->grid), gui->start_button, 0, grid_y_idx, 4, 1);
 
   // Set the grid as a child of the application window, then present the application window.
-  gtk_window_set_child(GTK_WINDOW(myself->application_window), myself->grid);
-  gtk_window_present(GTK_WINDOW(myself->application_window));
+  gtk_window_set_child(GTK_WINDOW(gui->application_window), gui->grid);
+  gtk_window_present(GTK_WINDOW(gui->application_window));
  }
 
 int
@@ -469,7 +519,7 @@ int main(
  char* argv[])
  {
   FourCrypt fc{};
-  Gui       gui{fc.getPod(), argc, argv};
+  Gui       gui{&fc, argc, argv};
 
   return gui.run();
  }

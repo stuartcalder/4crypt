@@ -170,8 +170,8 @@ void FourCrypt::PlainOldData::init(PlainOldData& pod)
 
 void FourCrypt::PlainOldData::del(PlainOldData& pod)
 {
-  delete pod.input_filename;
-  delete pod.output_filename;
+  delete[] pod.input_filename;
+  delete[] pod.output_filename;
   SSC_secureZero(&pod, sizeof(pod));
 }
 

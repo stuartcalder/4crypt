@@ -191,6 +191,7 @@ int main(int argc, char* argv[])
     default:
       SSC_errx("Invalid ErrType %d in %s!\n", code_type, __FILE__);
   }
+  #if 0
   switch (code_error) {
     case (FourCrypt::ERROR_NO_INPUT_FILENAME):
       SSC_errx("No input filename provided!\n");
@@ -228,4 +229,5 @@ int main(int argc, char* argv[])
     default:
       SSC_errx("Unaccounted for code_error code in pod.\n");
   }
+  #endif
 }
