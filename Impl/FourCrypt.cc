@@ -188,7 +188,7 @@ PlainOldData* FourCrypt::getPod()
 
 SSC_CodeError_t FourCrypt::encrypt(ErrType* err_typ, InOutDir* err_dir)
 {
-  PlainOldData* mypod = this->getPod();
+  PlainOldData* mypod {this->getPod()};
   // We require input and output filenames defined for ENCRYPT mode.
   if (mypod->input_filename == nullptr)
     return ERROR_NO_INPUT_FILENAME;
@@ -205,13 +205,16 @@ SSC_CodeError_t FourCrypt::encrypt(ErrType* err_typ, InOutDir* err_dir)
      ".4c",
      sizeof(".4c"));
   }
+
   // Get the size of the input file.
   size_t input_filesize;
   if (SSC_FilePath_getSize(mypod->input_filename, &input_filesize))
     return ERROR_GETTING_INPUT_FILESIZE;
+
   // Normalize the padding.
   this->normalizePadding(input_filesize);
   InOutDir err_io_dir = InOutDir::NONE;
+
   // Map the input and output files.
   SSC_CodeError_t err = this->mapFiles(
    &err_io_dir,
@@ -223,6 +226,7 @@ SSC_CodeError_t FourCrypt::encrypt(ErrType* err_typ, InOutDir* err_dir)
     *err_dir = err_io_dir;
     return err;
   }
+
   // If the password has not already been initialized, then initialize it.
   if (mypod->password_size == 0) {
     // Get the encryption password.

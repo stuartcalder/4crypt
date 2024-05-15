@@ -106,8 +106,6 @@ class FourCrypt
       static void del(PlainOldData& pod);     // Destroy a PlainOldData object.
       static void touchup(PlainOldData& pod); // Ensure the values inside a PlainOldData object are valid & consistent.
     };
-    // Public Static Data
-    static bool memlock_initialized;
     // Public methods.
     PlainOldData*   getPod();
     SSC_CodeError_t encrypt(ErrType* err_type, InOutDir* err_dir);

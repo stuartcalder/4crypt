@@ -539,8 +539,15 @@ Gui::on_application_activate(GtkApplication* gtk_app, void* self)
   gtk_widget_set_visible(gui->reentry_box,   FALSE);
   gtk_editable_set_max_width_chars(GTK_EDITABLE(gui->reentry_entry), FourCrypt::MAX_PW_BYTES);
 
+  // Initialize the start button.
   gui->start_button = gtk_button_new_with_label("Start");
   g_signal_connect(gui->start_button, "clicked", G_CALLBACK(on_start_button_clicked), gui);
+
+  // Initialize the progress bar.
+  gui->progress_bar = gtk_progress_bar_new();
+  // Set the pulse of progress for each step of progress
+  gtk_progress_bar_set_pulse_step(GTK_PROGRESS_BAR(gui->progress_bar), PROGRESS_PULSE_STEP);
+  gtk_widget_set_visible(gui->progress_bar, FALSE);
 
   int grid_y_idx {0};
 
@@ -566,6 +573,10 @@ Gui::on_application_activate(GtkApplication* gtk_app, void* self)
   ++grid_y_idx;
 
   gtk_grid_attach(GTK_GRID(gui->grid), gui->start_button, 0, grid_y_idx, 4, 1);
+  ++grid_y_idx;
+
+  gtk_grid_attach(GTK_GRID(gui->grid), gui->progress_bar, 0, grid_y_idx, 4, 1);
+  ++grid_y_idx;
 
   // Set the grid as a child of the application window, then present the application window.
   gtk_window_set_child(GTK_WINDOW(gui->application_window), gui->grid);
@@ -610,8 +621,8 @@ int main(
  int   argc,
  char* argv[])
  {
-  FourCrypt fc {};
-  Gui       gui{&fc, argc, argv};
+  FourCrypt fc  {};
+  Gui       gui {&fc, argc, argv};
 
   return gui.run();
  }

@@ -33,6 +33,7 @@ class Gui
    {
     NONE, ENCRYPT, DECRYPT
    };
+  static constexpr double PROGRESS_PULSE_STEP {0.25}; //FIXME: Fraction of total number of steps.
  // Public Static Procedures //
   #ifdef FOURCRYPT_IS_PORTABLE
   static std::string getExecutablePath(void);
@@ -60,6 +61,7 @@ class Gui
   GtkWidget*      encrypt_button {};     // Click me to switch to encrypt mode.
   GtkWidget*      decrypt_button {};     // Click me to switch to decrypt mode.
   GtkWidget*      start_button   {};     // Click me to begin encrypting/decrypting.
+  GtkWidget*      progress_bar   {};     // I track the progress of encryption/decryption.
 
   GtkWidget*      input_box    {};       // Contain the Label, Text, & Button for input.
   GtkWidget*      input_label  {};
