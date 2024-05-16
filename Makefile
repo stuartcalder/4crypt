@@ -17,9 +17,9 @@ include Sources.mk
 Obj/%.o: Impl/%.cc $(Deps_$%_cc)
 	$(ObjCompile) -o $@ $<
 
-Bin/4crypt: Impl/Main.cc $(Objects) $(Deps_Main_cc)
+Bin/4crypt: Impl/CliMain.cc $(Objects) $(Deps_CliMain_cc)
 	$(Compile) -o $@ $< $(Objects)
-Bin/g4crypt: Impl/Gui.cc $(Objects) $(Deps_Gui_cc)
+Bin/g4crypt: Impl/GuiMain.cc $(Objects) $(Deps_GuiMain_cc)
 	$(Compile) `pkg-config --cflags --libs gtk4` -o $@ $< $(Objects)
 
 dirs:

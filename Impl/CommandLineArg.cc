@@ -215,7 +215,7 @@ print_help()
 }
 
 int
-fourcrypt::decrypt_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
+ArgProc::decrypt(const int argc, char** R_ argv, const int offset, void* R_ data)
 {
   PlainOldData* pod = static_cast<PlainOldData*>(data);
   SSC_assertMsg(
@@ -234,7 +234,7 @@ fourcrypt::decrypt_argproc(const int argc, char** R_ argv, const int offset, voi
 }
 
 int
-fourcrypt::describe_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
+ArgProc::describe(const int argc, char** R_ argv, const int offset, void* R_ data)
 {
   PlainOldData* pod = static_cast<PlainOldData*>(data);
   SSC_assertMsg(
@@ -253,7 +253,7 @@ fourcrypt::describe_argproc(const int argc, char** R_ argv, const int offset, vo
 }
 
 int
-fourcrypt::encrypt_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
+ArgProc::encrypt(const int argc, char** R_ argv, const int offset, void* R_ data)
 {
   PlainOldData* pod = static_cast<PlainOldData*>(data);
   SSC_assertMsg(
@@ -272,7 +272,7 @@ fourcrypt::encrypt_argproc(const int argc, char** R_ argv, const int offset, voi
 }
 
 int
-fourcrypt::enter_password_once_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
+ArgProc::enter_password_once(const int argc, char** R_ argv, const int offset, void* R_ data)
 {
   PlainOldData* pod = static_cast<PlainOldData*>(data);
   pod->flags |= Core::ENTER_PASS_ONCE;
@@ -280,7 +280,7 @@ fourcrypt::enter_password_once_argproc(const int argc, char** R_ argv, const int
 }
 
 int
-fourcrypt::entropy_argproc(const int, char** R_ argv, const int offset, void* R_ data)
+ArgProc::entropy(const int, char** R_ argv, const int offset, void* R_ data)
 {
   PlainOldData* pod = static_cast<PlainOldData*>(data);
   pod->flags |= Core::SUPPLEMENT_ENTROPY;
@@ -288,7 +288,7 @@ fourcrypt::entropy_argproc(const int, char** R_ argv, const int offset, void* R_
 }
 
 int
-fourcrypt::help_argproc(const int, char** R_, const int, void* R_)
+ArgProc::help(const int, char** R_, const int, void* R_)
 {
   print_help();
   exit(EXIT_SUCCESS);
@@ -296,7 +296,7 @@ fourcrypt::help_argproc(const int, char** R_, const int, void* R_)
 }
 
 int
-fourcrypt::high_mem_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
+ArgProc::high_mem(const int argc, char** R_ argv, const int offset, void* R_ data)
 {
   SSC_ArgParser parser;
   return SSC_ArgParser_process(
@@ -316,7 +316,7 @@ fourcrypt::high_mem_argproc(const int argc, char** R_ argv, const int offset, vo
 }
 
 int
-fourcrypt::iterations_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
+ArgProc::iterations(const int argc, char** R_ argv, const int offset, void* R_ data)
 {
   SSC_ArgParser parser;
   return SSC_ArgParser_process(
@@ -334,7 +334,7 @@ fourcrypt::iterations_argproc(const int argc, char** R_ argv, const int offset, 
 }
 
 int
-fourcrypt::low_mem_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
+ArgProc::low_mem(const int argc, char** R_ argv, const int offset, void* R_ data)
 {
   SSC_ArgParser parser;
   return SSC_ArgParser_process(
@@ -354,7 +354,7 @@ fourcrypt::low_mem_argproc(const int argc, char** R_ argv, const int offset, voi
 }
 
 int
-fourcrypt::output_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
+ArgProc::output(const int argc, char** R_ argv, const int offset, void* R_ data)
 {
   SSC_ArgParser parser;
   return SSC_ArgParser_process(
@@ -374,15 +374,15 @@ fourcrypt::output_argproc(const int argc, char** R_ argv, const int offset, void
 }
 
 int
-fourcrypt::pad_as_if_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
+ArgProc::pad_as_if(const int argc, char** R_ argv, const int offset, void* R_ data)
 {
   PlainOldData* pod = static_cast<PlainOldData*>(data);
   set_padmode(pod, PadMode::AS_IF);
-  return pad_by_argproc(argc, argv, offset, data);
+  return ArgProc::pad_by(argc, argv, offset, data);
 }
 
 int
-fourcrypt::pad_by_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
+ArgProc::pad_by(const int argc, char** R_ argv, const int offset, void* R_ data)
 {
   SSC_ArgParser parser;
   return SSC_ArgParser_process(
@@ -400,15 +400,15 @@ fourcrypt::pad_by_argproc(const int argc, char** R_ argv, const int offset, void
 }
 
 int
-fourcrypt::pad_to_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
+ArgProc::pad_to(const int argc, char** R_ argv, const int offset, void* R_ data)
 {
   PlainOldData* pod = static_cast<PlainOldData*>(data);
   set_padmode(pod, PadMode::TARGET);
-  return pad_by_argproc(argc, argv, offset, data);
+  return ArgProc::pad_by(argc, argv, offset, data);
 }
 
 int
-fourcrypt::threads_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
+ArgProc::threads(const int argc, char** R_ argv, const int offset, void* R_ data)
 {
   SSC_ArgParser parser;
   return SSC_ArgParser_process(
@@ -426,7 +426,7 @@ fourcrypt::threads_argproc(const int argc, char** R_ argv, const int offset, voi
 }
 
 int
-fourcrypt::use_mem_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
+ArgProc::use_mem(const int argc, char** R_ argv, const int offset, void* R_ data)
 {
   SSC_ArgParser parser;
   return SSC_ArgParser_process(
@@ -446,7 +446,7 @@ fourcrypt::use_mem_argproc(const int argc, char** R_ argv, const int offset, voi
 }
 
 int
-fourcrypt::use_phi_argproc(const int, char** R_ argv, const int offset, void* R_ data)
+ArgProc::use_phi(const int, char** R_ argv, const int offset, void* R_ data)
 {
   PlainOldData* pod = static_cast<PlainOldData*>(data);
   pod->flags |= Core::ENABLE_PHI;
@@ -454,7 +454,7 @@ fourcrypt::use_phi_argproc(const int, char** R_ argv, const int offset, void* R_
 }
 
 int
-fourcrypt::batch_size_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
+ArgProc::batch_size(const int argc, char** R_ argv, const int offset, void* R_ data)
 {
   SSC_ArgParser parser;
   return SSC_ArgParser_process(

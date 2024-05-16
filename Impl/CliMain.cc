@@ -16,44 +16,44 @@ using ExeMode  = Core::ExeMode;
 using PadMode  = Core::PadMode;
 
 const std::array<SSC_ArgShort, 14> shorts = {{
-  SSC_ARGSHORT_LITERAL(enter_password_once_argproc, '1'),
-  SSC_ARGSHORT_LITERAL(batch_size_argproc         , 'B'),
-  SSC_ARGSHORT_LITERAL(describe_argproc           , 'D'),
-  SSC_ARGSHORT_LITERAL(entropy_argproc            , 'E'),
-  SSC_ARGSHORT_LITERAL(high_mem_argproc           , 'H'),
-  SSC_ARGSHORT_LITERAL(iterations_argproc         , 'I'),
-  SSC_ARGSHORT_LITERAL(low_mem_argproc            , 'L'),
-  SSC_ARGSHORT_LITERAL(use_mem_argproc            , 'M'),
-  SSC_ARGSHORT_LITERAL(use_phi_argproc            , 'P'),
-  SSC_ARGSHORT_LITERAL(threads_argproc            , 'T'),
-  SSC_ARGSHORT_LITERAL(decrypt_argproc            , 'd'),
-  SSC_ARGSHORT_LITERAL(encrypt_argproc            , 'e'),
-  SSC_ARGSHORT_LITERAL(help_argproc               , 'h'),
-  SSC_ARGSHORT_LITERAL(output_argproc             , 'o'),
+  SSC_ARGSHORT_LITERAL(ArgProc::enter_password_once, '1'),
+  SSC_ARGSHORT_LITERAL(ArgProc::batch_size,          'B'),
+  SSC_ARGSHORT_LITERAL(ArgProc::describe,            'D'),
+  SSC_ARGSHORT_LITERAL(ArgProc::entropy,             'E'),
+  SSC_ARGSHORT_LITERAL(ArgProc::high_mem,            'H'),
+  SSC_ARGSHORT_LITERAL(ArgProc::iterations,          'I'),
+  SSC_ARGSHORT_LITERAL(ArgProc::low_mem,             'L'),
+  SSC_ARGSHORT_LITERAL(ArgProc::use_mem,             'M'),
+  SSC_ARGSHORT_LITERAL(ArgProc::use_phi,             'P'),
+  SSC_ARGSHORT_LITERAL(ArgProc::threads,             'T'),
+  SSC_ARGSHORT_LITERAL(ArgProc::decrypt,             'd'),
+  SSC_ARGSHORT_LITERAL(ArgProc::encrypt,             'e'),
+  SSC_ARGSHORT_LITERAL(ArgProc::help,                'h'),
+  SSC_ARGSHORT_LITERAL(ArgProc::output,              'o'),
 }};
 
 const std::array<SSC_ArgLong, 21> longs = {{
-  SSC_ARGLONG_LITERAL(batch_size_argproc         , "batch-size"),
-  SSC_ARGLONG_LITERAL(decrypt_argproc            , "decrypt"),
-  SSC_ARGLONG_LITERAL(describe_argproc           , "describe"),
-  SSC_ARGLONG_LITERAL(describe_argproc           , "dump"),
-  SSC_ARGLONG_LITERAL(encrypt_argproc            , "encrypt"),
-  SSC_ARGLONG_LITERAL(enter_password_once_argproc, "enter-password-once"),
-  SSC_ARGLONG_LITERAL(entropy_argproc            , "entropy"),
-  SSC_ARGLONG_LITERAL(help_argproc               , "help"),
-  SSC_ARGLONG_LITERAL(high_mem_argproc           , "high-mem"),
-  SSC_ARGLONG_LITERAL(high_mem_argproc           , "high-memory"),
-  SSC_ARGLONG_LITERAL(iterations_argproc         , "iterations"),
-  SSC_ARGLONG_LITERAL(low_mem_argproc            , "low-mem"),
-  SSC_ARGLONG_LITERAL(low_mem_argproc            , "low-memory"),
-  SSC_ARGLONG_LITERAL(output_argproc             , "output"),
-  SSC_ARGLONG_LITERAL(pad_as_if_argproc          , "pad-as-if"),
-  SSC_ARGLONG_LITERAL(pad_by_argproc             , "pad-by"),
-  SSC_ARGLONG_LITERAL(pad_to_argproc             , "pad-to"),
-  SSC_ARGLONG_LITERAL(threads_argproc            , "threads"),
-  SSC_ARGLONG_LITERAL(use_mem_argproc            , "use-mem"),
-  SSC_ARGLONG_LITERAL(use_mem_argproc            , "use-memory"),
-  SSC_ARGLONG_LITERAL(use_phi_argproc            , "use-phi"),
+  SSC_ARGLONG_LITERAL(ArgProc::batch_size,          "batch-size"),
+  SSC_ARGLONG_LITERAL(ArgProc::decrypt,             "decrypt"),
+  SSC_ARGLONG_LITERAL(ArgProc::describe,            "describe"),
+  SSC_ARGLONG_LITERAL(ArgProc::describe,            "dump"),
+  SSC_ARGLONG_LITERAL(ArgProc::encrypt,             "encrypt"),
+  SSC_ARGLONG_LITERAL(ArgProc::enter_password_once, "enter-password-once"),
+  SSC_ARGLONG_LITERAL(ArgProc::entropy,             "entropy"),
+  SSC_ARGLONG_LITERAL(ArgProc::help,                "help"),
+  SSC_ARGLONG_LITERAL(ArgProc::high_mem,            "high-mem"),
+  SSC_ARGLONG_LITERAL(ArgProc::high_mem,            "high-memory"),
+  SSC_ARGLONG_LITERAL(ArgProc::iterations,          "iterations"),
+  SSC_ARGLONG_LITERAL(ArgProc::low_mem,             "low-mem"),
+  SSC_ARGLONG_LITERAL(ArgProc::low_mem,             "low-memory"),
+  SSC_ARGLONG_LITERAL(ArgProc::output,              "output"),
+  SSC_ARGLONG_LITERAL(ArgProc::pad_as_if,           "pad-as-if"),
+  SSC_ARGLONG_LITERAL(ArgProc::pad_by,              "pad-by"),
+  SSC_ARGLONG_LITERAL(ArgProc::pad_to,              "pad-to"),
+  SSC_ARGLONG_LITERAL(ArgProc::threads,             "threads"),
+  SSC_ARGLONG_LITERAL(ArgProc::use_mem,             "use-mem"),
+  SSC_ARGLONG_LITERAL(ArgProc::use_mem,             "use-memory"),
+  SSC_ARGLONG_LITERAL(ArgProc::use_phi,             "use-phi"),
 }};
 
 static void handle_fourcrypt_errors(PlainOldData* pod, SSC_CodeError_t err, InOutDir err_io_dir)
@@ -153,8 +153,8 @@ static void handle_memmap_errors(PlainOldData* pod, SSC_CodeError_t err, InOutDi
 
 int main(int argc, char* argv[])
 {
-  Core fc{};
-  PlainOldData* pod = fc.getPod();
+  Core core{};
+  PlainOldData* pod = core.getPod();
   SSC_assertMsg(argc >= 2, "Invalid number of command-line arguments.\n");
   SSC_processCommandLineArgs(
    argc - 1,
@@ -172,13 +172,13 @@ int main(int argc, char* argv[])
   switch (pod->execute_mode) {
     case ExeMode::ENCRYPT:
       PlainOldData::touchup(*pod);
-      code_error = fc.encrypt(&code_type, &code_io_dir);
+      code_error = core.encrypt(&code_type, &code_io_dir);
       break;
     case ExeMode::DECRYPT:
-      code_error = fc.decrypt(&code_type, &code_io_dir);
+      code_error = core.decrypt(&code_type, &code_io_dir);
       break;
     case ExeMode::DESCRIBE:
-      code_error = fc.describe(&code_type, &code_io_dir);
+      code_error = core.describe(&code_type, &code_io_dir);
       break;
     default:
       SSC_errx("Invalid execute_mode in pod.\n");
@@ -195,43 +195,4 @@ int main(int argc, char* argv[])
     default:
       SSC_errx("Invalid ErrType %d in %s!\n", code_type, __FILE__);
   }
-  #if 0
-  switch (code_error) {
-    case (Core::ERROR_NO_INPUT_FILENAME):
-      SSC_errx("No input filename provided!\n");
-      break;
-    case (Core::ERROR_NO_OUTPUT_FILENAME):
-      SSC_errx("No output filename provided!\n");
-      break;
-    case (Core::ERROR_INPUT_MEMMAP_FAILED):
-      SSC_errx("Failed while mapping the input file!\n");
-      break;
-    case (Core::ERROR_OUTPUT_MEMMAP_FAILED):
-      SSC_errx("Failed while mapping the output file!\n");
-      break;
-    case (Core::ERROR_GETTING_INPUT_FILESIZE):
-      SSC_errx("Failed while getting the size of the input file!\n");
-      break;
-    case (Core::ERROR_INPUT_FILESIZE_TOO_SMALL):
-      SSC_errx("The input file is too small!\n");
-      break;
-    case (Core::ERROR_INVALID_4CRYPT_FILE):
-      SSC_errx("The input file is an invalid 4crypt file!\n");
-      break;
-    case (Core::ERROR_INPUT_SIZE_MISMATCH):
-      SSC_errx("The input file's header size field doesn't match the size of the file!\n");
-      break;
-    case (Core::ERROR_RESERVED_BYTES_USED):
-      SSC_errx("Reserved bytes of the file were improperly used!\n");
-      break;
-    case (Core::ERROR_OUTPUT_FILE_EXISTS):
-      SSC_errx("The output file already exists!\n");
-      break;
-    case (Core::ERROR_MAC_VALIDATION_FAILED):
-      SSC_errx("Failed to validate the MAC!\n");
-      break;
-    default:
-      SSC_errx("Unaccounted for code_error code in pod.\n");
-  }
-  #endif
 }

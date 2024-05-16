@@ -10,40 +10,43 @@
 
 namespace fourcrypt {
 
-// Set the number of KDF threads to process simultaneously.
-int batch_size_argproc(ARGS_);
-// Set the mode to Decrypt, and provide the path to the encrypted file.
-int decrypt_argproc(ARGS_);
-// Set the mode to Describe, and provide the path to the encrypted file.
-int describe_argproc(ARGS_);
-// Set the mode to Encrypt, and provide the path to the plaintext file.
-int encrypt_argproc(ARGS_);
-// Disable password re-entry during encryption; not applicable to decryption.
-int enter_password_once_argproc(ARGS_);
-// Enable entering an 'entropy password' to harden the CSPRNG.
-int entropy_argproc(ARGS_);
-// Print help output and exit successfully.
-int help_argproc(ARGS_);
-// Set the higher memory bound for the KDF.
-int high_mem_argproc(ARGS_);
-// Set the number of KDF iterations per thread.
-int iterations_argproc(ARGS_);
-// Set the lower memory bound for the KDF.
-int low_mem_argproc(ARGS_);
-// Set the output file path.
-int output_argproc(ARGS_);
-// Pad the output ciphertext as if it was an unpadded ciphertext of the provided size, rounded up to be divisible by 64.
-int pad_as_if_argproc(ARGS_);
-// Pad the output ciphertext by the provided number of bytes, round up to be divisible by 64.
-int pad_by_argproc(ARGS_);
-// Pad the output ciphertext up to the provided target size in bytes, rounded up to be divisible by 64.
-int pad_to_argproc(ARGS_);
-// Set the number of KDF threads.
-int threads_argproc(ARGS_);
-// Set the low and high KDF memory bounds to the same provided value.
-int use_mem_argproc(ARGS_);
-// Enable usage of the Phi function in the KDF.
-int use_phi_argproc(ARGS_);
+struct ArgProc
+ {
+  // Set the number of KDF threads to process simultaneously.
+  static int batch_size(ARGS_);
+  // Set the mode to Decrypt, and provide the path to the encrypted file.
+  static int decrypt(ARGS_);
+  // Set the mode to Describe, and provide the path to the encrypted file.
+  static int describe(ARGS_);
+  // Set the mode to Encrypt, and provide the path to the plaintext file.
+  static int encrypt(ARGS_);
+  // Disable password re-entry during encryption; not applicable to decryption.
+  static int enter_password_once(ARGS_);
+  // Enable entering an 'entropy password' to harden the CSPRNG.
+  static int entropy(ARGS_);
+  // Print help output and exit successfully.
+  static int help(ARGS_);
+  // Set the higher memory bound for the KDF.
+  static int high_mem(ARGS_);
+  // Set the number of KDF iterations per thread.
+  static int iterations(ARGS_);
+  // Set the lower memory bound for the KDF.
+  static int low_mem(ARGS_);
+  // Set the output file path.
+  static int output(ARGS_);
+  // Pad the output ciphertext as if it was an unpadded ciphertext of the provided size, rounded up to be divisible by 64.
+  static int pad_as_if(ARGS_);
+  // Pad the output ciphertext by the provided number of bytes, round up to be divisible by 64.
+  static int pad_by(ARGS_);
+  // Pad the output ciphertext up to the provided target size in bytes, rounded up to be divisible by 64.
+  static int pad_to(ARGS_);
+  // Set the number of KDF threads.
+  static int threads(ARGS_);
+  // Set the low and high KDF memory bounds to the same provided value.
+  static int use_mem(ARGS_);
+  // Enable usage of the Phi function in the KDF.
+  static int use_phi(ARGS_);
+ };
 
 } // ! namespace fourcrypt
 #undef ARGS_
