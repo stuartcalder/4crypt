@@ -1,5 +1,5 @@
 Includes := -I.
-Objects  := Obj/CommandLineArg.o Obj/FourCrypt.o
+Objects  := Obj/CommandLineArg.o Obj/Core.o
 LinkLibs := -lSSC -lPPQ
 CppStd   := c++20
 Lto      := -flto
