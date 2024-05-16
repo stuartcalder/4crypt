@@ -222,7 +222,7 @@ void
 Gui::encrypt(void)
  {
   SSC_CodeError_t code_err    {0};
-  ErrType         code_type   {ErrType::FOURCRYPT};
+  ErrType         code_type   {ErrType::CORE};
   InOutDir        code_io_dir {InOutDir::NONE};
 
   pod->execute_mode = ExeMode::ENCRYPT;
@@ -239,7 +239,7 @@ void
 Gui::decrypt(void)
  {
   SSC_CodeError_t code_err    {0};
-  ErrType         code_type   {ErrType::FOURCRYPT};
+  ErrType         code_type   {ErrType::CORE};
   InOutDir        code_io_dir {InOutDir::NONE};
 
   pod->execute_mode = ExeMode::DECRYPT;

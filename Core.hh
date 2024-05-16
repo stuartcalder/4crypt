@@ -1,5 +1,5 @@
-#ifndef FOURCRYPT_HH
-#define FOURCRYPT_HH
+#ifndef FOURCRYPT_CORE_HH
+#define FOURCRYPT_CORE_HH
 
 #include <string>
 
@@ -67,7 +67,7 @@ class Core
     };
     enum class ErrType
     {
-      FOURCRYPT, MEMMAP
+      CORE, MEMMAP
     };
     struct PlainOldData
     {

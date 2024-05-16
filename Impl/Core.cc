@@ -659,7 +659,7 @@ SSC_CodeError_t Core::describe(
   PlainOldData* mypod = this->getPod();
   if (mypod->input_filename == nullptr) {
     *errdir = InOutDir::INPUT;
-    *errtype = ErrType::FOURCRYPT;
+    *errtype = ErrType::CORE;
     return ERROR_NO_INPUT_FILENAME;
   }
   SSC_CodeError_t err = 0;
@@ -679,12 +679,12 @@ SSC_CodeError_t Core::describe(
   in = this->readHeaderPlaintext(in, &err);
   if (err) {
     *errdir = InOutDir::NONE;
-    *errtype = ErrType::FOURCRYPT;
+    *errtype = ErrType::CORE;
     return err;
   }
   if (!Core::verifyBasicMetadata(mypod, InOutDir::INPUT)) {
     *errdir = InOutDir::INPUT;
-    *errtype = ErrType::FOURCRYPT;
+    *errtype = ErrType::CORE;
     return ERROR_METADATA_VALIDATION_FAILED;
   }
 

@@ -162,7 +162,7 @@ int main(int argc, char* argv[])
    pod,
    nullptr);
   SSC_CodeError_t code_error  = 0;
-  ErrType         code_type   = ErrType::FOURCRYPT;
+  ErrType         code_type   = ErrType::CORE;
   InOutDir        code_io_dir = InOutDir::NONE;
   
   switch (pod->execute_mode) {
@@ -182,7 +182,7 @@ int main(int argc, char* argv[])
   if (code_error == 0)
     return EXIT_SUCCESS;
   switch (code_type) {
-    case ErrType::FOURCRYPT:
+    case ErrType::CORE:
       handle_fourcrypt_errors(pod, code_error, code_io_dir);
       break;
     case ErrType::MEMMAP:
