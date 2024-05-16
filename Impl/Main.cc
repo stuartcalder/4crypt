@@ -2,14 +2,14 @@
 #include <SSC/Macro.h>
 #include <SSC/CommandLineArg.h>
 
-#include "FourCrypt.hh"
+#include "Core.hh"
 #include "CommandLineArg.hh"
 
-using PlainOldData = FourCrypt::PlainOldData;
-using ErrType = FourCrypt::ErrType;
-using InOutDir = FourCrypt::InOutDir;
-using ExeMode  = FourCrypt::ExeMode;
-using PadMode  = FourCrypt::PadMode;
+using PlainOldData = Core::PlainOldData;
+using ErrType = Core::ErrType;
+using InOutDir = Core::InOutDir;
+using ExeMode  = Core::ExeMode;
+using PadMode  = Core::PadMode;
 
 const std::array<SSC_ArgShort, 14> shorts = {{
   SSC_ARGSHORT_LITERAL(enter_password_once_argproc, '1'),
@@ -55,37 +55,37 @@ const std::array<SSC_ArgLong, 21> longs = {{
 static void handle_fourcrypt_errors(PlainOldData* pod, SSC_CodeError_t err, InOutDir err_io_dir)
 {
   switch (err) {
-    case (FourCrypt::ERROR_NO_INPUT_FILENAME):
+    case (Core::ERROR_NO_INPUT_FILENAME):
       SSC_errx("No input filename provided!\n");
       break;
-    case (FourCrypt::ERROR_NO_OUTPUT_FILENAME):
+    case (Core::ERROR_NO_OUTPUT_FILENAME):
       SSC_errx("No output filename provided!\n");
       break;
-    case (FourCrypt::ERROR_INPUT_MEMMAP_FAILED):
+    case (Core::ERROR_INPUT_MEMMAP_FAILED):
       SSC_errx("Failed while mapping the input file!\n");
       break;
-    case (FourCrypt::ERROR_OUTPUT_MEMMAP_FAILED):
+    case (Core::ERROR_OUTPUT_MEMMAP_FAILED):
       SSC_errx("Failed while mapping the output file!\n");
       break;
-    case (FourCrypt::ERROR_GETTING_INPUT_FILESIZE):
+    case (Core::ERROR_GETTING_INPUT_FILESIZE):
       SSC_errx("Failed while getting the size of the input file!\n");
       break;
-    case (FourCrypt::ERROR_INPUT_FILESIZE_TOO_SMALL):
+    case (Core::ERROR_INPUT_FILESIZE_TOO_SMALL):
       SSC_errx("The input file is too small!\n");
       break;
-    case (FourCrypt::ERROR_INVALID_4CRYPT_FILE):
+    case (Core::ERROR_INVALID_4CRYPT_FILE):
       SSC_errx("The input file is an invalid 4crypt file!\n");
       break;
-    case (FourCrypt::ERROR_INPUT_SIZE_MISMATCH):
+    case (Core::ERROR_INPUT_SIZE_MISMATCH):
       SSC_errx("The input file's header size field doesn't match the size of the file!\n");
       break;
-    case (FourCrypt::ERROR_RESERVED_BYTES_USED):
+    case (Core::ERROR_RESERVED_BYTES_USED):
       SSC_errx("Reserved bytes of the file were improperly used!\n");
       break;
-    case (FourCrypt::ERROR_OUTPUT_FILE_EXISTS):
+    case (Core::ERROR_OUTPUT_FILE_EXISTS):
       SSC_errx("The output file already exists!\n");
       break;
-    case (FourCrypt::ERROR_MAC_VALIDATION_FAILED):
+    case (Core::ERROR_MAC_VALIDATION_FAILED):
       SSC_errx("Failed to validate the MAC!\n");
       break;
     default:
@@ -149,7 +149,7 @@ static void handle_memmap_errors(PlainOldData* pod, SSC_CodeError_t err, InOutDi
 
 int main(int argc, char* argv[])
 {
-  FourCrypt fc{};
+  Core fc{};
   PlainOldData* pod = fc.getPod();
   SSC_assertMsg(argc >= 2, "Invalid number of command-line arguments.\n");
   SSC_processCommandLineArgs(
@@ -193,37 +193,37 @@ int main(int argc, char* argv[])
   }
   #if 0
   switch (code_error) {
-    case (FourCrypt::ERROR_NO_INPUT_FILENAME):
+    case (Core::ERROR_NO_INPUT_FILENAME):
       SSC_errx("No input filename provided!\n");
       break;
-    case (FourCrypt::ERROR_NO_OUTPUT_FILENAME):
+    case (Core::ERROR_NO_OUTPUT_FILENAME):
       SSC_errx("No output filename provided!\n");
       break;
-    case (FourCrypt::ERROR_INPUT_MEMMAP_FAILED):
+    case (Core::ERROR_INPUT_MEMMAP_FAILED):
       SSC_errx("Failed while mapping the input file!\n");
       break;
-    case (FourCrypt::ERROR_OUTPUT_MEMMAP_FAILED):
+    case (Core::ERROR_OUTPUT_MEMMAP_FAILED):
       SSC_errx("Failed while mapping the output file!\n");
       break;
-    case (FourCrypt::ERROR_GETTING_INPUT_FILESIZE):
+    case (Core::ERROR_GETTING_INPUT_FILESIZE):
       SSC_errx("Failed while getting the size of the input file!\n");
       break;
-    case (FourCrypt::ERROR_INPUT_FILESIZE_TOO_SMALL):
+    case (Core::ERROR_INPUT_FILESIZE_TOO_SMALL):
       SSC_errx("The input file is too small!\n");
       break;
-    case (FourCrypt::ERROR_INVALID_4CRYPT_FILE):
+    case (Core::ERROR_INVALID_4CRYPT_FILE):
       SSC_errx("The input file is an invalid 4crypt file!\n");
       break;
-    case (FourCrypt::ERROR_INPUT_SIZE_MISMATCH):
+    case (Core::ERROR_INPUT_SIZE_MISMATCH):
       SSC_errx("The input file's header size field doesn't match the size of the file!\n");
       break;
-    case (FourCrypt::ERROR_RESERVED_BYTES_USED):
+    case (Core::ERROR_RESERVED_BYTES_USED):
       SSC_errx("Reserved bytes of the file were improperly used!\n");
       break;
-    case (FourCrypt::ERROR_OUTPUT_FILE_EXISTS):
+    case (Core::ERROR_OUTPUT_FILE_EXISTS):
       SSC_errx("The output file already exists!\n");
       break;
-    case (FourCrypt::ERROR_MAC_VALIDATION_FAILED):
+    case (Core::ERROR_MAC_VALIDATION_FAILED):
       SSC_errx("Failed to validate the MAC!\n");
       break;
     default:

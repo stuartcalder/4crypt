@@ -101,7 +101,7 @@ Gui::getResourcePath(void)
  #endif
  }
 
-Gui::Gui(FourCrypt* param_fc, int param_argc, char** param_argv)
+Gui::Gui(Core* param_fc, int param_argc, char** param_argv)
 : fourcrypt{param_fc}, argc{param_argc}, argv{param_argv}
  {
   pod = fourcrypt->getPod();
@@ -204,10 +204,19 @@ Gui::on_output_button_clicked(GtkWidget* button, void* self)
    gui);
  }
 
-using ExeMode  = FourCrypt::ExeMode;
-using PadMode  = FourCrypt::PadMode;
-using InOutDir = FourCrypt::InOutDir;
-using ErrType  = FourCrypt::ErrType;
+using ExeMode  = Core::ExeMode;
+using PadMode  = Core::PadMode;
+using InOutDir = Core::InOutDir;
+using ErrType  = Core::ErrType;
+
+void
+Gui::progress_bar_callback(
+ Core::PlainOldData* pod,
+ void*                    v_gui)
+ {
+  Gui* gui {static_cast<Gui*>(v_gui)};
+  gtk_progress_bar_pulse(GTK_PROGRESS_BAR(gui->progress_bar));
+ }
 
 void
 Gui::encrypt(void)
@@ -218,7 +227,9 @@ Gui::encrypt(void)
 
   pod->execute_mode = ExeMode::ENCRYPT;
   Pod_t::touchup(*pod);
-  code_err = fourcrypt->encrypt(&code_type, &code_io_dir);
+  gtk_widget_set_visible(progress_box, TRUE);
+  code_err = fourcrypt->encrypt(&code_type, &code_io_dir, &progress_bar_callback, this);
+  //gtk_widget_set_visible(progress_box, FALSE);
   //TODO: Handle errors and error types.
   Pod_t::del(*pod);
   Pod_t::init(*pod);
@@ -232,7 +243,9 @@ Gui::decrypt(void)
   InOutDir        code_io_dir {InOutDir::NONE};
 
   pod->execute_mode = ExeMode::DECRYPT;
-  code_err = fourcrypt->decrypt(&code_type, &code_io_dir);
+  gtk_widget_set_visible(progress_box, TRUE);
+  code_err = fourcrypt->decrypt(&code_type, &code_io_dir, &progress_bar_callback, this);
+  //gtk_widget_set_visible(progress_box, FALSE);
   //TODO: Handle errors and error types.
   Pod_t::del(*pod);
   Pod_t::init(*pod);
@@ -424,8 +437,8 @@ Gui::get_password(void)
   const char* pw_1 {gtk_editable_get_text(GTK_EDITABLE(reentry_entry))};
   size_t pw_0_len = std::strlen(pw_0);
   size_t pw_1_len = std::strlen(pw_1);
-  SSC_assertMsg(pw_0_len <= FourCrypt::MAX_PW_BYTES, "pw_0_len > MAX_PW_BYTES!\n");
-  SSC_assertMsg(pw_1_len <= FourCrypt::MAX_PW_BYTES, "pw_1_len > MAX_PW_BYTES!\n");
+  SSC_assertMsg(pw_0_len <= Core::MAX_PW_BYTES, "pw_0_len > MAX_PW_BYTES!\n");
+  SSC_assertMsg(pw_1_len <= Core::MAX_PW_BYTES, "pw_1_len > MAX_PW_BYTES!\n");
   bool   equal = (pw_0_len == pw_1_len) and (not std::strcmp(pw_0, pw_1));
   memset(pod->password_buffer, 0, sizeof(pod->password_buffer));
 
@@ -466,7 +479,7 @@ Gui::on_application_activate(GtkApplication* gtk_app, void* self)
   gtk_window_set_child(GTK_WINDOW(gui->application_window), gui->grid);
   gtk_grid_set_column_homogeneous(GTK_GRID(gui->grid), TRUE);
 
-  // Add the FourCrypt dragon logo.
+  // Add the Core dragon logo.
   std::string logo_path {getResourcePath() + "/dragon.png"};
   make_os_path(logo_path);
   gui->logo_image = gtk_image_new_from_file(logo_path.c_str());
@@ -524,7 +537,7 @@ Gui::on_application_activate(GtkApplication* gtk_app, void* self)
   gtk_widget_set_hexpand(gui->password_box,   TRUE);
   gtk_widget_set_hexpand(gui->password_entry, TRUE);
   gtk_widget_set_visible(gui->password_box,   FALSE);
-  gtk_editable_set_max_width_chars(GTK_EDITABLE(gui->password_entry), FourCrypt::MAX_PW_BYTES);
+  gtk_editable_set_max_width_chars(GTK_EDITABLE(gui->password_entry), Core::MAX_PW_BYTES);
 
   // Create a Box for re-entering passwords.
   gui->reentry_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
@@ -537,17 +550,21 @@ Gui::on_application_activate(GtkApplication* gtk_app, void* self)
   gtk_widget_set_hexpand(gui->reentry_box,   TRUE);
   gtk_widget_set_hexpand(gui->reentry_entry, TRUE);
   gtk_widget_set_visible(gui->reentry_box,   FALSE);
-  gtk_editable_set_max_width_chars(GTK_EDITABLE(gui->reentry_entry), FourCrypt::MAX_PW_BYTES);
+  gtk_editable_set_max_width_chars(GTK_EDITABLE(gui->reentry_entry), Core::MAX_PW_BYTES);
 
   // Initialize the start button.
   gui->start_button = gtk_button_new_with_label("Start");
   g_signal_connect(gui->start_button, "clicked", G_CALLBACK(on_start_button_clicked), gui);
 
-  // Initialize the progress bar.
+  // Initialize the progress box and its bar.
+  gui->progress_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
   gui->progress_bar = gtk_progress_bar_new();
+  gtk_box_append(GTK_BOX(gui->progress_box), gui->progress_bar);
   // Set the pulse of progress for each step of progress
   gtk_progress_bar_set_pulse_step(GTK_PROGRESS_BAR(gui->progress_bar), PROGRESS_PULSE_STEP);
-  gtk_widget_set_visible(gui->progress_bar, FALSE);
+  gtk_widget_set_hexpand(gui->progress_box, TRUE);
+  gtk_widget_set_vexpand(gui->progress_box, TRUE);
+  gtk_widget_set_visible(gui->progress_box, TRUE);
 
   int grid_y_idx {0};
 
@@ -575,7 +592,7 @@ Gui::on_application_activate(GtkApplication* gtk_app, void* self)
   gtk_grid_attach(GTK_GRID(gui->grid), gui->start_button, 0, grid_y_idx, 4, 1);
   ++grid_y_idx;
 
-  gtk_grid_attach(GTK_GRID(gui->grid), gui->progress_bar, 0, grid_y_idx, 4, 1);
+  gtk_grid_attach(GTK_GRID(gui->grid), gui->progress_box, 0, grid_y_idx, 4, 1);
   ++grid_y_idx;
 
   // Set the grid as a child of the application window, then present the application window.
@@ -621,7 +638,7 @@ int main(
  int   argc,
  char* argv[])
  {
-  FourCrypt fc  {};
+  Core fc  {};
   Gui       gui {&fc, argc, argv};
 
   return gui.run();

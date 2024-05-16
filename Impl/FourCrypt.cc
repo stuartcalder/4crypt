@@ -1,4 +1,4 @@
-#include "FourCrypt.hh"
+#include "Core.hh"
 #include <SSC/Terminal.h>
 #include <SSC/Print.h>
 #include <PPQ/Skein512.h>
@@ -8,7 +8,7 @@
 
 #define R_ SSC_RESTRICT
 
-static_assert(FourCrypt::MAX_PW_BYTES == 125, "MAX_PW_BYTES changed!");
+static_assert(Core::MAX_PW_BYTES == 125, "MAX_PW_BYTES changed!");
 #define MAX_PW_BYTES_STR "125"
 
 #if defined(SSC_OS_UNIXLIKE)
@@ -19,20 +19,20 @@ static_assert(FourCrypt::MAX_PW_BYTES == 125, "MAX_PW_BYTES changed!");
  #error "Invalid OS!"
 #endif
 
-using PlainOldData = FourCrypt::PlainOldData;
+using PlainOldData = Core::PlainOldData;
 enum {
   INPUT  = 1,
   OUTPUT = 2
 };
 
-// FourCrypt static variable initialization.
-std::string FourCrypt::password_prompt{
+// Core static variable initialization.
+std::string Core::password_prompt{
  "Please input a password (max length " MAX_PW_BYTES_STR " characters)." NEWLINE_
 };
-std::string FourCrypt::reentry_prompt{
+std::string Core::reentry_prompt{
   "Please input the same password again." NEWLINE_
 };
-std::string FourCrypt::entropy_prompt{
+std::string Core::entropy_prompt{
   "Please input up to " MAX_PW_BYTES_STR " random characters." NEWLINE_
 };
 
@@ -50,7 +50,7 @@ static void kdf(
   memcpy(input, pod->catena_salt, sizeof(pod->catena_salt));
   {
     uint64_t ti;
-    if constexpr(FourCrypt::is_little_endian)
+    if constexpr(Core::is_little_endian)
       ti = thread_idx;
     else
       ti = SSC_swap64(thread_idx);
@@ -69,7 +69,7 @@ static void kdf(
   memcpy(catena->salt, new_salt, sizeof(new_salt));
 
   // Run the requested Catena KDF.
-  if (pod->flags & FourCrypt::ENABLE_PHI)
+  if (pod->flags & Core::ENABLE_PHI)
     *err = PPQ_Catena512_usePhi(
      catena,
      output,
@@ -89,23 +89,23 @@ static void kdf(
      pod->iterations);
 }
 
-FourCrypt::FourCrypt()
+Core::Core()
 {
   this->pod = new PlainOldData;
   PlainOldData::init(*this->getPod());
   PPQ_CSPRNG_init(&this->getPod()->rng);
 }
 
-FourCrypt::~FourCrypt()
+Core::~Core()
 {
   PlainOldData::del(*this->getPod());
   delete this->getPod();
 }
 
-consteval uint64_t FourCrypt::getHeaderSize()
+consteval uint64_t Core::getHeaderSize()
 {
   uint64_t size = 0;
-  static_assert(sizeof(FourCrypt::magic) == 4);
+  static_assert(sizeof(Core::magic) == 4);
   static_assert(PPQ_THREEFISH512_TWEAK_BYTES == 16);
   static_assert(PPQ_CATENA512_SALT_BYTES == 32);
   static_assert(PPQ_THREEFISH512COUNTERMODE_IV_BYTES == 32);
@@ -122,19 +122,19 @@ consteval uint64_t FourCrypt::getHeaderSize()
   return size;
 }
 
-consteval uint64_t FourCrypt::getMetadataSize()
+consteval uint64_t Core::getMetadataSize()
 {
   static_assert(MAC_SIZE == 64);
-  return FourCrypt::getHeaderSize() + MAC_SIZE;
+  return Core::getHeaderSize() + MAC_SIZE;
 }
 
-consteval uint64_t FourCrypt::getMinimumOutputSize()
+consteval uint64_t Core::getMinimumOutputSize()
 {
-  return FourCrypt::getMetadataSize() + PAD_FACTOR;
+  return Core::getMetadataSize() + PAD_FACTOR;
 }
-static_assert(FourCrypt::getMinimumOutputSize() % FourCrypt::PAD_FACTOR == 0);
+static_assert(Core::getMinimumOutputSize() % Core::PAD_FACTOR == 0);
 
-void FourCrypt::PlainOldData::init(PlainOldData& pod)
+void Core::PlainOldData::init(PlainOldData& pod)
 {
   pod.tf_ctr    = PPQ_THREEFISH512COUNTERMODE_NULL_LITERAL;
   pod.rng       = PPQ_CSPRNG_NULL_LITERAL;
@@ -168,25 +168,29 @@ void FourCrypt::PlainOldData::init(PlainOldData& pod)
   pod.flags      = 0;
 }
 
-void FourCrypt::PlainOldData::del(PlainOldData& pod)
+void Core::PlainOldData::del(PlainOldData& pod)
 {
   delete[] pod.input_filename;
   delete[] pod.output_filename;
   SSC_secureZero(&pod, sizeof(pod));
 }
 
-void FourCrypt::PlainOldData::touchup(PlainOldData& pod)
+void Core::PlainOldData::touchup(PlainOldData& pod)
 {
   if (pod.thread_batch_size == 0 || pod.thread_batch_size > pod.thread_count)
     pod.thread_batch_size = pod.thread_count;
 }
 
-PlainOldData* FourCrypt::getPod()
+PlainOldData* Core::getPod()
 {
   return this->pod;
 }
 
-SSC_CodeError_t FourCrypt::encrypt(ErrType* err_typ, InOutDir* err_dir)
+SSC_CodeError_t Core::encrypt(
+ ErrType*          err_typ,
+ InOutDir*         err_dir,
+ StatusCallback_fp status_callback,
+ void*             status_callback_data)
 {
   PlainOldData* mypod {this->getPod()};
   // We require input and output filenames defined for ENCRYPT mode.
@@ -215,11 +219,13 @@ SSC_CodeError_t FourCrypt::encrypt(ErrType* err_typ, InOutDir* err_dir)
   this->normalizePadding(input_filesize);
   InOutDir err_io_dir = InOutDir::NONE;
 
+  if (status_callback)
+    status_callback(mypod, status_callback_data);
   // Map the input and output files.
   SSC_CodeError_t err = this->mapFiles(
    &err_io_dir,
    input_filesize,
-   input_filesize + mypod->padding_size + FourCrypt::getMetadataSize(),
+   input_filesize + mypod->padding_size + Core::getMetadataSize(),
    InOutDir::NONE);
   if (err) {
     *err_typ = ErrType::MEMMAP;
@@ -230,28 +236,40 @@ SSC_CodeError_t FourCrypt::encrypt(ErrType* err_typ, InOutDir* err_dir)
   // If the password has not already been initialized, then initialize it.
   if (mypod->password_size == 0) {
     // Get the encryption password.
-    this->getPassword(!(mypod->flags & FourCrypt::ENTER_PASS_ONCE), false);
-    if (mypod->flags & FourCrypt::SUPPLEMENT_ENTROPY)
+    this->getPassword(!(mypod->flags & Core::ENTER_PASS_ONCE), false);
+    if (mypod->flags & Core::SUPPLEMENT_ENTROPY)
       // Get the entropy password and hash it into the RNG.
       this->getPassword(false, true);
   }
+  if (status_callback)
+    status_callback(mypod, status_callback_data);
   // Generate pseudorandom values.
   this->genRandomElements();
   // Run the key derivation function and get our secret values.
+  if (status_callback)
+    status_callback(mypod, status_callback_data);
   this->runKDF();
   const uint8_t* in   = mypod->input_map.ptr;
   uint8_t*       out  = mypod->output_map.ptr;
   size_t         n_in = mypod->input_map.size;
+  if (status_callback)
+    status_callback(mypod, status_callback_data);
   out = this->writeHeader(out); // Write the header of the ciphertext file.
   out = this->writeCiphertext(out, in, n_in); // Encrypt the input stream into the ciphertext file.
+  if (status_callback)
+    status_callback(mypod, status_callback_data);
   this->writeMAC(out, mypod->output_map.ptr, mypod->output_map.size - MAC_SIZE);
+  if (status_callback)
+    status_callback(mypod, status_callback_data);
   this->syncMaps();
   this->unmapFiles();
+  if (status_callback)
+    status_callback(mypod, status_callback_data);
   return 0;
 }
 
 
-SSC_Error_t FourCrypt::normalizePadding(const uint64_t input_filesize)
+SSC_Error_t Core::normalizePadding(const uint64_t input_filesize)
 {
   PlainOldData* mypod = this->getPod();
   const uint64_t size = input_filesize;
@@ -264,9 +282,9 @@ SSC_Error_t FourCrypt::normalizePadding(const uint64_t input_filesize)
       break;
     // Goal: Output file is an exact, specific size specified in @pad.
     case PadMode::TARGET:
-      if (pad < (size + FourCrypt::getMetadataSize()))
+      if (pad < (size + Core::getMetadataSize()))
         return -1;
-      mypod->padding_size = pad - (size + FourCrypt::getMetadataSize());
+      mypod->padding_size = pad - (size + Core::getMetadataSize());
       mypod->padding_mode = PadMode::ADD;
       return this->normalizePadding(size);
     // Add padding as if @size were @pad.
@@ -282,7 +300,7 @@ SSC_Error_t FourCrypt::normalizePadding(const uint64_t input_filesize)
   return 0;
 }
 
-void FourCrypt::genRandomElements()
+void Core::genRandomElements()
 {
   PlainOldData* mypod = this->getPod();
   PPQ_CSPRNG*   myrng = &mypod->rng;
@@ -308,7 +326,7 @@ void FourCrypt::genRandomElements()
   PPQ_UBI512_init(mypod->ubi512);
 }
 
-SSC_Error_t FourCrypt::runKDF()
+SSC_Error_t Core::runKDF()
 {
   PlainOldData*  mypod = this->getPod();
   const uint64_t num_threads = mypod->thread_count;
@@ -385,7 +403,7 @@ SSC_Error_t FourCrypt::runKDF()
   return 0;
 }
 
-SSC_Error_t FourCrypt::verifyMAC(const uint8_t* R_ mac, const uint8_t* R_ begin, const uint64_t size)
+SSC_Error_t Core::verifyMAC(const uint8_t* R_ mac, const uint8_t* R_ begin, const uint64_t size)
 {
   alignas(uint64_t) uint8_t tmp_mac [MAC_SIZE];
   PlainOldData* mypod = this->getPod();
@@ -401,7 +419,11 @@ SSC_Error_t FourCrypt::verifyMAC(const uint8_t* R_ mac, const uint8_t* R_ begin,
   return 0;
 }
 
-SSC_CodeError_t FourCrypt::decrypt(ErrType* err_type, InOutDir* err_io_dir)
+SSC_CodeError_t Core::decrypt(
+ ErrType*          err_type,
+ InOutDir*         err_io_dir,
+ StatusCallback_fp status_callback,
+ void*             status_callback_data)
 {
   PlainOldData* mypod = this->getPod();
   // Ensure at least an input file path is provided.
@@ -429,7 +451,7 @@ SSC_CodeError_t FourCrypt::decrypt(ErrType* err_type, InOutDir* err_io_dir)
     return ERROR_GETTING_INPUT_FILESIZE;
   }
   // Check to see if the input file is large enough.
-  if (input_filesize < FourCrypt::getMinimumOutputSize()) {
+  if (input_filesize < Core::getMinimumOutputSize()) {
     *err_io_dir = InOutDir::INPUT;
     return ERROR_INPUT_FILESIZE_TOO_SMALL;
   }
@@ -440,6 +462,8 @@ SSC_CodeError_t FourCrypt::decrypt(ErrType* err_type, InOutDir* err_io_dir)
   }
   // Map the input file.
   {
+    if (status_callback)
+      status_callback(mypod, status_callback_data);
     SSC_Error_t err = this->mapFiles(
      nullptr,
      input_filesize,
@@ -450,7 +474,7 @@ SSC_CodeError_t FourCrypt::decrypt(ErrType* err_type, InOutDir* err_io_dir)
       return ERROR_INPUT_MEMMAP_FAILED;
     }
   }
-  if (!FourCrypt::verifyBasicMetadata(mypod, InOutDir::INPUT)) {
+  if (!Core::verifyBasicMetadata(mypod, InOutDir::INPUT)) {
     *err_io_dir = InOutDir::INPUT;
     return ERROR_INVALID_4CRYPT_FILE;
   }
@@ -466,8 +490,12 @@ SSC_CodeError_t FourCrypt::decrypt(ErrType* err_type, InOutDir* err_io_dir)
     return err;
   PlainOldData::touchup(*mypod);
   // Run the KDF to generate secret values.
+  if (status_callback)
+    status_callback(mypod, status_callback_data);
   this->runKDF();
   // Check the MAC for integrity and authentication.
+  if (status_callback)
+    status_callback(mypod, status_callback_data);
   err = this->verifyMAC(
    mypod->input_map.ptr + (num_in - MAC_SIZE),
    mypod->input_map.ptr,
@@ -477,12 +505,16 @@ SSC_CodeError_t FourCrypt::decrypt(ErrType* err_type, InOutDir* err_io_dir)
     return ERROR_MAC_VALIDATION_FAILED;
   }
   // Decipher the encrypted portion of the input file header.
+  if (status_callback)
+    status_callback(mypod, status_callback_data);
   in = this->readHeaderCiphertext(in, &err);
   if (err)
     return err;
   // Map the output file
-  const size_t num_out = num_in - FourCrypt::getMetadataSize() - mypod->padding_size;
+  const size_t num_out = num_in - Core::getMetadataSize() - mypod->padding_size;
   {
+    if (status_callback)
+      status_callback(mypod, status_callback_data);
     SSC_Error_t err = this->mapFiles(
      nullptr,
      0,
@@ -494,14 +526,18 @@ SSC_CodeError_t FourCrypt::decrypt(ErrType* err_type, InOutDir* err_io_dir)
     }
   }
   // Decipher the encrypted payload into the mapped output file.
+  if (status_callback)
+    status_callback(mypod, status_callback_data);
   this->writePlaintext(mypod->output_map.ptr, in, num_out);
   
+  if (status_callback)
+    status_callback(mypod, status_callback_data);
   this->syncMaps();
   this->unmapFiles();
   return 0;
 }
 
-SSC_Error_t FourCrypt::syncMaps()
+SSC_Error_t Core::syncMaps()
 {
   PlainOldData* mypod = this->getPod();
   if (mypod->input_map.ptr) {
@@ -515,7 +551,7 @@ SSC_Error_t FourCrypt::syncMaps()
   return 0;
 }
 
-void FourCrypt::unmapFiles()
+void Core::unmapFiles()
 {
   PlainOldData* mypod = this->getPod();
   if (mypod->input_map.ptr)
@@ -524,17 +560,17 @@ void FourCrypt::unmapFiles()
     SSC_MemMap_del(&mypod->output_map);
 }
 
-const uint8_t* FourCrypt::readHeaderPlaintext(
+const uint8_t* Core::readHeaderPlaintext(
  const uint8_t* R_   from,
  SSC_CodeError_t* R_ err)
 {
   PlainOldData* mypod = this->getPod();
   // Check the magic bytes.
-  if (memcmp(from, FourCrypt::magic, sizeof(FourCrypt::magic))) {
+  if (memcmp(from, Core::magic, sizeof(Core::magic))) {
     *err = ERROR_INVALID_4CRYPT_FILE;
     return from;
   }
-  from += sizeof(FourCrypt::magic);
+  from += sizeof(Core::magic);
   // Mem Low, High, Iteration Count, Phi usage.
   mypod->memory_low  = (*from++);
   mypod->memory_high = (*from++);
@@ -549,7 +585,7 @@ const uint8_t* FourCrypt::readHeaderPlaintext(
     uint64_t size;
     memcpy(&size, from, sizeof(size));
     from += sizeof(size);
-    if constexpr(!FourCrypt::is_little_endian)
+    if constexpr(!Core::is_little_endian)
       size = SSC_swap64(size);
     if (mypod->input_map.size != size) {
       *err = ERROR_INPUT_SIZE_MISMATCH;
@@ -570,7 +606,7 @@ const uint8_t* FourCrypt::readHeaderPlaintext(
     uint64_t tcount;
     memcpy(&tcount, from, sizeof(tcount));
     from += sizeof(tcount);
-    if constexpr(FourCrypt::is_little_endian)
+    if constexpr(Core::is_little_endian)
       mypod->thread_count = tcount;
     else
       mypod->thread_count = SSC_swap64(tcount);
@@ -584,7 +620,7 @@ const uint8_t* FourCrypt::readHeaderPlaintext(
   return from;
 }
 
-const uint8_t* FourCrypt::readHeaderCiphertext(const uint8_t* R_ from, SSC_CodeError_t* R_ err)
+const uint8_t* Core::readHeaderCiphertext(const uint8_t* R_ from, SSC_CodeError_t* R_ err)
 {
   PlainOldData* mypod = this->getPod();
   // 8 Ciphered padding size bytes; 8 ciphered reserve bytes.
@@ -598,7 +634,7 @@ const uint8_t* FourCrypt::readHeaderCiphertext(const uint8_t* R_ from, SSC_CodeE
      mypod->tf_ctr_idx);
     mypod->tf_ctr_idx += sizeof(tmp);
     from += sizeof(tmp);
-    if constexpr(FourCrypt::is_little_endian)
+    if constexpr(Core::is_little_endian)
       mypod->padding_size = tmp[0];
     else
       mypod->padding_size = SSC_swap64(tmp[0]);
@@ -614,7 +650,11 @@ const uint8_t* FourCrypt::readHeaderCiphertext(const uint8_t* R_ from, SSC_CodeE
   return from;
 }
 
-SSC_CodeError_t FourCrypt::describe(ErrType* errtype, InOutDir* errdir)
+SSC_CodeError_t Core::describe(
+ ErrType*          errtype,
+ InOutDir*         errdir,
+ StatusCallback_fp status_callback,
+ void*             status_callback_data)
 {
   PlainOldData* mypod = this->getPod();
   if (mypod->input_filename == nullptr) {
@@ -642,7 +682,7 @@ SSC_CodeError_t FourCrypt::describe(ErrType* errtype, InOutDir* errdir)
     *errtype = ErrType::FOURCRYPT;
     return err;
   }
-  if (!FourCrypt::verifyBasicMetadata(mypod, InOutDir::INPUT)) {
+  if (!Core::verifyBasicMetadata(mypod, InOutDir::INPUT)) {
     *errdir = InOutDir::INPUT;
     *errtype = ErrType::FOURCRYPT;
     return ERROR_METADATA_VALIDATION_FAILED;
@@ -652,25 +692,25 @@ SSC_CodeError_t FourCrypt::describe(ErrType* errtype, InOutDir* errdir)
   memcpy(mac, mypod->input_map.ptr + num_in - sizeof(mac), sizeof(mac));
 
   // Print plaintext header information from beginning to end.
-  if (mypod->flags & FourCrypt::ENABLE_PHI)
+  if (mypod->flags & Core::ENABLE_PHI)
     puts("The Phi function IS USED! Beware cache-timing attacks!");
   printf(
    "The file size is................%s.\n",
-   FourCrypt::makeMemoryString(mypod->input_map.size).c_str());
+   Core::makeMemoryString(mypod->input_map.size).c_str());
   if (mypod->memory_low == mypod->memory_high) {
     printf(
      "The KDF Memory Bound is.........%s\n",
-     FourCrypt::makeMemoryStringBitShift(
+     Core::makeMemoryStringBitShift(
       mypod->memory_low + 6).c_str());
   }
   else {
     printf(
      "The KDF Lower Memory Bound is...%s\n",
-     FourCrypt::makeMemoryStringBitShift(
+     Core::makeMemoryStringBitShift(
       mypod->memory_low + 6).c_str());
     printf(
      "The KDF Upper Memory Bound is...%s\n",
-     FourCrypt::makeMemoryStringBitShift(
+     Core::makeMemoryStringBitShift(
       mypod->memory_high + 6).c_str());
   }
   printf("The KDF Thread Count is.........%" PRIu64 " thread(s).\n", mypod->thread_count);
@@ -692,7 +732,7 @@ SSC_CodeError_t FourCrypt::describe(ErrType* errtype, InOutDir* errdir)
   return 0;
 }
 
-SSC_CodeError_t FourCrypt::mapFiles(InOutDir* map_err_idx, size_t input_size, size_t output_size, InOutDir only_map)
+SSC_CodeError_t Core::mapFiles(InOutDir* map_err_idx, size_t input_size, size_t output_size, InOutDir only_map)
 {
   constexpr const SSC_BitFlag_t input_flag = SSC_MEMMAP_INIT_READONLY |
    SSC_MEMMAP_INIT_FORCE_EXIST | SSC_MEMMAP_INIT_FORCE_EXIST_YES;
@@ -727,7 +767,7 @@ SSC_CodeError_t FourCrypt::mapFiles(InOutDir* map_err_idx, size_t input_size, si
   return 0;
 }
 
-void FourCrypt::getPassword(bool enter_twice, bool entropy)
+void Core::getPassword(bool enter_twice, bool entropy)
 {
   PlainOldData* mypod = this->getPod();
   SSC_Terminal_init();
@@ -735,8 +775,8 @@ void FourCrypt::getPassword(bool enter_twice, bool entropy)
     mypod->password_size = static_cast<uint64_t>(SSC_Terminal_getPasswordChecked(
      mypod->password_buffer,
      mypod->verify_buffer,
-     FourCrypt::password_prompt.c_str(),
-     FourCrypt::reentry_prompt.c_str(),
+     Core::password_prompt.c_str(),
+     Core::reentry_prompt.c_str(),
      1,
      MAX_PW_BYTES,
      PW_BUFFER_BYTES));
@@ -749,12 +789,12 @@ void FourCrypt::getPassword(bool enter_twice, bool entropy)
     uint64_t*   sz;
     if (entropy) {
       p   = mypod->entropy_buffer;
-      str = FourCrypt::entropy_prompt.c_str();
+      str = Core::entropy_prompt.c_str();
       sz  = &mypod->entropy_size;
     }
     else {
       p   = mypod->password_buffer;
-      str = FourCrypt::password_prompt.c_str();
+      str = Core::password_prompt.c_str();
       sz  = &mypod->password_size;
     }
     *sz = static_cast<uint64_t>(SSC_Terminal_getPassword(
@@ -778,24 +818,24 @@ void FourCrypt::getPassword(bool enter_twice, bool entropy)
   }
 }
 
-uint8_t* FourCrypt::writeHeader(uint8_t* to)
+uint8_t* Core::writeHeader(uint8_t* to)
 {
   PlainOldData* mypod = this->getPod();
   // Magic bytes.
-  memcpy(to, FourCrypt::magic, sizeof(FourCrypt::magic));
-  to += sizeof(FourCrypt::magic);
+  memcpy(to, Core::magic, sizeof(Core::magic));
+  to += sizeof(Core::magic);
   // Mem Low, High, Iteration Count, Phi usage.
   (*to++) = mypod->memory_low;
   (*to++) = mypod->memory_high;
   (*to++) = mypod->iterations;
-  if (mypod->flags & FourCrypt::ENABLE_PHI)
+  if (mypod->flags & Core::ENABLE_PHI)
     (*to++) = 0x01;
   else
     (*to++) = 0x00;
   // Size of the file, little-endian encoded.
   {
     uint64_t size;
-    if constexpr(FourCrypt::is_little_endian)
+    if constexpr(Core::is_little_endian)
       size = mypod->output_map.size;
     else
       size = SSC_swap64(mypod->output_map.size);
@@ -814,7 +854,7 @@ uint8_t* FourCrypt::writeHeader(uint8_t* to)
   // Thread count, little-endian encoded.
   {
     uint64_t tcount;
-    if constexpr(FourCrypt::is_little_endian)
+    if constexpr(Core::is_little_endian)
       tcount = mypod->thread_count;
     else
       tcount = SSC_swap64(mypod->thread_count);
@@ -827,7 +867,7 @@ uint8_t* FourCrypt::writeHeader(uint8_t* to)
   // 8 Ciphered padding size bytes; 8 ciphered reserve bytes.
   {
     uint64_t tmp[2];
-    if constexpr(FourCrypt::is_little_endian)
+    if constexpr(Core::is_little_endian)
       tmp[0] = mypod->padding_size;
     else
       tmp[0] = SSC_swap64(mypod->padding_size);
@@ -844,7 +884,7 @@ uint8_t* FourCrypt::writeHeader(uint8_t* to)
   return to;
 }
 
-uint8_t* FourCrypt::writeCiphertext(uint8_t* R_ to, const uint8_t* R_ from, const size_t num)
+uint8_t* Core::writeCiphertext(uint8_t* R_ to, const uint8_t* R_ from, const size_t num)
 {
   PlainOldData* mypod = this->getPod();
   // Encipher padding bytes, if applicable.
@@ -870,7 +910,7 @@ uint8_t* FourCrypt::writeCiphertext(uint8_t* R_ to, const uint8_t* R_ from, cons
   return to;
 }
 
-void FourCrypt::writePlaintext(uint8_t* R_ to, const uint8_t* R_ from, const size_t num)
+void Core::writePlaintext(uint8_t* R_ to, const uint8_t* R_ from, const size_t num)
 {
   PlainOldData* mypod = this->getPod();
   PPQ_Threefish512CounterMode_xorKeystream(
@@ -883,7 +923,7 @@ void FourCrypt::writePlaintext(uint8_t* R_ to, const uint8_t* R_ from, const siz
   mypod->tf_ctr_idx += num;
 }
 
-void FourCrypt::writeMAC(uint8_t* R_ to, const uint8_t* R_ from, const size_t num)
+void Core::writeMAC(uint8_t* R_ to, const uint8_t* R_ from, const size_t num)
 {
   PlainOldData* mypod = this->getPod();
   PPQ_Skein512_mac(
@@ -895,7 +935,7 @@ void FourCrypt::writeMAC(uint8_t* R_ to, const uint8_t* R_ from, const size_t nu
    sizeof(mypod->mac_key));
 }
 
-bool FourCrypt::verifyBasicMetadata(
+bool Core::verifyBasicMetadata(
  PlainOldData* mypod,
  InOutDir      dir)
 {
@@ -913,9 +953,9 @@ bool FourCrypt::verifyBasicMetadata(
     default:
       return false;
   }
-  if (map->size < FourCrypt::getMinimumOutputSize())
+  if (map->size < Core::getMinimumOutputSize())
     return false;
-  if (memcmp(map->ptr, FourCrypt::magic, sizeof(FourCrypt::magic)))
+  if (memcmp(map->ptr, Core::magic, sizeof(Core::magic)))
     return false;
   size_t fp_sz;
   if (SSC_FilePath_getSize(fpath, &fp_sz))
@@ -927,12 +967,12 @@ bool FourCrypt::verifyBasicMetadata(
   return true;
 }
 
-std::string FourCrypt::makeMemoryStringBitShift(const uint8_t mem_bitshift)
+std::string Core::makeMemoryStringBitShift(const uint8_t mem_bitshift)
 {
-  return FourCrypt::makeMemoryString(static_cast<uint64_t>(1) << mem_bitshift);
+  return Core::makeMemoryString(static_cast<uint64_t>(1) << mem_bitshift);
 }
 
-std::string FourCrypt::makeMemoryString(const uint64_t value)
+std::string Core::makeMemoryString(const uint64_t value)
 {
   constexpr const uint64_t kibibyte = 1024;
   constexpr const uint64_t mebibyte = kibibyte * kibibyte;

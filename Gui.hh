@@ -1,7 +1,7 @@
 #ifndef FOURCRYPT_GUI_HH
 #define FOURCRYPT_GUI_HH
 
-#include "FourCrypt.hh"
+#include "Core.hh"
 #include <gtk/gtk.h>
 #include <string>
 
@@ -27,7 +27,7 @@ class Gui
  {
  public:
  // Public Types //
-  using Pod_t = FourCrypt::PlainOldData;
+  using Pod_t = Core::PlainOldData;
  // Public Constants //
   enum class Mode
    {
@@ -41,7 +41,7 @@ class Gui
   #endif
   static std::string getResourcePath(void);
  // Constructors //
-  Gui(FourCrypt* param_fc, int param_argc, char** param_argv);
+  Gui(Core* param_fc, int param_argc, char** param_argv);
  // Destructor //
   ~Gui();
  // Public Methods //
@@ -61,6 +61,7 @@ class Gui
   GtkWidget*      encrypt_button {};     // Click me to switch to encrypt mode.
   GtkWidget*      decrypt_button {};     // Click me to switch to decrypt mode.
   GtkWidget*      start_button   {};     // Click me to begin encrypting/decrypting.
+  GtkWidget*      progress_box   {};     // Contain the progress bar.
   GtkWidget*      progress_bar   {};     // I track the progress of encryption/decryption.
 
   GtkWidget*      input_box    {};       // Contain the Label, Text, & Button for input.
@@ -81,7 +82,7 @@ class Gui
   GtkWidget*      reentry_label {};
   GtkWidget*      reentry_entry {};
 
-  FourCrypt*      fourcrypt {};          // Access the primary 4crypt methods through me.
+  Core*      fourcrypt {};          // Access the primary 4crypt methods through me.
   Pod_t*          pod  {};               // Access the primary 4crypt data through me.
   Mode            mode {Mode::NONE};        // Encrypt mode? Decrypt mode?
   int             argc {};                  // "argc" passed in from main(int argc, char* argv[])
@@ -95,6 +96,7 @@ class Gui
   void on_input_filepath_updated(void);
   void on_output_filepath_updated(void);
   bool get_password(void);
+  static void progress_bar_callback(Core::PlainOldData*, void*);
  //// Private Static Pseudo-Methods.
   static void on_application_activate(GtkApplication*, void*);
   static void on_encrypt_button_clicked(GtkWidget*,    void*);

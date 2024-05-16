@@ -1,8 +1,8 @@
 #include "CommandLineArg.hh"
 #include <cinttypes>
-using ExeMode = FourCrypt::ExeMode;
-using PadMode = FourCrypt::PadMode;
-using PlainOldData = FourCrypt::PlainOldData;
+using ExeMode = Core::ExeMode;
+using PadMode = Core::PadMode;
+using PlainOldData = Core::PlainOldData;
 #define R_ SSC_RESTRICT
 
 static const char* mode_strings[] = {
@@ -271,7 +271,7 @@ int
 enter_password_once_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
 {
   PlainOldData* pod = static_cast<PlainOldData*>(data);
-  pod->flags |= FourCrypt::ENTER_PASS_ONCE;
+  pod->flags |= Core::ENTER_PASS_ONCE;
   return SSC_1opt(argv[0][offset]);
 }
 
@@ -279,7 +279,7 @@ int
 entropy_argproc(const int, char** R_ argv, const int offset, void* R_ data)
 {
   PlainOldData* pod = static_cast<PlainOldData*>(data);
-  pod->flags |= FourCrypt::SUPPLEMENT_ENTROPY;
+  pod->flags |= Core::SUPPLEMENT_ENTROPY;
   return SSC_1opt(argv[0][offset]);
 }
 
@@ -445,7 +445,7 @@ int
 use_phi_argproc(const int, char** R_ argv, const int offset, void* R_ data)
 {
   PlainOldData* pod = static_cast<PlainOldData*>(data);
-  pod->flags |= FourCrypt::ENABLE_PHI;
+  pod->flags |= Core::ENABLE_PHI;
   return SSC_1opt(argv[0][offset]);
 }
 

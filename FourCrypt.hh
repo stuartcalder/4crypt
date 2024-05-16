@@ -18,7 +18,7 @@
 
 #define R_ SSC_RESTRICT
 
-class FourCrypt
+class Core
 {
   public:
     // Public constants and types.
@@ -106,17 +106,18 @@ class FourCrypt
       static void del(PlainOldData& pod);     // Destroy a PlainOldData object.
       static void touchup(PlainOldData& pod); // Ensure the values inside a PlainOldData object are valid & consistent.
     };
+    using StatusCallback_fp = void(*)(PlainOldData* pod, void* data);
     // Public methods.
     PlainOldData*   getPod();
-    SSC_CodeError_t encrypt(ErrType* err_type, InOutDir* err_dir);
-    SSC_CodeError_t decrypt(ErrType* err_type, InOutDir* err_dir);
-    SSC_CodeError_t describe(ErrType* err_type, InOutDir* err_dir);
+    SSC_CodeError_t encrypt(ErrType* err_type, InOutDir* err_dir , StatusCallback_fp scb = nullptr, void* scb_data = nullptr);
+    SSC_CodeError_t decrypt(ErrType* err_type, InOutDir* err_dir , StatusCallback_fp scb = nullptr, void* scb_data = nullptr);
+    SSC_CodeError_t describe(ErrType* err_type, InOutDir* err_dir, StatusCallback_fp scb = nullptr, void* scb_data = nullptr);
     static consteval uint64_t getHeaderSize();
     static consteval uint64_t getMetadataSize();
     static consteval uint64_t getMinimumOutputSize();
     // Constructors / Destructors
-    FourCrypt();
-    ~FourCrypt();
+    Core();
+    ~Core();
   private:
     // Data
     PlainOldData*      pod;

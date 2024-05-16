@@ -2,7 +2,7 @@
 #define COMMANDLINEARG_HH
 
 #include <SSC/CommandLineArg.h>
-#include "FourCrypt.hh"
+#include "Core.hh"
 #define ARGS_ const int argc, char** SSC_RESTRICT argv, const int offset, void* SSC_RESTRICT data
 
 // Set the number of KDF threads to process simultaneously.
