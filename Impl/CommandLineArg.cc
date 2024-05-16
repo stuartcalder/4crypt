@@ -1,9 +1,13 @@
 #include "CommandLineArg.hh"
+// C++ C Lib
 #include <cinttypes>
+#define R_ SSC_RESTRICT
+using namespace fourcrypt;
+
+
 using ExeMode = Core::ExeMode;
 using PadMode = Core::PadMode;
 using PlainOldData = Core::PlainOldData;
-#define R_ SSC_RESTRICT
 
 static const char* mode_strings[] = {
   "NONE", "ENCRYPT", "DECRYPT", "DESCRIBE"
@@ -211,7 +215,7 @@ print_help()
 }
 
 int
-decrypt_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
+fourcrypt::decrypt_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
 {
   PlainOldData* pod = static_cast<PlainOldData*>(data);
   SSC_assertMsg(
@@ -230,7 +234,7 @@ decrypt_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
 }
 
 int
-describe_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
+fourcrypt::describe_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
 {
   PlainOldData* pod = static_cast<PlainOldData*>(data);
   SSC_assertMsg(
@@ -249,7 +253,7 @@ describe_argproc(const int argc, char** R_ argv, const int offset, void* R_ data
 }
 
 int
-encrypt_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
+fourcrypt::encrypt_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
 {
   PlainOldData* pod = static_cast<PlainOldData*>(data);
   SSC_assertMsg(
@@ -268,7 +272,7 @@ encrypt_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
 }
 
 int
-enter_password_once_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
+fourcrypt::enter_password_once_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
 {
   PlainOldData* pod = static_cast<PlainOldData*>(data);
   pod->flags |= Core::ENTER_PASS_ONCE;
@@ -276,7 +280,7 @@ enter_password_once_argproc(const int argc, char** R_ argv, const int offset, vo
 }
 
 int
-entropy_argproc(const int, char** R_ argv, const int offset, void* R_ data)
+fourcrypt::entropy_argproc(const int, char** R_ argv, const int offset, void* R_ data)
 {
   PlainOldData* pod = static_cast<PlainOldData*>(data);
   pod->flags |= Core::SUPPLEMENT_ENTROPY;
@@ -284,7 +288,7 @@ entropy_argproc(const int, char** R_ argv, const int offset, void* R_ data)
 }
 
 int
-help_argproc(const int, char** R_, const int, void* R_)
+fourcrypt::help_argproc(const int, char** R_, const int, void* R_)
 {
   print_help();
   exit(EXIT_SUCCESS);
@@ -292,7 +296,7 @@ help_argproc(const int, char** R_, const int, void* R_)
 }
 
 int
-high_mem_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
+fourcrypt::high_mem_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
 {
   SSC_ArgParser parser;
   return SSC_ArgParser_process(
@@ -312,7 +316,7 @@ high_mem_argproc(const int argc, char** R_ argv, const int offset, void* R_ data
 }
 
 int
-iterations_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
+fourcrypt::iterations_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
 {
   SSC_ArgParser parser;
   return SSC_ArgParser_process(
@@ -330,7 +334,7 @@ iterations_argproc(const int argc, char** R_ argv, const int offset, void* R_ da
 }
 
 int
-low_mem_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
+fourcrypt::low_mem_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
 {
   SSC_ArgParser parser;
   return SSC_ArgParser_process(
@@ -350,7 +354,7 @@ low_mem_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
 }
 
 int
-output_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
+fourcrypt::output_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
 {
   SSC_ArgParser parser;
   return SSC_ArgParser_process(
@@ -370,7 +374,7 @@ output_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
 }
 
 int
-pad_as_if_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
+fourcrypt::pad_as_if_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
 {
   PlainOldData* pod = static_cast<PlainOldData*>(data);
   set_padmode(pod, PadMode::AS_IF);
@@ -378,7 +382,7 @@ pad_as_if_argproc(const int argc, char** R_ argv, const int offset, void* R_ dat
 }
 
 int
-pad_by_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
+fourcrypt::pad_by_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
 {
   SSC_ArgParser parser;
   return SSC_ArgParser_process(
@@ -396,7 +400,7 @@ pad_by_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
 }
 
 int
-pad_to_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
+fourcrypt::pad_to_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
 {
   PlainOldData* pod = static_cast<PlainOldData*>(data);
   set_padmode(pod, PadMode::TARGET);
@@ -404,7 +408,7 @@ pad_to_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
 }
 
 int
-threads_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
+fourcrypt::threads_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
 {
   SSC_ArgParser parser;
   return SSC_ArgParser_process(
@@ -422,7 +426,7 @@ threads_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
 }
 
 int
-use_mem_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
+fourcrypt::use_mem_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
 {
   SSC_ArgParser parser;
   return SSC_ArgParser_process(
@@ -442,7 +446,7 @@ use_mem_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
 }
 
 int
-use_phi_argproc(const int, char** R_ argv, const int offset, void* R_ data)
+fourcrypt::use_phi_argproc(const int, char** R_ argv, const int offset, void* R_ data)
 {
   PlainOldData* pod = static_cast<PlainOldData*>(data);
   pod->flags |= Core::ENABLE_PHI;
@@ -450,7 +454,7 @@ use_phi_argproc(const int, char** R_ argv, const int offset, void* R_ data)
 }
 
 int
-batch_size_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
+fourcrypt::batch_size_argproc(const int argc, char** R_ argv, const int offset, void* R_ data)
 {
   SSC_ArgParser parser;
   return SSC_ArgParser_process(

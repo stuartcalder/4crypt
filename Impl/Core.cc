@@ -1,10 +1,15 @@
 #include "Core.hh"
+// SSC
 #include <SSC/Terminal.h>
 #include <SSC/Print.h>
+// PPQ
 #include <PPQ/Skein512.h>
+// C++ STL
 #include <thread>
 #include <memory>
+// C++ C Lib
 #include <cinttypes>
+using namespace fourcrypt;
 
 #define R_ SSC_RESTRICT
 

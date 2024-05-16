@@ -1,9 +1,13 @@
-#include <array>
-#include <SSC/Macro.h>
-#include <SSC/CommandLineArg.h>
-
+// Local
 #include "Core.hh"
 #include "CommandLineArg.hh"
+// SSC
+#include <SSC/Macro.h>
+#include <SSC/CommandLineArg.h>
+// C++ STL
+#include <array>
+using namespace fourcrypt;
+
 
 using PlainOldData = Core::PlainOldData;
 using ErrType = Core::ErrType;

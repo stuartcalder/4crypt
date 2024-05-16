@@ -1,9 +1,14 @@
 #ifndef COMMANDLINEARG_HH
 #define COMMANDLINEARG_HH
 
-#include <SSC/CommandLineArg.h>
+// Local
 #include "Core.hh"
+// SSC
+#include <SSC/CommandLineArg.h>
+
 #define ARGS_ const int argc, char** SSC_RESTRICT argv, const int offset, void* SSC_RESTRICT data
+
+namespace fourcrypt {
 
 // Set the number of KDF threads to process simultaneously.
 int batch_size_argproc(ARGS_);
@@ -40,5 +45,6 @@ int use_mem_argproc(ARGS_);
 // Enable usage of the Phi function in the KDF.
 int use_phi_argproc(ARGS_);
 
+} // ! namespace fourcrypt
 #undef ARGS_
 #endif

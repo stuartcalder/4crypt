@@ -1,10 +1,14 @@
 #ifndef FOURCRYPT_GUI_HH
 #define FOURCRYPT_GUI_HH
 
+// Local
 #include "Core.hh"
+// GTK4
 #include <gtk/gtk.h>
+// C++ STL
 #include <string>
 
+// OS-specific binary names.
 #if   defined(SSC_OS_UNIXLIKE)
  #define FOURCRYPT_GUI_BINARY        "g4crypt"
  #define FOURCRYPT_GUI_BINARY_LENGTH 7
@@ -20,6 +24,8 @@
 #else
  #error "Unsupported!"
 #endif
+
+namespace fourcrypt {
 
 void make_os_path(std::string& str);
 
@@ -61,6 +67,7 @@ class Gui
   GtkWidget*      encrypt_button {};     // Click me to switch to encrypt mode.
   GtkWidget*      decrypt_button {};     // Click me to switch to decrypt mode.
   GtkWidget*      start_button   {};     // Click me to begin encrypting/decrypting.
+
   GtkWidget*      progress_box   {};     // Contain the progress bar.
   GtkWidget*      progress_bar   {};     // I track the progress of encryption/decryption.
 
@@ -82,8 +89,8 @@ class Gui
   GtkWidget*      reentry_label {};
   GtkWidget*      reentry_entry {};
 
-  Core*      fourcrypt {};          // Access the primary 4crypt methods through me.
-  Pod_t*          pod  {};               // Access the primary 4crypt data through me.
+  Core*           core {};                  // Access the primary 4crypt methods through me.
+  Pod_t*          pod  {};                  // Access the primary 4crypt data through me.
   Mode            mode {Mode::NONE};        // Encrypt mode? Decrypt mode?
   int             argc {};                  // "argc" passed in from main(int argc, char* argv[])
   char**          argv {};                  // "argv" passed in from main(int argc, char* argv[])
@@ -110,4 +117,5 @@ class Gui
   static void on_reentry_entry_activate(GtkWidget*,    void*);
  };
 
+} // ! namespace fourcrypt
 #endif

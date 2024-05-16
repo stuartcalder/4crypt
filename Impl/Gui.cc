@@ -1,17 +1,22 @@
 #include "Gui.hh"
+// GTK4
 #include <gtk/gtk.h>
 #include <gio/gio.h>
+// C++ STL
+#include <algorithm>
 #include <string>
 #include <utility>
+// C++ C Lib
 #include <cstring>
 #include <cstdlib>
 #include <cstdio>
-#include <algorithm>
-#include <SSC/Process.h>
-
-#if defined(FOURCRYPT_IS_PORTABLE) && !defined(SSC_HAS_GETEXECUTABLEPATH)
- #warning "Trying to build a portable 4crypt while SSC does not support SSC_getExecutablePath()!"
- #error   "Unsatisfiable build requirements."
+// SSC
+#ifdef FOURCRYPT_IS_PORTABLE
+ #include <SSC/Process.h>
+ #ifndef SSC_HAS_GETEXECUTABLEPATH
+  #warning "Trying to build a portable 4crypt while SSC does not support SSC_getExecutablePath()!"
+  #error   "Unsatisfiable build requirements."
+ #endif
 #endif
 
 #if !defined(SSC_LANG_CPP)
@@ -19,6 +24,7 @@
 #elif SSC_LANG_CPP < SSC_CPP_17
  #error "We need at least C++17!"
 #endif
+using namespace fourcrypt;
 
 using Pod_t = Gui::Pod_t;
 constexpr int FOURCRYPT_IMG_WIDTH_ORIGINAL {300};
@@ -43,7 +49,7 @@ str_ends_with(const std::string& str, const std::string& with)
  }
 
 void
-make_os_path(std::string& str)
+fourcrypt::make_os_path(std::string& str)
  {
   for (char& c : str)
    {
@@ -101,10 +107,10 @@ Gui::getResourcePath(void)
  #endif
  }
 
-Gui::Gui(Core* param_fc, int param_argc, char** param_argv)
-: fourcrypt{param_fc}, argc{param_argc}, argv{param_argv}
+Gui::Gui(Core* param_core, int param_argc, char** param_argv)
+: core{param_core}, argc{param_argc}, argv{param_argv}
  {
-  pod = fourcrypt->getPod();
+  pod = core->getPod();
   gtk_init();
 
   file_dialog = gtk_file_dialog_new();
@@ -228,7 +234,7 @@ Gui::encrypt(void)
   pod->execute_mode = ExeMode::ENCRYPT;
   Pod_t::touchup(*pod);
   gtk_widget_set_visible(progress_box, TRUE);
-  code_err = fourcrypt->encrypt(&code_type, &code_io_dir, &progress_bar_callback, this);
+  code_err = core->encrypt(&code_type, &code_io_dir, &progress_bar_callback, this);
   //gtk_widget_set_visible(progress_box, FALSE);
   //TODO: Handle errors and error types.
   Pod_t::del(*pod);
@@ -244,7 +250,7 @@ Gui::decrypt(void)
 
   pod->execute_mode = ExeMode::DECRYPT;
   gtk_widget_set_visible(progress_box, TRUE);
-  code_err = fourcrypt->decrypt(&code_type, &code_io_dir, &progress_bar_callback, this);
+  code_err = core->decrypt(&code_type, &code_io_dir, &progress_bar_callback, this);
   //gtk_widget_set_visible(progress_box, FALSE);
   //TODO: Handle errors and error types.
   Pod_t::del(*pod);
@@ -638,8 +644,8 @@ int main(
  int   argc,
  char* argv[])
  {
-  Core fc  {};
-  Gui       gui {&fc, argc, argv};
+  Core core {};
+  Gui  gui  {&core, argc, argv};
 
   return gui.run();
  }
