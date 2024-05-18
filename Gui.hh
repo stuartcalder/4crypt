@@ -6,6 +6,8 @@
 // GTK4
 #include <gtk/gtk.h>
 // C++ STL
+#include <atomic>
+#include <mutex>
 #include <string>
 
 // OS-specific binary names.
@@ -39,7 +41,7 @@ class Gui
    {
     NONE, ENCRYPT, DECRYPT
    };
-  static constexpr double PROGRESS_PULSE_STEP {0.25}; //FIXME: Fraction of total number of steps.
+  static constexpr double PROGRESS_PULSE_STEP {0.14285714285714285}; //FIXME: Fraction of total number of steps.
  // Public Static Procedures //
   #ifdef FOURCRYPT_IS_PORTABLE
   static std::string getExecutablePath(void);
@@ -56,6 +58,14 @@ class Gui
  // Private Data //
   std::string     input_filepath  {};
   std::string     output_filepath {};
+
+  std::atomic_bool operation_is_ongoing {};
+  std::mutex       operation_mtx {};
+  struct OpData {
+    SSC_CodeError_t code_error {};
+    Core::ErrType   error_type {};
+    Core::InOutDir  in_out_dir {};
+  } operation_data {};
 
   GtkApplication* application {};
   GtkFileDialog*  file_dialog {};        // Input & Output file dialogs.
@@ -103,7 +113,9 @@ class Gui
   void on_input_filepath_updated(void);
   void on_output_filepath_updated(void);
   bool get_password(void);
-  static void progress_bar_callback(Core::PlainOldData*, void*);
+  static void progress_bar_callback(void*);
+  static void encrypt_thread(Core::StatusCallback_f* status_callback, void* status_callback_data);
+  static void decrypt_thread(Core::StatusCallback_f* status_callback, void* status_callback_data);
  //// Private Static Pseudo-Methods.
   static void on_application_activate(GtkApplication*, void*);
   static void on_encrypt_button_clicked(GtkWidget*,    void*);

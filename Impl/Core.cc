@@ -194,7 +194,7 @@ PlainOldData* Core::getPod()
 SSC_CodeError_t Core::encrypt(
  ErrType*          err_typ,
  InOutDir*         err_dir,
- StatusCallback_fp status_callback,
+ StatusCallback_f* status_callback,
  void*             status_callback_data)
 {
   PlainOldData* mypod {this->getPod()};
@@ -225,7 +225,7 @@ SSC_CodeError_t Core::encrypt(
   InOutDir err_io_dir = InOutDir::NONE;
 
   if (status_callback)
-    status_callback(mypod, status_callback_data);
+    status_callback(status_callback_data);
   // Map the input and output files.
   SSC_CodeError_t err = this->mapFiles(
    &err_io_dir,
@@ -247,29 +247,29 @@ SSC_CodeError_t Core::encrypt(
       this->getPassword(false, true);
   }
   if (status_callback)
-    status_callback(mypod, status_callback_data);
+    status_callback(status_callback_data);
   // Generate pseudorandom values.
   this->genRandomElements();
   // Run the key derivation function and get our secret values.
   if (status_callback)
-    status_callback(mypod, status_callback_data);
+    status_callback(status_callback_data);
   this->runKDF();
   const uint8_t* in   = mypod->input_map.ptr;
   uint8_t*       out  = mypod->output_map.ptr;
   size_t         n_in = mypod->input_map.size;
   if (status_callback)
-    status_callback(mypod, status_callback_data);
+    status_callback(status_callback_data);
   out = this->writeHeader(out); // Write the header of the ciphertext file.
   out = this->writeCiphertext(out, in, n_in); // Encrypt the input stream into the ciphertext file.
   if (status_callback)
-    status_callback(mypod, status_callback_data);
+    status_callback(status_callback_data);
   this->writeMAC(out, mypod->output_map.ptr, mypod->output_map.size - MAC_SIZE);
   if (status_callback)
-    status_callback(mypod, status_callback_data);
+    status_callback(status_callback_data);
   this->syncMaps();
   this->unmapFiles();
   if (status_callback)
-    status_callback(mypod, status_callback_data);
+    status_callback(status_callback_data);
   return 0;
 }
 
@@ -427,7 +427,7 @@ SSC_Error_t Core::verifyMAC(const uint8_t* R_ mac, const uint8_t* R_ begin, cons
 SSC_CodeError_t Core::decrypt(
  ErrType*          err_type,
  InOutDir*         err_io_dir,
- StatusCallback_fp status_callback,
+ StatusCallback_f* status_callback,
  void*             status_callback_data)
 {
   PlainOldData* mypod = this->getPod();
@@ -468,7 +468,7 @@ SSC_CodeError_t Core::decrypt(
   // Map the input file.
   {
     if (status_callback)
-      status_callback(mypod, status_callback_data);
+      status_callback(status_callback_data);
     SSC_Error_t err = this->mapFiles(
      nullptr,
      input_filesize,
@@ -496,11 +496,11 @@ SSC_CodeError_t Core::decrypt(
   PlainOldData::touchup(*mypod);
   // Run the KDF to generate secret values.
   if (status_callback)
-    status_callback(mypod, status_callback_data);
+    status_callback(status_callback_data);
   this->runKDF();
   // Check the MAC for integrity and authentication.
   if (status_callback)
-    status_callback(mypod, status_callback_data);
+    status_callback(status_callback_data);
   err = this->verifyMAC(
    mypod->input_map.ptr + (num_in - MAC_SIZE),
    mypod->input_map.ptr,
@@ -511,7 +511,7 @@ SSC_CodeError_t Core::decrypt(
   }
   // Decipher the encrypted portion of the input file header.
   if (status_callback)
-    status_callback(mypod, status_callback_data);
+    status_callback(status_callback_data);
   in = this->readHeaderCiphertext(in, &err);
   if (err)
     return err;
@@ -519,7 +519,7 @@ SSC_CodeError_t Core::decrypt(
   const size_t num_out = num_in - Core::getMetadataSize() - mypod->padding_size;
   {
     if (status_callback)
-      status_callback(mypod, status_callback_data);
+      status_callback(status_callback_data);
     SSC_Error_t err = this->mapFiles(
      nullptr,
      0,
@@ -532,11 +532,11 @@ SSC_CodeError_t Core::decrypt(
   }
   // Decipher the encrypted payload into the mapped output file.
   if (status_callback)
-    status_callback(mypod, status_callback_data);
+    status_callback(status_callback_data);
   this->writePlaintext(mypod->output_map.ptr, in, num_out);
   
   if (status_callback)
-    status_callback(mypod, status_callback_data);
+    status_callback(status_callback_data);
   this->syncMaps();
   this->unmapFiles();
   return 0;
@@ -658,7 +658,7 @@ const uint8_t* Core::readHeaderCiphertext(const uint8_t* R_ from, SSC_CodeError_
 SSC_CodeError_t Core::describe(
  ErrType*          errtype,
  InOutDir*         errdir,
- StatusCallback_fp status_callback,
+ StatusCallback_f* status_callback,
  void*             status_callback_data)
 {
   PlainOldData* mypod = this->getPod();

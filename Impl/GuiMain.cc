@@ -5,6 +5,7 @@
 // C++ STL
 #include <algorithm>
 #include <string>
+#include <thread>
 #include <utility>
 // C++ C Lib
 #include <cstring>
@@ -160,7 +161,7 @@ Gui::on_input_button_clicked(GtkWidget* button, void* self)
    static_cast<GAsyncReadyCallback>([]
     (GObject*      fdialog,
      GAsyncResult* result,
-     void*         void_self)
+     void*         void_self) -> void
     {
      Gui*    lambda_self {static_cast<Gui*>(void_self)};
     /* This function initiates a file selection operation by presenting a file chooser
@@ -216,45 +217,109 @@ using InOutDir = Core::InOutDir;
 using ErrType  = Core::ErrType;
 
 void
-Gui::progress_bar_callback(
- Core::PlainOldData* pod,
- void*                    v_gui)
+Gui::progress_bar_callback(void* v_gui)
  {
-  Gui* gui {static_cast<Gui*>(v_gui)};
-  gtk_progress_bar_pulse(GTK_PROGRESS_BAR(gui->progress_bar));
+ #if 0
+  g_idle_add(
+   static_cast<GSourceFunc>([](void* userdata) -> gboolean
+    {
+     Gui* gui {static_cast<Gui*>(userdata)};
+     GtkProgressBar* pb {GTK_PROGRESS_BAR(gui->progress_bar)};
+     gtk_progress_bar_pulse(pb);
+     std::puts("Pulsed the progress bar.");
+     return G_SOURCE_REMOVE;
+    }),
+   v_gui);
+ #else
+  g_idle_add(
+   static_cast<GSourceFunc>([](void* userdata) -> gboolean
+    {
+     Gui*            gui {static_cast<Gui*>(userdata)};
+     GtkProgressBar* pb  {GTK_PROGRESS_BAR(gui->progress_bar)};
+     double old_fraction {gtk_progress_bar_get_fraction(pb)};
+     double new_fraction {old_fraction + PROGRESS_PULSE_STEP};
+     if (new_fraction > 1.0)
+       new_fraction = 1.0;
+     gtk_progress_bar_set_fraction(pb, new_fraction);
+     std::printf("Old fraction: %e\n", old_fraction);
+     std::printf("New fraction: %e\n", new_fraction);
+     return G_SOURCE_REMOVE;
+    }),
+   v_gui);
+ #endif
+ }
+
+void
+Gui::encrypt_thread(
+ Core::StatusCallback_f* status_callback,
+ void*                   status_callback_data)
+ {
+  Gui*   gui  {static_cast<Gui*>(status_callback_data)};
+  Core*  core {gui->core};
+  Pod_t* pod  {gui->pod};
+  {
+    std::lock_guard {gui->operation_mtx};
+    gui->operation_data.code_error = core->encrypt(
+     &gui->operation_data.error_type,
+     &gui->operation_data.in_out_dir,
+     status_callback,
+     status_callback_data);
+    Pod_t::del(*pod);
+    Pod_t::init(*pod);
+    gui->operation_is_ongoing = false;
+  }
  }
 
 void
 Gui::encrypt(void)
  {
-  SSC_CodeError_t code_err    {0};
-  ErrType         code_type   {ErrType::CORE};
-  InOutDir        code_io_dir {InOutDir::NONE};
+  if (not operation_is_ongoing)
+   {
+    operation_is_ongoing = true;
+    pod->execute_mode = ExeMode::ENCRYPT;
+    Pod_t::touchup(*pod);
+    gtk_widget_set_visible(progress_box, TRUE);
 
-  pod->execute_mode = ExeMode::ENCRYPT;
-  Pod_t::touchup(*pod);
-  gtk_widget_set_visible(progress_box, TRUE);
-  code_err = core->encrypt(&code_type, &code_io_dir, &progress_bar_callback, this);
-  //gtk_widget_set_visible(progress_box, FALSE);
+    std::thread th {encrypt_thread, &progress_bar_callback, this};
+    th.detach();
+   }
   //TODO: Handle errors and error types.
-  Pod_t::del(*pod);
-  Pod_t::init(*pod);
+ }
+
+void
+Gui::decrypt_thread(
+ Core::StatusCallback_f* status_callback,
+ void*                   status_callback_data)
+ {
+  Gui*   gui  {static_cast<Gui*>(status_callback_data)};
+  Pod_t* pod  {gui->pod};
+  Core*  core {gui->core};
+  {
+    std::lock_guard {gui->operation_mtx};
+    gui->operation_data.code_error = core->decrypt(
+     &gui->operation_data.error_type,
+     &gui->operation_data.in_out_dir,
+     status_callback,
+     status_callback_data);
+    Pod_t::del(*pod);
+    Pod_t::init(*pod);
+    gui->operation_is_ongoing = false;
+  }
  }
 
 void
 Gui::decrypt(void)
  {
-  SSC_CodeError_t code_err    {0};
-  ErrType         code_type   {ErrType::CORE};
-  InOutDir        code_io_dir {InOutDir::NONE};
+  if (not operation_is_ongoing)
+   {
+    operation_is_ongoing = true;
+    pod->execute_mode = ExeMode::DECRYPT;
+    gtk_widget_set_visible(progress_box, TRUE);
 
-  pod->execute_mode = ExeMode::DECRYPT;
-  gtk_widget_set_visible(progress_box, TRUE);
-  code_err = core->decrypt(&code_type, &code_io_dir, &progress_bar_callback, this);
-  //gtk_widget_set_visible(progress_box, FALSE);
+    std::thread th {decrypt_thread, &progress_bar_callback, this};
+    th.detach();
+   }
   //TODO: Handle errors and error types.
-  Pod_t::del(*pod);
-  Pod_t::init(*pod);
  }
 
 void
@@ -565,6 +630,7 @@ Gui::on_application_activate(GtkApplication* gtk_app, void* self)
   // Initialize the progress box and its bar.
   gui->progress_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
   gui->progress_bar = gtk_progress_bar_new();
+  gtk_widget_set_hexpand(gui->progress_bar, TRUE);
   gtk_box_append(GTK_BOX(gui->progress_box), gui->progress_bar);
   // Set the pulse of progress for each step of progress
   gtk_progress_bar_set_pulse_step(GTK_PROGRESS_BAR(gui->progress_bar), PROGRESS_PULSE_STEP);
