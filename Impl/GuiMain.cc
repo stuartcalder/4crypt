@@ -220,18 +220,6 @@ using ErrType  = Core::ErrType;
 void
 Gui::progress_bar_callback(void* v_gui)
  {
- #if 0
-  g_idle_add(
-   static_cast<GSourceFunc>([](void* userdata) -> gboolean
-    {
-     Gui* gui {static_cast<Gui*>(userdata)};
-     GtkProgressBar* pb {GTK_PROGRESS_BAR(gui->progress_bar)};
-     gtk_progress_bar_pulse(pb);
-     std::puts("Pulsed the progress bar.");
-     return G_SOURCE_REMOVE;
-    }),
-   v_gui);
- #else
   g_idle_add(
    static_cast<GSourceFunc>([](void* userdata) -> gboolean
     {
@@ -242,12 +230,19 @@ Gui::progress_bar_callback(void* v_gui)
      if (new_fraction > 1.0)
        new_fraction = 1.0;
      gtk_progress_bar_set_fraction(pb, new_fraction);
-     std::printf("Old fraction: %e\n", old_fraction);
-     std::printf("New fraction: %e\n", new_fraction);
      return G_SOURCE_REMOVE;
     }),
    v_gui);
- #endif
+ }
+
+gboolean
+Gui::end_operation(void* userdata)
+ {
+  Gui* g {static_cast<Gui*>(userdata)};
+  gtk_widget_set_visible(g->progress_box, FALSE);
+  gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(g->progress_bar), 0.0);
+  g->operation_is_ongoing = false;
+  return G_SOURCE_REMOVE;
  }
 
 void
@@ -267,19 +262,8 @@ Gui::encrypt_thread(
      status_callback_data);
     Pod_t::del(*pod);
     Pod_t::init(*pod);
-    std::puts("Adding sourcefunc to make progress bar invisible in 3 seconds.");
-    std::this_thread::sleep_for(std::chrono::seconds(3));
-    g_idle_add(
-     static_cast<GSourceFunc>([](void* userdata) -> gboolean
-      {
-       Gui* g {static_cast<Gui*>(userdata)};
-       gtk_widget_set_visible(g->progress_box, FALSE);
-       gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(g->progress_bar), 0.0);
-       std::puts("Made it invisible.");
-       g->operation_is_ongoing = false;
-       return G_SOURCE_REMOVE;
-      }),
-     gui);
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    g_idle_add(&end_operation, gui);
   }
  }
 
@@ -293,7 +277,7 @@ Gui::encrypt(void)
     Pod_t::touchup(*pod);
     gtk_widget_set_visible(progress_box, TRUE);
 
-    std::thread th {encrypt_thread, &progress_bar_callback, this};
+    std::thread th {&encrypt_thread, &progress_bar_callback, this};
     th.detach();
    }
   //TODO: Handle errors and error types.
@@ -305,8 +289,8 @@ Gui::decrypt_thread(
  void*                   status_callback_data)
  {
   Gui*   gui  {static_cast<Gui*>(status_callback_data)};
-  Pod_t* pod  {gui->pod};
   Core*  core {gui->core};
+  Pod_t* pod  {gui->pod};
   {
     std::lock_guard {gui->operation_mtx};
     gui->operation_data.code_error = core->decrypt(
@@ -316,19 +300,8 @@ Gui::decrypt_thread(
      status_callback_data);
     Pod_t::del(*pod);
     Pod_t::init(*pod);
-    std::puts("Adding sourcefunc to make progress bar invisible in 3 seconds.");
-    std::this_thread::sleep_for(std::chrono::seconds(3));
-    g_idle_add(
-     static_cast<GSourceFunc>([](void* userdata) -> gboolean
-      {
-       Gui* g {static_cast<Gui*>(userdata)};
-       gtk_widget_set_visible(g->progress_box, FALSE);
-       gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(g->progress_bar), 0.0);
-       std::puts("Made it invisible.");
-       g->operation_is_ongoing = false;
-       return G_SOURCE_REMOVE;
-      }),
-     gui);
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    g_idle_add(&end_operation, gui);
   }
  }
 
@@ -341,7 +314,7 @@ Gui::decrypt(void)
     pod->execute_mode = ExeMode::DECRYPT;
     gtk_widget_set_visible(progress_box, TRUE);
 
-    std::thread th {decrypt_thread, &progress_bar_callback, this};
+    std::thread th {&decrypt_thread, &progress_bar_callback, this};
     th.detach();
    }
   //TODO: Handle errors and error types.

@@ -113,9 +113,10 @@ class Gui
   void on_input_filepath_updated(void);
   void on_output_filepath_updated(void);
   bool get_password(void);
-  static void progress_bar_callback(void*);
-  static void encrypt_thread(Core::StatusCallback_f* status_callback, void* status_callback_data);
-  static void decrypt_thread(Core::StatusCallback_f* status_callback, void* status_callback_data);
+  static void     progress_bar_callback(void*);
+  static void     encrypt_thread(Core::StatusCallback_f* status_callback, void* status_callback_data);
+  static void     decrypt_thread(Core::StatusCallback_f* status_callback, void* status_callback_data);
+  static gboolean end_operation(void* userdata);
  //// Private Static Pseudo-Methods.
   static void on_application_activate(GtkApplication*, void*);
   static void on_encrypt_button_clicked(GtkWidget*,    void*);
