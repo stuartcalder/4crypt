@@ -4,6 +4,7 @@
 #include <gio/gio.h>
 // C++ STL
 #include <algorithm>
+#include <chrono>
 #include <string>
 #include <thread>
 #include <utility>
@@ -266,7 +267,19 @@ Gui::encrypt_thread(
      status_callback_data);
     Pod_t::del(*pod);
     Pod_t::init(*pod);
-    gui->operation_is_ongoing = false;
+    std::puts("Adding sourcefunc to make progress bar invisible in 3 seconds.");
+    std::this_thread::sleep_for(std::chrono::seconds(3));
+    g_idle_add(
+     static_cast<GSourceFunc>([](void* userdata) -> gboolean
+      {
+       Gui* g {static_cast<Gui*>(userdata)};
+       gtk_widget_set_visible(g->progress_box, FALSE);
+       gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(g->progress_bar), 0.0);
+       std::puts("Made it invisible.");
+       g->operation_is_ongoing = false;
+       return G_SOURCE_REMOVE;
+      }),
+     gui);
   }
  }
 
@@ -303,7 +316,19 @@ Gui::decrypt_thread(
      status_callback_data);
     Pod_t::del(*pod);
     Pod_t::init(*pod);
-    gui->operation_is_ongoing = false;
+    std::puts("Adding sourcefunc to make progress bar invisible in 3 seconds.");
+    std::this_thread::sleep_for(std::chrono::seconds(3));
+    g_idle_add(
+     static_cast<GSourceFunc>([](void* userdata) -> gboolean
+      {
+       Gui* g {static_cast<Gui*>(userdata)};
+       gtk_widget_set_visible(g->progress_box, FALSE);
+       gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(g->progress_bar), 0.0);
+       std::puts("Made it invisible.");
+       g->operation_is_ongoing = false;
+       return G_SOURCE_REMOVE;
+      }),
+     gui);
   }
  }
 
