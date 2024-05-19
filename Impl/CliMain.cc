@@ -56,7 +56,7 @@ const std::array<SSC_ArgLong, 21> longs = {{
   SSC_ARGLONG_LITERAL(ArgProc::use_phi,             "use-phi"),
 }};
 
-static void handle_fourcrypt_errors(PlainOldData* pod, SSC_CodeError_t err, InOutDir err_io_dir)
+static void handle_core_errors(PlainOldData* pod, SSC_CodeError_t err, InOutDir err_io_dir)
 {
   switch (err) {
     case (Core::ERROR_NO_INPUT_FILENAME):
@@ -187,7 +187,7 @@ int main(int argc, char* argv[])
     return EXIT_SUCCESS;
   switch (code_type) {
     case ErrType::CORE:
-      handle_fourcrypt_errors(pod, code_error, code_io_dir);
+      handle_core_errors(pod, code_error, code_io_dir);
       break;
     case ErrType::MEMMAP:
       handle_memmap_errors(pod, code_error, code_io_dir);

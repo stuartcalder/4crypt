@@ -138,7 +138,10 @@ Gui::on_encrypt_button_clicked(GtkWidget* button, void* self)
  {
   Gui* gui {static_cast<Gui*>(self)};
   std::puts("Encrypt button was pushed.");
-  gui->set_mode(Mode::ENCRYPT);
+  if (gui->mode != Mode::ENCRYPT)
+    gui->set_mode(Mode::ENCRYPT);
+  else
+    gui->set_mode(Mode::NONE);
  }
 
 void
@@ -146,7 +149,10 @@ Gui::on_decrypt_button_clicked(GtkWidget* button, void* self)
  {
   Gui* gui {static_cast<Gui*>(self)};
   std::puts("Decrypt button was pushed.");
-  gui->set_mode(Mode::DECRYPT);
+  if (gui->mode != Mode::DECRYPT)
+    gui->set_mode(Mode::DECRYPT);
+  else
+    gui->set_mode(Mode::NONE);
  }
 
 void
@@ -255,6 +261,7 @@ Gui::encrypt_thread(
   Pod_t* pod  {gui->pod};
   {
     std::lock_guard {gui->operation_mtx};
+
     gui->operation_data.code_error = core->encrypt(
      &gui->operation_data.error_type,
      &gui->operation_data.in_out_dir,
@@ -262,6 +269,7 @@ Gui::encrypt_thread(
      status_callback_data);
     Pod_t::del(*pod);
     Pod_t::init(*pod);
+
     std::this_thread::sleep_for(std::chrono::seconds(1));
     g_idle_add(&end_operation, gui);
   }
@@ -700,6 +708,23 @@ Gui::set_mode(Mode m)
       gtk_widget_add_css_class(decrypt_button, "highlight");
       gtk_widget_set_visible(password_box, TRUE);
       gtk_widget_set_visible(reentry_box,  FALSE);
+      break;
+    case Mode::NONE:
+      gtk_widget_set_visible(password_box, FALSE);
+      gtk_widget_set_visible(reentry_box , FALSE);
+
+      GtkEntryBuffer* eb {gtk_text_get_buffer(GTK_TEXT(input_text))};
+      gtk_entry_buffer_delete_text(eb, 0, -1); // Delete all text.
+      eb = gtk_text_get_buffer(GTK_TEXT(output_text));
+      gtk_entry_buffer_delete_text(eb, 0, -1); // Delete all text.
+
+      GtkEditable* editable {GTK_EDITABLE(password_entry)};
+      gtk_editable_delete_text(editable, 0, -1); // Delete all text.
+      editable = GTK_EDITABLE(reentry_entry);
+      gtk_editable_delete_text(editable, 0, -1); // Delete all text.
+
+      gtk_widget_set_visible(GTK_WIDGET(password_box), FALSE);
+      gtk_widget_set_visible(GTK_WIDGET(reentry_box),  FALSE);
       break;
    }
  }

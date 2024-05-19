@@ -62,9 +62,9 @@ class Gui
   std::atomic_bool operation_is_ongoing {};
   std::mutex       operation_mtx {};
   struct OpData {
-    SSC_CodeError_t code_error {};
-    Core::ErrType   error_type {};
-    Core::InOutDir  in_out_dir {};
+    SSC_CodeError_t code_error {0};
+    Core::ErrType   error_type {Core::ErrType::CORE};
+    Core::InOutDir  in_out_dir {Core::InOutDir::NONE};
   } operation_data {};
 
   GtkApplication* application {};
