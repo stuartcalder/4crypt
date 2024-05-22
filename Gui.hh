@@ -60,6 +60,7 @@ class Gui
   std::string     output_filepath {};
 
   std::atomic_bool operation_is_ongoing {};
+  std::atomic_bool status_is_blinking   {};
   std::mutex       operation_mtx {};
   struct OpData {
     SSC_CodeError_t code_error {0};
@@ -99,6 +100,9 @@ class Gui
   GtkWidget*      reentry_label {};
   GtkWidget*      reentry_entry {};
 
+  GtkWidget*      status_box   {};
+  GtkWidget*      status_label {};
+
   Core*           core {};                  // Access the primary 4crypt methods through me.
   Pod_t*          pod  {};                  // Access the primary 4crypt data through me.
   Mode            mode {Mode::NONE};        // Encrypt mode? Decrypt mode?
@@ -113,10 +117,19 @@ class Gui
   void on_input_filepath_updated(void);
   void on_output_filepath_updated(void);
   bool get_password(void);
-  static void     progress_bar_callback(void*);
+  void clear_password_entries(void);
+
+  // Update progress bar percentage until it's full.
+  static void     update_progress_callback(void* cb_data);
+  // Encryption happens in a separate thread, and we pass in a progress bar update function and a Gui* as its callback data.
   static void     encrypt_thread(Core::StatusCallback_f* status_callback, void* status_callback_data);
+  // Decryption happens in a separate thread, and we pass in a progress bar update function and a Gui* as its callback data.
   static void     decrypt_thread(Core::StatusCallback_f* status_callback, void* status_callback_data);
-  static gboolean end_operation(void* userdata);
+  // Update the status text and blink it on-screen until dismissed by falsifying @status_is_blinking.
+  static void     status_thread(void* vgui);
+  static gboolean end_operation(void* vgui);
+  static gboolean make_status_visible(void* vgui);
+  static gboolean make_status_invisible(void* vgui);
  //// Private Static Pseudo-Methods.
   static void on_application_activate(GtkApplication*, void*);
   static void on_encrypt_button_clicked(GtkWidget*,    void*);

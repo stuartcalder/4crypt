@@ -11,6 +11,16 @@ label {
     font-size:   14px;
 }
 
+label.success {
+    font-family:  'Monospace';
+    font-size:    14px;
+    /*
+    border:       solid 2px green;
+    border-width: 2px;
+    */
+    font-weight:  bold;
+}
+
 text {
     font-family:  'Monospace';
     font-size:    12px;

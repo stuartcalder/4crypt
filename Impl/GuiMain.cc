@@ -138,6 +138,7 @@ Gui::on_encrypt_button_clicked(GtkWidget* button, void* self)
  {
   Gui* gui {static_cast<Gui*>(self)};
   std::puts("Encrypt button was pushed.");
+  gui->clear_password_entries();
   if (gui->mode != Mode::ENCRYPT)
     gui->set_mode(Mode::ENCRYPT);
   else
@@ -149,6 +150,7 @@ Gui::on_decrypt_button_clicked(GtkWidget* button, void* self)
  {
   Gui* gui {static_cast<Gui*>(self)};
   std::puts("Decrypt button was pushed.");
+  gui->clear_password_entries();
   if (gui->mode != Mode::DECRYPT)
     gui->set_mode(Mode::DECRYPT);
   else
@@ -224,12 +226,12 @@ using InOutDir = Core::InOutDir;
 using ErrType  = Core::ErrType;
 
 void
-Gui::progress_bar_callback(void* v_gui)
+Gui::update_progress_callback(void* v_gui)
  {
   g_idle_add(
-   static_cast<GSourceFunc>([](void* userdata) -> gboolean
+   static_cast<GSourceFunc>([](void* vgui) -> gboolean
     {
-     Gui*            gui {static_cast<Gui*>(userdata)};
+     Gui*            gui {static_cast<Gui*>(vgui)};
      GtkProgressBar* pb  {GTK_PROGRESS_BAR(gui->progress_bar)};
      double old_fraction {gtk_progress_bar_get_fraction(pb)};
      double new_fraction {old_fraction + PROGRESS_PULSE_STEP};
@@ -242,13 +244,46 @@ Gui::progress_bar_callback(void* v_gui)
  }
 
 gboolean
-Gui::end_operation(void* userdata)
+Gui::end_operation(void* vgui)
  {
-  Gui* g {static_cast<Gui*>(userdata)};
+  Gui* g {static_cast<Gui*>(vgui)};
   gtk_widget_set_visible(g->progress_box, FALSE);
   gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(g->progress_bar), 0.0);
   g->operation_is_ongoing = false;
   return G_SOURCE_REMOVE;
+ }
+
+gboolean
+Gui::make_status_visible(void* vgui)
+ {
+  Gui* g {static_cast<Gui*>(vgui)};
+  gtk_widget_set_visible(g->status_box, TRUE);
+  return G_SOURCE_REMOVE;
+ }
+
+gboolean
+Gui::make_status_invisible(void* vgui)
+ {
+  Gui* g {static_cast<Gui*>(vgui)};
+  gtk_widget_set_visible(g->status_box, FALSE);
+  return G_SOURCE_REMOVE;
+ }
+
+void
+Gui::status_thread(void* vgui)
+ {
+  Gui* gui {static_cast<Gui*>(vgui)};
+  if (not gui->status_is_blinking)
+   {
+    gui->status_is_blinking = true;
+    while (gui->status_is_blinking)
+     {
+      g_idle_add(&make_status_visible, gui);
+      std::this_thread::sleep_for(std::chrono::milliseconds(750));
+      g_idle_add(&make_status_invisible, gui);
+      std::this_thread::sleep_for(std::chrono::milliseconds(750));
+     }
+   }
  }
 
 void
@@ -266,9 +301,12 @@ Gui::encrypt_thread(
      &gui->operation_data.error_type,
      &gui->operation_data.in_out_dir,
      status_callback,
-     status_callback_data);
+     gui);
     Pod_t::del(*pod);
     Pod_t::init(*pod);
+
+    std::thread th {&status_thread, gui}; //TODO
+    th.detach();
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
     g_idle_add(&end_operation, gui);
@@ -285,7 +323,7 @@ Gui::encrypt(void)
     Pod_t::touchup(*pod);
     gtk_widget_set_visible(progress_box, TRUE);
 
-    std::thread th {&encrypt_thread, &progress_bar_callback, this};
+    std::thread th {&encrypt_thread, &update_progress_callback, this};
     th.detach();
    }
   //TODO: Handle errors and error types.
@@ -305,9 +343,13 @@ Gui::decrypt_thread(
      &gui->operation_data.error_type,
      &gui->operation_data.in_out_dir,
      status_callback,
-     status_callback_data);
+     gui);
     Pod_t::del(*pod);
     Pod_t::init(*pod);
+
+    std::thread th {&status_thread, gui};
+    th.detach();
+
     std::this_thread::sleep_for(std::chrono::seconds(1));
     g_idle_add(&end_operation, gui);
   }
@@ -322,7 +364,7 @@ Gui::decrypt(void)
     pod->execute_mode = ExeMode::DECRYPT;
     gtk_widget_set_visible(progress_box, TRUE);
 
-    std::thread th {&decrypt_thread, &progress_bar_callback, this};
+    std::thread th {&decrypt_thread, &update_progress_callback, this};
     th.detach();
    }
   //TODO: Handle errors and error types.
@@ -371,6 +413,11 @@ void
 Gui::on_password_entry_activate(GtkWidget* pwe, void* self)
  {
   Gui* gui {static_cast<Gui*>(self)};
+  if (gui->mode == Mode::DECRYPT)
+    g_signal_emit_by_name(
+     gui->start_button,
+     "clicked",
+     gui);
   //TODO
  }
 
@@ -378,6 +425,11 @@ void
 Gui::on_reentry_entry_activate(GtkWidget* ree, void* self)
  {
   Gui* gui {static_cast<Gui*>(self)};
+  if (gui->mode == Mode::ENCRYPT)
+    g_signal_emit_by_name(
+     gui->start_button,
+     "clicked",
+     gui);
   //TODO
  }
 
@@ -404,6 +456,7 @@ Gui::on_output_text_activate(GtkWidget* text, void* self)
 bool
 Gui::verify_inputs(void)
  {
+  status_is_blinking = false;
   // Get the input text data.
   GtkEntryBuffer* text_buffer {
    gtk_text_get_buffer(GTK_TEXT(input_text))
@@ -539,6 +592,15 @@ Gui::get_password(void)
  }
 
 void
+Gui::clear_password_entries(void)
+ {
+  GtkEditable* e {GTK_EDITABLE(password_entry)};
+  gtk_editable_delete_text(e, 0, -1);
+  e = GTK_EDITABLE(reentry_entry);
+  gtk_editable_delete_text(e, 0, -1);
+ }
+
+void
 Gui::on_application_activate(GtkApplication* gtk_app, void* self)
  {
   constexpr int TEXT_HEIGHT {20};
@@ -629,6 +691,18 @@ Gui::on_application_activate(GtkApplication* gtk_app, void* self)
   gtk_widget_set_visible(gui->reentry_box,   FALSE);
   gtk_editable_set_max_width_chars(GTK_EDITABLE(gui->reentry_entry), Core::MAX_PW_BYTES);
 
+  // TODO: Create status box.
+  gui->status_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
+  gui->status_label = gtk_label_new("Success!");
+  gtk_box_append(GTK_BOX(gui->status_box), gui->status_label);
+  gtk_widget_add_css_class(gui->status_label, "success");
+  gtk_widget_set_hexpand(gui->status_box, TRUE);
+  gtk_widget_set_hexpand(gui->status_label, TRUE);
+  gtk_widget_set_valign(gui->status_box, GTK_ALIGN_CENTER);
+  gtk_widget_set_halign(gui->status_box, GTK_ALIGN_CENTER);
+  gtk_widget_set_visible(gui->status_box, FALSE);
+  //gtk_widget_set_visible(gui->status_box, TRUE);
+
   // Initialize the start button.
   gui->start_button = gtk_button_new_with_label("Start");
   g_signal_connect(gui->start_button, "clicked", G_CALLBACK(on_start_button_clicked), gui);
@@ -642,7 +716,7 @@ Gui::on_application_activate(GtkApplication* gtk_app, void* self)
   gtk_progress_bar_set_pulse_step(GTK_PROGRESS_BAR(gui->progress_bar), PROGRESS_PULSE_STEP);
   gtk_widget_set_hexpand(gui->progress_box, TRUE);
   gtk_widget_set_vexpand(gui->progress_box, TRUE);
-  gtk_widget_set_visible(gui->progress_box, TRUE);
+  gtk_widget_set_visible(gui->progress_box, FALSE);
 
   int grid_y_idx {0};
 
@@ -673,6 +747,9 @@ Gui::on_application_activate(GtkApplication* gtk_app, void* self)
   gtk_grid_attach(GTK_GRID(gui->grid), gui->progress_box, 0, grid_y_idx, 4, 1);
   ++grid_y_idx;
 
+  gtk_grid_attach(GTK_GRID(gui->grid), gui->status_box, 0, grid_y_idx, 4, 1);
+  ++grid_y_idx;
+
   // Set the grid as a child of the application window, then present the application window.
   gtk_window_set_child(GTK_WINDOW(gui->application_window), gui->grid);
   gtk_window_present(GTK_WINDOW(gui->application_window));
@@ -692,6 +769,7 @@ Gui::run(void)
 void
 Gui::set_mode(Mode m)
  {
+  status_is_blinking = false;
   if (gtk_widget_has_css_class(encrypt_button, "highlight"))
     gtk_widget_remove_css_class(encrypt_button, "highlight");
   if (gtk_widget_has_css_class(decrypt_button, "highlight"))
@@ -710,6 +788,7 @@ Gui::set_mode(Mode m)
       gtk_widget_set_visible(reentry_box,  FALSE);
       break;
     case Mode::NONE:
+      output_text_activated = false;
       gtk_widget_set_visible(password_box, FALSE);
       gtk_widget_set_visible(reentry_box , FALSE);
 
