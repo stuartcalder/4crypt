@@ -304,6 +304,7 @@ Gui::encrypt_thread(
      gui);
     Pod_t::del(*pod);
     Pod_t::init(*pod);
+    PPQ_CSPRNG_init(&pod->rng);
 
     std::thread th {&status_thread, gui}; //TODO
     th.detach();
@@ -346,6 +347,7 @@ Gui::decrypt_thread(
      gui);
     Pod_t::del(*pod);
     Pod_t::init(*pod);
+    PPQ_CSPRNG_init(&pod->rng);
 
     std::thread th {&status_thread, gui};
     th.detach();
@@ -385,6 +387,7 @@ Gui::on_start_button_clicked(GtkWidget* button, void* self)
    {
     Pod_t::del(*pod);
     Pod_t::init(*pod);
+    PPQ_CSPRNG_init(&pod->rng);
    }
 
   if (not gui->get_password())
@@ -619,7 +622,7 @@ Gui::on_application_activate(GtkApplication* gtk_app, void* self)
   gtk_grid_set_column_homogeneous(GTK_GRID(gui->grid), TRUE);
 
   // Add the Core dragon logo.
-  std::string logo_path {getResourcePath() + "/dragon.png"};
+  std::string logo_path {getResourcePath() + "/logo.png"};
   make_os_path(logo_path);
   gui->logo_image = gtk_image_new_from_file(logo_path.c_str());
   gtk_image_set_icon_size(GTK_IMAGE(gui->logo_image), GTK_ICON_SIZE_LARGE);

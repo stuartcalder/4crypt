@@ -49,7 +49,7 @@ class Gui
   #endif
   static std::string getResourcePath(void);
  // Constructors //
-  Gui(Core* param_fc, int param_argc, char** param_argv);
+  Gui(Core* param_core, int param_argc, char** param_argv);
  // Destructor //
   ~Gui();
  // Public Methods //
