@@ -42,6 +42,7 @@ class Gui
     NONE, ENCRYPT, DECRYPT
    };
   static constexpr double PROGRESS_PULSE_STEP {0.14285714285714285}; //FIXME: Fraction of total number of steps.
+  static constexpr int    TEXT_HEIGHT {20};
  // Public Static Procedures //
   #ifdef FOURCRYPT_IS_PORTABLE
   static std::string getExecutablePath(void);
@@ -92,6 +93,14 @@ class Gui
   GtkWidget*      output_text   {};
   GtkWidget*      output_button {};
 
+  //TODO
+  GtkWidget*      param_box {};
+  GtkWidget*      param_mem_dropdown {};
+  GtkWidget*      param_iterations_dropdown {};
+  GtkWidget*      param_threads_dropdown {};
+  GtkWidget*      param_batch_size_dropdown {};
+  GtkWidget*      param_phi_checkbutton {};
+
   GtkWidget*      password_box   {};
   GtkWidget*      password_label {};
   GtkWidget*      password_entry {};
@@ -110,6 +119,18 @@ class Gui
   char**          argv {};                  // "argv" passed in from main(int argc, char* argv[])
   bool            output_text_activated {}; // Has the user pressed "enter" on the output text at least once?
  // Private Methods //
+  void init_application_window(void);
+  void init_grid(void);
+  void init_logo_image(void);
+  void init_crypt_buttons(void);
+  void init_input_box(void);
+  void init_output_box(void);
+  void init_password_box(void);
+  void init_reentry_box(void);
+  void init_status_box(void);
+  void init_progress_box(void);
+  void attach_grid(void);
+
   void set_mode(Mode);
   bool verify_inputs(void);
   void encrypt(void);

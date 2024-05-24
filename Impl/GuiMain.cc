@@ -606,155 +606,43 @@ Gui::clear_password_entries(void)
 void
 Gui::on_application_activate(GtkApplication* gtk_app, void* self)
  {
-  constexpr int TEXT_HEIGHT {20};
   // Create the application window.
   Gui* gui {static_cast<Gui*>(self)};
-  gui->application_window = gtk_application_window_new(gui->application);
-  gtk_window_set_title(GTK_WINDOW(gui->application_window), "4crypt");
-  gtk_widget_set_size_request(gui->application_window, WINDOW_WIDTH, WINDOW_HEIGHT);
-  gtk_widget_set_hexpand(gui->application_window, FALSE);
-  gtk_widget_set_vexpand(gui->application_window, FALSE);
+  gui->init_application_window();
   
   // Create the grid and configure it.
-  gui->grid = gtk_grid_new();
-  gtk_widget_set_valign(gui->grid, GTK_ALIGN_START);
-  gtk_window_set_child(GTK_WINDOW(gui->application_window), gui->grid);
-  gtk_grid_set_column_homogeneous(GTK_GRID(gui->grid), TRUE);
+  gui->init_grid();
 
   // Add the Core dragon logo.
-  std::string logo_path {getResourcePath() + "/logo.png"};
-  make_os_path(logo_path);
-  gui->logo_image = gtk_image_new_from_file(logo_path.c_str());
-  gtk_image_set_icon_size(GTK_IMAGE(gui->logo_image), GTK_ICON_SIZE_LARGE);
-  gtk_widget_set_size_request(gui->logo_image, FOURCRYPT_IMG_WIDTH, FOURCRYPT_IMG_HEIGHT);
-  gtk_widget_set_hexpand(gui->logo_image, TRUE);
-  gtk_widget_set_vexpand(gui->logo_image, TRUE);
+  gui->init_logo_image();
 
-  // Create the Encrypt button.
-  gui->encrypt_button = gtk_button_new_with_label("Encrypt");
-  g_signal_connect(gui->encrypt_button, "clicked", G_CALLBACK(on_encrypt_button_clicked), gui);
-
-  // Create the Decrypt button.
-  gui->decrypt_button = gtk_button_new_with_label("Decrypt");
-  g_signal_connect(gui->decrypt_button, "clicked", G_CALLBACK(on_decrypt_button_clicked), gui);
+  // Create the Encrypt and Decrypt buttons.
+  gui->init_crypt_buttons();
 
   // Create a Box for input.
-  gui->input_box    = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
-  gui->input_label  = gtk_label_new(" Input:");
-  gui->input_text   = gtk_text_new();
-  gtk_widget_add_css_class(gui->input_text, "basic");
-  gui->input_button = gtk_button_new_with_label("Pick File");
-  g_signal_connect(gui->input_text  , "activate", G_CALLBACK(on_input_text_activate) , gui);
-  g_signal_connect(gui->input_button, "clicked" , G_CALLBACK(on_input_button_clicked), gui);
-  // Fill the box with a label and text.
-  gtk_box_append(GTK_BOX(gui->input_box), gui->input_label);
-  gtk_box_append(GTK_BOX(gui->input_box), gui->input_text);
-  gtk_box_append(GTK_BOX(gui->input_box), gui->input_button);
-  gtk_widget_set_size_request(gui->input_box, -1, TEXT_HEIGHT);
-  gtk_widget_set_hexpand(gui->input_text, TRUE);
+  gui->init_input_box();
 
   // Create a Box for output.
-  gui->output_box    = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
-  gui->output_label  = gtk_label_new("Output:");
-  gui->output_text   = gtk_text_new();
-  gtk_widget_add_css_class(gui->output_text, "basic");
-  gui->output_button = gtk_button_new_with_label("Pick File");
-  g_signal_connect(gui->output_text  , "activate", G_CALLBACK(on_output_text_activate) , gui);
-  g_signal_connect(gui->output_button, "clicked" , G_CALLBACK(on_output_button_clicked), gui);
-  // Fill the box with a label and text.
-  gtk_box_append(GTK_BOX(gui->output_box), gui->output_label);
-  gtk_box_append(GTK_BOX(gui->output_box), gui->output_text);
-  gtk_box_append(GTK_BOX(gui->output_box), gui->output_button);
-  gtk_widget_set_size_request(gui->output_box, -1, TEXT_HEIGHT);
-  gtk_widget_set_hexpand(gui->output_text, TRUE);
+  gui->init_output_box();
 
   // Create a Box for passwords.
-  gui->password_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
-  gui->password_label = gtk_label_new("Password:");
-  gui->password_entry = gtk_password_entry_new();
-  g_signal_connect(gui->password_entry, "activate", G_CALLBACK(on_password_entry_activate), gui); //TODO
-  gtk_box_append(GTK_BOX(gui->password_box), gui->password_label);
-  gtk_box_append(GTK_BOX(gui->password_box), gui->password_entry);
-  gtk_widget_set_size_request(gui->password_box, -1, TEXT_HEIGHT);
-  gtk_widget_set_hexpand(gui->password_box,   TRUE);
-  gtk_widget_set_hexpand(gui->password_entry, TRUE);
-  gtk_widget_set_visible(gui->password_box,   FALSE);
-  gtk_editable_set_max_width_chars(GTK_EDITABLE(gui->password_entry), Core::MAX_PW_BYTES);
+  gui->init_password_box();
 
   // Create a Box for re-entering passwords.
-  gui->reentry_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
-  gui->reentry_label = gtk_label_new("Re-Entry:");
-  gui->reentry_entry = gtk_password_entry_new();
-  g_signal_connect(gui->reentry_entry, "activate", G_CALLBACK(on_reentry_entry_activate), gui); //TODO
-  gtk_box_append(GTK_BOX(gui->reentry_box), gui->reentry_label);
-  gtk_box_append(GTK_BOX(gui->reentry_box), gui->reentry_entry);
-  gtk_widget_set_size_request(gui->reentry_box, -1, TEXT_HEIGHT);
-  gtk_widget_set_hexpand(gui->reentry_box,   TRUE);
-  gtk_widget_set_hexpand(gui->reentry_entry, TRUE);
-  gtk_widget_set_visible(gui->reentry_box,   FALSE);
-  gtk_editable_set_max_width_chars(GTK_EDITABLE(gui->reentry_entry), Core::MAX_PW_BYTES);
+  gui->init_reentry_box();
 
-  // TODO: Create status box.
-  gui->status_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
-  gui->status_label = gtk_label_new("Success!");
-  gtk_box_append(GTK_BOX(gui->status_box), gui->status_label);
-  gtk_widget_add_css_class(gui->status_label, "success");
-  gtk_widget_set_hexpand(gui->status_box, TRUE);
-  gtk_widget_set_hexpand(gui->status_label, TRUE);
-  gtk_widget_set_valign(gui->status_box, GTK_ALIGN_CENTER);
-  gtk_widget_set_halign(gui->status_box, GTK_ALIGN_CENTER);
-  gtk_widget_set_visible(gui->status_box, FALSE);
-  //gtk_widget_set_visible(gui->status_box, TRUE);
+  gui->init_status_box();
 
   // Initialize the start button.
   gui->start_button = gtk_button_new_with_label("Start");
   g_signal_connect(gui->start_button, "clicked", G_CALLBACK(on_start_button_clicked), gui);
 
   // Initialize the progress box and its bar.
-  gui->progress_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
-  gui->progress_bar = gtk_progress_bar_new();
-  gtk_widget_set_hexpand(gui->progress_bar, TRUE);
-  gtk_box_append(GTK_BOX(gui->progress_box), gui->progress_bar);
-  // Set the pulse of progress for each step of progress
-  gtk_progress_bar_set_pulse_step(GTK_PROGRESS_BAR(gui->progress_bar), PROGRESS_PULSE_STEP);
-  gtk_widget_set_hexpand(gui->progress_box, TRUE);
-  gtk_widget_set_vexpand(gui->progress_box, TRUE);
-  gtk_widget_set_visible(gui->progress_box, FALSE);
+  gui->init_progress_box();
 
-  int grid_y_idx {0};
+  // Initialize the grid.
+  gui->attach_grid();
 
-  // Attach the widgets to the grid according to the following syntax:
-  // gtk_grid_attach(grid, widget, grid_x_idx, grid_y_idx, horizontal_fill, vertical_fill)
-  gtk_grid_attach(GTK_GRID(gui->grid), gui->logo_image , 0, grid_y_idx, 4, 1);
-  ++grid_y_idx;
-
-  gtk_grid_attach(GTK_GRID(gui->grid), gui->encrypt_button, 0, grid_y_idx, 2, 1);
-  gtk_grid_attach(GTK_GRID(gui->grid), gui->decrypt_button, 2, grid_y_idx, 2, 1);
-  ++grid_y_idx;
-
-  gtk_grid_attach(GTK_GRID(gui->grid), gui->input_box  , 0, grid_y_idx, 4, 1);
-  ++grid_y_idx;
-
-  gtk_grid_attach(GTK_GRID(gui->grid), gui->output_box  , 0, grid_y_idx, 4, 1);
-  ++grid_y_idx;
-
-  gtk_grid_attach(GTK_GRID(gui->grid), gui->password_box, 0, grid_y_idx, 4, 1);
-  ++grid_y_idx;
-
-  gtk_grid_attach(GTK_GRID(gui->grid), gui->reentry_box , 0, grid_y_idx, 4, 1);
-  ++grid_y_idx;
-
-  gtk_grid_attach(GTK_GRID(gui->grid), gui->start_button, 0, grid_y_idx, 4, 1);
-  ++grid_y_idx;
-
-  gtk_grid_attach(GTK_GRID(gui->grid), gui->progress_box, 0, grid_y_idx, 4, 1);
-  ++grid_y_idx;
-
-  gtk_grid_attach(GTK_GRID(gui->grid), gui->status_box, 0, grid_y_idx, 4, 1);
-  ++grid_y_idx;
-
-  // Set the grid as a child of the application window, then present the application window.
-  gtk_window_set_child(GTK_WINDOW(gui->application_window), gui->grid);
   gtk_window_present(GTK_WINDOW(gui->application_window));
  }
 
@@ -767,6 +655,182 @@ Gui::run(void)
   if (run_result != 0)
     fprintf(stderr, "Error: g_application_run() returned %i!\n", run_result);
   return run_result;
+ }
+
+void
+Gui::init_application_window(void)
+ {
+  application_window = gtk_application_window_new(application);
+  gtk_window_set_title(GTK_WINDOW(application_window), "4crypt");
+  gtk_widget_set_size_request(application_window, WINDOW_WIDTH, WINDOW_HEIGHT);
+  gtk_widget_set_hexpand(application_window, FALSE);
+  gtk_widget_set_vexpand(application_window, FALSE);
+ }
+
+void
+Gui::init_grid(void)
+ {
+  grid = gtk_grid_new();
+  gtk_widget_set_valign(grid, GTK_ALIGN_START);
+  gtk_window_set_child(GTK_WINDOW(application_window), grid);
+  gtk_grid_set_column_homogeneous(GTK_GRID(grid), TRUE);
+ }
+
+void
+Gui::init_logo_image(void)
+ {
+  std::string logo_path {getResourcePath() + "/logo.png"};
+  make_os_path(logo_path);
+  logo_image = gtk_image_new_from_file(logo_path.c_str());
+  gtk_image_set_icon_size(GTK_IMAGE(logo_image), GTK_ICON_SIZE_LARGE);
+  gtk_widget_set_size_request(logo_image, FOURCRYPT_IMG_WIDTH, FOURCRYPT_IMG_HEIGHT);
+  gtk_widget_set_hexpand(logo_image, TRUE);
+  gtk_widget_set_vexpand(logo_image, TRUE);
+ }
+
+void
+Gui::init_crypt_buttons(void)
+ {
+  encrypt_button = gtk_button_new_with_label("Encrypt");
+  g_signal_connect(encrypt_button, "clicked", G_CALLBACK(on_encrypt_button_clicked), this);
+  decrypt_button = gtk_button_new_with_label("Decrypt");
+  g_signal_connect(decrypt_button, "clicked", G_CALLBACK(on_decrypt_button_clicked), this);
+ }
+
+void
+Gui::init_input_box(void)
+ {
+  input_box    = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
+  input_label  = gtk_label_new(" Input:");
+  input_text   = gtk_text_new();
+  gtk_widget_add_css_class(input_text, "basic");
+  input_button = gtk_button_new_with_label("Pick File");
+  g_signal_connect(input_text  , "activate", G_CALLBACK(on_input_text_activate) , this);
+  g_signal_connect(input_button, "clicked" , G_CALLBACK(on_input_button_clicked), this);
+  // Fill the box with a label and text.
+  gtk_box_append(GTK_BOX(input_box), input_label);
+  gtk_box_append(GTK_BOX(input_box), input_text);
+  gtk_box_append(GTK_BOX(input_box), input_button);
+  gtk_widget_set_size_request(input_box, -1, TEXT_HEIGHT);
+  gtk_widget_set_hexpand(input_text, TRUE);
+ }
+
+void
+Gui::init_output_box(void)
+ {
+  output_box    = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
+  output_label  = gtk_label_new("Output:");
+  output_text   = gtk_text_new();
+  gtk_widget_add_css_class(output_text, "basic");
+  output_button = gtk_button_new_with_label("Pick File");
+  g_signal_connect(output_text  , "activate", G_CALLBACK(on_output_text_activate) , this);
+  g_signal_connect(output_button, "clicked" , G_CALLBACK(on_output_button_clicked), this);
+  // Fill the box with a label and text.
+  gtk_box_append(GTK_BOX(output_box), output_label);
+  gtk_box_append(GTK_BOX(output_box), output_text);
+  gtk_box_append(GTK_BOX(output_box), output_button);
+  gtk_widget_set_size_request(output_box, -1, TEXT_HEIGHT);
+  gtk_widget_set_hexpand(output_text, TRUE);
+ }
+
+void
+Gui::init_password_box(void)
+ {
+  password_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
+  password_label = gtk_label_new("Password:");
+  password_entry = gtk_password_entry_new();
+  g_signal_connect(password_entry, "activate", G_CALLBACK(on_password_entry_activate), this); //TODO
+  gtk_box_append(GTK_BOX(password_box), password_label);
+  gtk_box_append(GTK_BOX(password_box), password_entry);
+  gtk_widget_set_size_request(password_box, -1, TEXT_HEIGHT);
+  gtk_widget_set_hexpand(password_box,   TRUE);
+  gtk_widget_set_hexpand(password_entry, TRUE);
+  gtk_widget_set_visible(password_box,   FALSE);
+  gtk_editable_set_max_width_chars(GTK_EDITABLE(password_entry), Core::MAX_PW_BYTES);
+ }
+
+void
+Gui::init_reentry_box(void)
+ {
+  reentry_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
+  reentry_label = gtk_label_new("Re-Entry:");
+  reentry_entry = gtk_password_entry_new();
+  g_signal_connect(reentry_entry, "activate", G_CALLBACK(on_reentry_entry_activate), this); //TODO
+  gtk_box_append(GTK_BOX(reentry_box), reentry_label);
+  gtk_box_append(GTK_BOX(reentry_box), reentry_entry);
+  gtk_widget_set_size_request(reentry_box, -1, TEXT_HEIGHT);
+  gtk_widget_set_hexpand(reentry_box,   TRUE);
+  gtk_widget_set_hexpand(reentry_entry, TRUE);
+  gtk_widget_set_visible(reentry_box,   FALSE);
+  gtk_editable_set_max_width_chars(GTK_EDITABLE(reentry_entry), Core::MAX_PW_BYTES);
+ }
+
+void
+Gui::init_status_box(void)
+ {
+  status_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
+  status_label = gtk_label_new("Success!");
+  gtk_box_append(GTK_BOX(status_box), status_label);
+  gtk_widget_add_css_class(status_label, "success");
+  gtk_widget_set_hexpand(status_box, TRUE);
+  gtk_widget_set_hexpand(status_label, TRUE);
+  gtk_widget_set_valign(status_box, GTK_ALIGN_CENTER);
+  gtk_widget_set_halign(status_box, GTK_ALIGN_CENTER);
+  gtk_widget_set_visible(status_box, FALSE);
+  //gtk_widget_set_visible(status_box, TRUE);
+ }
+
+void
+Gui::init_progress_box(void)
+ {
+  progress_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
+  progress_bar = gtk_progress_bar_new();
+  gtk_widget_set_hexpand(progress_bar, TRUE);
+  gtk_box_append(GTK_BOX(progress_box), progress_bar);
+  // Set the pulse of progress for each step of progress
+  gtk_progress_bar_set_pulse_step(GTK_PROGRESS_BAR(progress_bar), PROGRESS_PULSE_STEP);
+  gtk_widget_set_hexpand(progress_box, TRUE);
+  gtk_widget_set_vexpand(progress_box, TRUE);
+  gtk_widget_set_visible(progress_box, FALSE);
+ }
+
+void
+Gui::attach_grid(void)
+ {
+  int grid_y_idx {0};
+
+  // Attach the widgets to the grid according to the following syntax:
+  // gtk_grid_attach(grid, widget, grid_x_idx, grid_y_idx, horizontal_fill, vertical_fill)
+  gtk_grid_attach(GTK_GRID(grid), logo_image , 0, grid_y_idx, 4, 1);
+  ++grid_y_idx;
+
+  gtk_grid_attach(GTK_GRID(grid), encrypt_button, 0, grid_y_idx, 2, 1);
+  gtk_grid_attach(GTK_GRID(grid), decrypt_button, 2, grid_y_idx, 2, 1);
+  ++grid_y_idx;
+
+  gtk_grid_attach(GTK_GRID(grid), input_box  , 0, grid_y_idx, 4, 1);
+  ++grid_y_idx;
+
+  gtk_grid_attach(GTK_GRID(grid), output_box  , 0, grid_y_idx, 4, 1);
+  ++grid_y_idx;
+
+  gtk_grid_attach(GTK_GRID(grid), password_box, 0, grid_y_idx, 4, 1);
+  ++grid_y_idx;
+
+  gtk_grid_attach(GTK_GRID(grid), reentry_box , 0, grid_y_idx, 4, 1);
+  ++grid_y_idx;
+
+  gtk_grid_attach(GTK_GRID(grid), start_button, 0, grid_y_idx, 4, 1);
+  ++grid_y_idx;
+
+  gtk_grid_attach(GTK_GRID(grid), progress_box, 0, grid_y_idx, 4, 1);
+  ++grid_y_idx;
+
+  gtk_grid_attach(GTK_GRID(grid), status_box, 0, grid_y_idx, 4, 1);
+  ++grid_y_idx;
+
+  // Set the grid as a child of the application window, then present the application window.
+  gtk_window_set_child(GTK_WINDOW(application_window), grid);
  }
 
 void

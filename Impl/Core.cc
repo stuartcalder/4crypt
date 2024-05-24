@@ -590,7 +590,7 @@ const uint8_t* Core::readHeaderPlaintext(
     uint64_t size;
     memcpy(&size, from, sizeof(size));
     from += sizeof(size);
-    if constexpr(!Core::is_little_endian)
+    if constexpr(not Core::is_little_endian)
       size = SSC_swap64(size);
     if (mypod->input_map.size != size) {
       *err = ERROR_INPUT_SIZE_MISMATCH;
