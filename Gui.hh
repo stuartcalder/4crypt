@@ -94,12 +94,13 @@ class Gui
   GtkWidget*      output_button {};
 
   //TODO
+  GtkWidget*      param_toggle_checkbutton {};
   GtkWidget*      param_box {};
-  GtkWidget*      param_mem_dropdown {};
-  GtkWidget*      param_iterations_dropdown {};
-  GtkWidget*      param_threads_dropdown {};
-  GtkWidget*      param_batch_size_dropdown {};
   GtkWidget*      param_phi_checkbutton {};
+  GtkWidget*      param_mem_dropdown {};
+  GtkWidget*      param_iterations_text {};
+  GtkWidget*      param_threads_text {};
+  GtkWidget*      param_batch_size_dropdown {};
 
   GtkWidget*      password_box   {};
   GtkWidget*      password_label {};
@@ -125,6 +126,7 @@ class Gui
   void init_crypt_buttons(void);
   void init_input_box(void);
   void init_output_box(void);
+  void init_param_box(void);
   void init_password_box(void);
   void init_reentry_box(void);
   void init_status_box(void);

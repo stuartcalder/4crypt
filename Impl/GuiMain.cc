@@ -625,6 +625,9 @@ Gui::on_application_activate(GtkApplication* gtk_app, void* self)
   // Create a Box for output.
   gui->init_output_box();
 
+  // Create a Box for parameter entry.
+  gui->init_param_box();
+
   // Create a Box for passwords.
   gui->init_password_box();
 
@@ -734,6 +737,37 @@ Gui::init_output_box(void)
  }
 
 void
+Gui::init_param_box(void)
+ {
+  static const char* const mem_strings[] {
+   "128M", "256M" , "512M",
+   "1G"  , "2G"   , "4G",
+   "8G"  , "16G"  , "32G",
+   "64G" , "128G" , "256G",
+   nullptr
+  };
+  param_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 1);
+  param_phi_checkbutton = gtk_check_button_new();
+  gtk_check_button_set_label(GTK_CHECK_BUTTON(param_phi_checkbutton), "Enable Phi");
+  param_mem_dropdown = gtk_drop_down_new_from_strings(mem_strings);
+  param_iterations_text = gtk_text_new();
+  gtk_widget_add_css_class(param_iterations_text, "basic");
+  param_threads_text = gtk_text_new();
+
+  GtkEntryBuffer* entry {gtk_text_get_buffer(GTK_TEXT(param_iterations_text))};
+  gtk_entry_buffer_set_text(entry, "1", 1);
+  entry = gtk_text_get_buffer(GTK_TEXT(param_threads_text));
+  gtk_entry_buffer_set_text(entry, "1", 1);
+
+
+  // Fill the box.
+  gtk_box_append(GTK_BOX(param_box), param_phi_checkbutton);
+  gtk_box_append(GTK_BOX(param_box), param_mem_dropdown);
+  gtk_box_append(GTK_BOX(param_box), param_iterations_text);
+  gtk_box_append(GTK_BOX(param_box), param_threads_text);
+ }
+
+void
 Gui::init_password_box(void)
  {
   password_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
@@ -777,7 +811,6 @@ Gui::init_status_box(void)
   gtk_widget_set_valign(status_box, GTK_ALIGN_CENTER);
   gtk_widget_set_halign(status_box, GTK_ALIGN_CENTER);
   gtk_widget_set_visible(status_box, FALSE);
-  //gtk_widget_set_visible(status_box, TRUE);
  }
 
 void
@@ -806,6 +839,9 @@ Gui::attach_grid(void)
 
   gtk_grid_attach(GTK_GRID(grid), encrypt_button, 0, grid_y_idx, 2, 1);
   gtk_grid_attach(GTK_GRID(grid), decrypt_button, 2, grid_y_idx, 2, 1);
+  ++grid_y_idx;
+
+  gtk_grid_attach(GTK_GRID(grid), param_box, 0, grid_y_idx, 4, 1);
   ++grid_y_idx;
 
   gtk_grid_attach(GTK_GRID(grid), input_box  , 0, grid_y_idx, 4, 1);
