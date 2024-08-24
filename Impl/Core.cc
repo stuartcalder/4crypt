@@ -5,6 +5,7 @@
 // PPQ
 #include <PPQ/Skein512.h>
 // C++ STL
+#include <limits>
 #include <thread>
 #include <memory>
 // C++ C Lib
@@ -333,24 +334,24 @@ void Core::genRandomElements()
 
 SSC_Error_t Core::runKDF()
 {
-  PlainOldData*  mypod = this->getPod();
-  const uint64_t num_threads = mypod->thread_count;
-  const uint64_t batch_size  = mypod->thread_batch_size;
-  const uint64_t output_bytes = num_threads * PPQ_THREEFISH512_BLOCK_BYTES;
-  PPQ_Catena512* const catenas = new PPQ_Catena512[num_threads];
-  SSC_Error_t* const   errors  = new SSC_Error_t[num_threads];
-  uint8_t* const       outputs = new uint8_t[output_bytes];
+  PlainOldData*  mypod         {this->getPod()};
+  const uint64_t num_threads   {mypod->thread_count};
+  const uint64_t batch_size    {mypod->thread_batch_size};
+  const uint64_t output_bytes  {num_threads * PPQ_THREEFISH512_BLOCK_BYTES};
+  PPQ_Catena512* const catenas {new PPQ_Catena512[num_threads]};
+  SSC_Error_t* const   errors  {new SSC_Error_t[num_threads]};
+  uint8_t* const       outputs {new uint8_t[output_bytes]};
   {
-    std::thread* threads = new std::thread[num_threads];
+    std::thread* threads {new std::thread[num_threads]};
     uint64_t j_stop;
 
-    for (uint64_t i = 0; i < num_threads; i += j_stop) {
+    for (uint64_t i {0}; i < num_threads; i += j_stop) {
       if (i + batch_size < num_threads)
         j_stop = batch_size;
       else
         j_stop = num_threads - i;
-      for (uint64_t j = 0; j < j_stop; ++j) {
-        const uint64_t offset = i + j;
+      for (uint64_t j {0}; j < j_stop; ++j) {
+        const uint64_t offset {i + j};
         std::construct_at(
          threads + offset,
          kdf,
@@ -360,8 +361,8 @@ SSC_Error_t Core::runKDF()
          errors  + offset,
          offset);
       }
-      for (uint64_t j = 0; j < j_stop; ++j) {
-        const uint64_t offset = i + j;
+      for (uint64_t j {0}; j < j_stop; ++j) {
+        const uint64_t offset {i + j};
         threads[offset].join();
         std::destroy_at(threads + offset);
       }
@@ -373,7 +374,7 @@ SSC_Error_t Core::runKDF()
   SSC_secureZero(mypod->password_buffer, sizeof(mypod->password_buffer));
 
   // Combine all the outputs into one.
-  for (uint64_t i = 1; i < num_threads; ++i)
+  for (uint64_t i {1}; i < num_threads; ++i)
     SSC_xor64(outputs, outputs + (i * PPQ_THREEFISH512_BLOCK_BYTES));
   // Hash into 128 bytes of output.
   PPQ_Skein512_hash(
@@ -398,7 +399,7 @@ SSC_Error_t Core::runKDF()
    &mypod->tf_ctr,
    mypod->tf_ctr_iv);
 
-  for (uint64_t i = 0; i < num_threads; ++i) {
+  for (uint64_t i {0}; i < num_threads; ++i) {
     if (errors[i]) {
       delete[] errors;
       return -1;
@@ -411,7 +412,7 @@ SSC_Error_t Core::runKDF()
 SSC_Error_t Core::verifyMAC(const uint8_t* R_ mac, const uint8_t* R_ begin, const uint64_t size)
 {
   alignas(uint64_t) uint8_t tmp_mac [MAC_SIZE];
-  PlainOldData* mypod = this->getPod();
+  PlainOldData* mypod {this->getPod()};
   PPQ_Skein512_mac(
    mypod->ubi512,
    tmp_mac,
@@ -430,7 +431,7 @@ SSC_CodeError_t Core::decrypt(
  StatusCallback_f* status_callback,
  void*             status_callback_data)
 {
-  PlainOldData* mypod = this->getPod();
+  PlainOldData* mypod {this->getPod()};
   // Ensure at least an input file path is provided.
   if (mypod->input_filename == nullptr) {
     *err_io_dir = InOutDir::INPUT;
@@ -469,11 +470,11 @@ SSC_CodeError_t Core::decrypt(
   {
     if (status_callback != nullptr)
       status_callback(status_callback_data);
-    SSC_Error_t err = this->mapFiles(
+    SSC_Error_t err {this->mapFiles(
      nullptr,
      input_filesize,
      0,
-     InOutDir::INPUT);
+     InOutDir::INPUT)};
     if (err) {
       *err_io_dir = InOutDir::INPUT;
       return ERROR_INPUT_MEMMAP_FAILED;
@@ -486,9 +487,9 @@ SSC_CodeError_t Core::decrypt(
   // If the decryption password has not already been initialized, then initialize it.
   if (mypod->password_size == 0)
     this->getPassword(false, false);
-  const uint8_t* in = mypod->input_map.ptr;
-  const size_t   num_in = mypod->input_map.size;
-  SSC_CodeError_t err = 0;
+  const uint8_t* in     {mypod->input_map.ptr};
+  const size_t   num_in {mypod->input_map.size};
+  SSC_CodeError_t err   {0};
   // Read the input file header's plaintext.
   in = this->readHeaderPlaintext(in, &err);
   if (err)
@@ -516,15 +517,15 @@ SSC_CodeError_t Core::decrypt(
   if (err)
     return err;
   // Map the output file
-  const size_t num_out = num_in - Core::getMetadataSize() - mypod->padding_size;
+  const size_t num_out {num_in - Core::getMetadataSize() - mypod->padding_size};
   {
     if (status_callback != nullptr)
       status_callback(status_callback_data);
-    SSC_Error_t err = this->mapFiles(
+    SSC_Error_t err {this->mapFiles(
      nullptr,
      0,
      num_out,
-     InOutDir::OUTPUT);
+     InOutDir::OUTPUT)};
     if (err) {
       *err_io_dir = InOutDir::OUTPUT;
       return ERROR_OUTPUT_MEMMAP_FAILED;
@@ -544,7 +545,7 @@ SSC_CodeError_t Core::decrypt(
 
 SSC_Error_t Core::syncMaps()
 {
-  PlainOldData* mypod = this->getPod();
+  PlainOldData* mypod {this->getPod()};
   if (mypod->input_map.ptr) {
     if (SSC_MemMap_sync(&mypod->input_map))
       return -1;
@@ -558,7 +559,7 @@ SSC_Error_t Core::syncMaps()
 
 void Core::unmapFiles()
 {
-  PlainOldData* mypod = this->getPod();
+  PlainOldData* mypod {this->getPod()};
   if (mypod->input_map.ptr)
     SSC_MemMap_del(&mypod->input_map);
   if (mypod->output_map.ptr)
@@ -569,7 +570,7 @@ const uint8_t* Core::readHeaderPlaintext(
  const uint8_t* R_   from,
  SSC_CodeError_t* R_ err)
 {
-  PlainOldData* mypod = this->getPod();
+  PlainOldData* mypod {this->getPod()};
   // Check the magic bytes.
   if (memcmp(from, Core::magic, sizeof(Core::magic))) {
     *err = ERROR_INVALID_4CRYPT_FILE;
@@ -581,7 +582,7 @@ const uint8_t* Core::readHeaderPlaintext(
   mypod->memory_high = (*from++);
   mypod->iterations  = (*from++);
   {
-    uint8_t phi = (*from++);
+    uint8_t phi {*from++};
     if (phi)
       mypod->flags |= ENABLE_PHI;
   }
@@ -627,7 +628,7 @@ const uint8_t* Core::readHeaderPlaintext(
 
 const uint8_t* Core::readHeaderCiphertext(const uint8_t* R_ from, SSC_CodeError_t* R_ err)
 {
-  PlainOldData* mypod = this->getPod();
+  PlainOldData* mypod {this->getPod()};
   // 8 Ciphered padding size bytes; 8 ciphered reserve bytes.
   {
     uint64_t tmp[2];
@@ -661,14 +662,14 @@ SSC_CodeError_t Core::describe(
  StatusCallback_f* status_callback,
  void*             status_callback_data)
 {
-  PlainOldData* mypod = this->getPod();
+  PlainOldData* mypod {this->getPod()};
   if (mypod->input_filename == nullptr) {
     *errdir = InOutDir::INPUT;
     *errtype = ErrType::CORE;
     return ERROR_NO_INPUT_FILENAME;
   }
-  SSC_CodeError_t err = 0;
-  InOutDir        err_dir = InOutDir::NONE;
+  SSC_CodeError_t err     {0};
+  InOutDir        err_dir {InOutDir::NONE};
   err = this->mapFiles(
    &err_dir,
    0,
@@ -679,8 +680,8 @@ SSC_CodeError_t Core::describe(
     *errtype = ErrType::MEMMAP;
     return err;
   }
-  const uint8_t* in = mypod->input_map.ptr;
-  const uint64_t num_in = mypod->input_map.size;
+  const uint8_t* in     {mypod->input_map.ptr};
+  const uint64_t num_in {mypod->input_map.size};
   in = this->readHeaderPlaintext(in, &err);
   if (err) {
     *errdir = InOutDir::NONE;
@@ -739,11 +740,12 @@ SSC_CodeError_t Core::describe(
 
 SSC_CodeError_t Core::mapFiles(InOutDir* map_err_idx, size_t input_size, size_t output_size, InOutDir only_map)
 {
-  constexpr const SSC_BitFlag_t input_flag = SSC_MEMMAP_INIT_READONLY |
-   SSC_MEMMAP_INIT_FORCE_EXIST | SSC_MEMMAP_INIT_FORCE_EXIST_YES;
-  constexpr const SSC_BitFlag_t output_flag = SSC_MEMMAP_INIT_FORCE_EXIST;
-  PlainOldData*   mypod = this->getPod();
-  SSC_CodeError_t err = 0;
+  constexpr const SSC_BitFlag_t input_flag {
+   SSC_MEMMAP_INIT_READONLY | SSC_MEMMAP_INIT_FORCE_EXIST | SSC_MEMMAP_INIT_FORCE_EXIST_YES};
+  constexpr const SSC_BitFlag_t output_flag {SSC_MEMMAP_INIT_FORCE_EXIST};
+
+  PlainOldData*   mypod {this->getPod()};
+  SSC_CodeError_t err   {0};
   // Input and output filenames have been checked for NULL. Map these filepaths.
   if (only_map != InOutDir::OUTPUT) {
     err = SSC_MemMap_init(
@@ -774,7 +776,7 @@ SSC_CodeError_t Core::mapFiles(InOutDir* map_err_idx, size_t input_size, size_t 
 
 void Core::getPassword(bool enter_twice, bool entropy)
 {
-  PlainOldData* mypod = this->getPod();
+  PlainOldData* mypod {this->getPod()};
   SSC_Terminal_init();
   if (enter_twice && !entropy) {
     mypod->password_size = static_cast<uint64_t>(SSC_Terminal_getPasswordChecked(
@@ -825,7 +827,7 @@ void Core::getPassword(bool enter_twice, bool entropy)
 
 uint8_t* Core::writeHeader(uint8_t* to)
 {
-  PlainOldData* mypod = this->getPod();
+  PlainOldData* mypod {this->getPod()};
   // Magic bytes.
   memcpy(to, Core::magic, sizeof(Core::magic));
   to += sizeof(Core::magic);
@@ -891,7 +893,7 @@ uint8_t* Core::writeHeader(uint8_t* to)
 
 uint8_t* Core::writeCiphertext(uint8_t* R_ to, const uint8_t* R_ from, const size_t num)
 {
-  PlainOldData* mypod = this->getPod();
+  PlainOldData* mypod {this->getPod()};
   // Encipher padding bytes, if applicable.
   if (mypod->padding_size) {
     PPQ_Threefish512CounterMode_xorKeystream(
@@ -917,7 +919,7 @@ uint8_t* Core::writeCiphertext(uint8_t* R_ to, const uint8_t* R_ from, const siz
 
 void Core::writePlaintext(uint8_t* R_ to, const uint8_t* R_ from, const size_t num)
 {
-  PlainOldData* mypod = this->getPod();
+  PlainOldData* mypod {this->getPod()};
   PPQ_Threefish512CounterMode_xorKeystream(
    &mypod->tf_ctr,
    to,
@@ -930,7 +932,7 @@ void Core::writePlaintext(uint8_t* R_ to, const uint8_t* R_ from, const size_t n
 
 void Core::writeMAC(uint8_t* R_ to, const uint8_t* R_ from, const size_t num)
 {
-  PlainOldData* mypod = this->getPod();
+  PlainOldData* mypod {this->getPod()};
   PPQ_Skein512_mac(
    mypod->ubi512,
    to,
@@ -979,10 +981,10 @@ std::string Core::makeMemoryStringBitShift(const uint8_t mem_bitshift)
 
 std::string Core::makeMemoryString(const uint64_t value)
 {
-  constexpr const uint64_t kibibyte = 1024;
-  constexpr const uint64_t mebibyte = kibibyte * kibibyte;
-  constexpr const uint64_t gibibyte = mebibyte * kibibyte;
-  constexpr const uint64_t tebibyte = gibibyte * kibibyte;
+  constexpr const uint64_t kibibyte {1024};
+  constexpr const uint64_t mebibyte {kibibyte * kibibyte};
+  constexpr const uint64_t gibibyte {mebibyte * kibibyte};
+  constexpr const uint64_t tebibyte {gibibyte * kibibyte};
   enum class Size {
     None = 0, Kibi = 1, Mebi = 2, Gibi = 3, Tebi = 4
   };
@@ -990,17 +992,12 @@ std::string Core::makeMemoryString(const uint64_t value)
     "Byte(s)", "Kibibyte(s)", "Mebibyte(s)", "Gibibyte(s)", "Tebibyte(s)"
   };
 
-  uint64_t    size;
-  uint64_t    size_count;
-  double      size_fraction;
-  Size        size_enum;
-  std::string s;
+  std::string s             {};
+  uint64_t    size          {1};
+  uint64_t    size_count    {0};
+  double      size_fraction {0.0};
+  Size        size_enum     {Size::None};
   
-  // Set initial values.
-  size = 1;
-  size_count = 0;
-  size_fraction = 0.0;
-  size_enum = Size::None;
   // Determine which size class the value belongs to.
   if (value >= tebibyte) {
     size = tebibyte;
@@ -1029,7 +1026,7 @@ std::string Core::makeMemoryString(const uint64_t value)
   if (size_fraction != 0.0) {
     s += ".";
     {
-      auto tmp = std::to_string(size_fraction * 100);
+      std::string tmp {std::to_string(size_fraction * 100)};
       tmp.resize(2);
       s += tmp;
     }
@@ -1039,4 +1036,31 @@ std::string Core::makeMemoryString(const uint64_t value)
   s += size_strings[static_cast<int>(size_enum)];
 
   return s;
+}
+
+uint8_t
+Core::getDefaultMemoryUsageBitShift(void)
+{
+#if defined(SSC_HAS_GETAVAILABLESYSTEMMEMORY)
+  const uint64_t available {static_cast<uint64_t>(SSC_getAvailableSystemMemory())};
+
+  // Scan through all the bits until the highest bit is detected. Determine the equivalent bit shift from 0.
+  {
+    uint64_t i     {0x80'00'00'00'00'00'00'00};
+    uint8_t  shift {0};
+
+    while (not (i & available))
+      i >>= 1;
+    while (i != 1) {
+      i >>= 1;
+      ++shift;
+    }
+    if (shift >= 6)
+      shift -= 6; // Later multiplied by 64 i.e. 2^6. Decrement by 6 here.
+
+    return shift;
+  }
+#else
+  return MEM_DEFAULT;
+#endif
 }

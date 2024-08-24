@@ -93,13 +93,15 @@ class Gui
   GtkWidget*      output_text   {};
   GtkWidget*      output_button {};
 
-  //TODO
-  GtkWidget*      param_toggle_checkbutton {};
   GtkWidget*      param_box {};
-  GtkWidget*      param_phi_checkbutton {};
-  GtkWidget*      param_mem_dropdown {};
-  GtkWidget*      param_iterations_text {};
-  GtkWidget*      param_threads_text {};
+  GtkWidget*      param_phi_checkbutton  {};
+  GtkWidget*      param_mem_dropdown     {};
+  GtkWidget*      param_iterations_box   {};
+  GtkWidget*      param_iterations_label {};
+  GtkWidget*      param_iterations_text  {};
+  GtkWidget*      param_threads_box      {};
+  GtkWidget*      param_threads_label    {};
+  GtkWidget*      param_threads_text     {};
   GtkWidget*      param_batch_size_dropdown {};
 
   GtkWidget*      password_box   {};

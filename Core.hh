@@ -50,7 +50,7 @@ class Core
   static constexpr const SSC_CodeError_t ERROR_KDF_FAILED                 = -12;
   static constexpr const SSC_CodeError_t ERROR_METADATA_VALIDATION_FAILED = -13;
 
-  static constexpr const uint8_t  MEM_DEFAULT = 24;
+  static constexpr const uint8_t  MEM_DEFAULT = 24; // 1 Gibibyte.
   static constexpr const uint64_t PAD_FACTOR = 64;
   static constexpr const uint64_t MAC_SIZE = 64;
 
@@ -133,6 +133,7 @@ class Core
   static bool        verifyBasicMetadata(PlainOldData* extpod, InOutDir dir);
   static std::string makeMemoryStringBitShift(const uint8_t mem_bitshift);
   static std::string makeMemoryString(const uint64_t value);
+  static uint8_t     getDefaultMemoryUsageBitShift(void);
   // Private methods.
   void            getPassword(bool enter_twice, bool entropy);
   SSC_Error_t     normalizePadding(const uint64_t input_filesize);

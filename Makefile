@@ -26,8 +26,10 @@ dirs:
 	[ -d $(Dir)    ] || mkdir $(Dir)
 	[ -d $(BinDir) ] || mkdir $(BinDir)
 	[ -d $(ObjDir) ] || mkdir $(ObjDir)
+
+# User targets.
 4crypt:  dirs Bin/4crypt
 g4crypt: dirs Bin/g4crypt
 all: 4crypt g4crypt
 clean:
-	rm -f Obj/*.o Bin/4crypt Bin/g4crypt
+	rm -f $(ObjDir)/*.o $(BinDir)/4crypt $(BinDir)/g4crypt

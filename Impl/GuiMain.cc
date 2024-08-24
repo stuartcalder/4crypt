@@ -162,7 +162,6 @@ Gui::on_input_button_clicked(GtkWidget* button, void* self)
  {
   Gui* gui {static_cast<Gui*>(self)};
   std::puts("Input button was pushed.");
-  //TODO: Open a file dialog to choose an input file.
   gtk_file_dialog_open(
    gui->file_dialog,
    GTK_WINDOW(gui->application_window),
@@ -568,11 +567,11 @@ Gui::get_password(void)
  {
   const char* pw_0 {gtk_editable_get_text(GTK_EDITABLE(password_entry))};
   const char* pw_1 {gtk_editable_get_text(GTK_EDITABLE(reentry_entry))};
-  size_t pw_0_len = std::strlen(pw_0);
-  size_t pw_1_len = std::strlen(pw_1);
+  size_t pw_0_len {std::strlen(pw_0)};
+  size_t pw_1_len {std::strlen(pw_1)};
   SSC_assertMsg(pw_0_len <= Core::MAX_PW_BYTES, "pw_0_len > MAX_PW_BYTES!\n");
   SSC_assertMsg(pw_1_len <= Core::MAX_PW_BYTES, "pw_1_len > MAX_PW_BYTES!\n");
-  bool   equal = (pw_0_len == pw_1_len) and (not std::strcmp(pw_0, pw_1));
+  bool equal {(pw_0_len == pw_1_len) and (not std::strcmp(pw_0, pw_1))};
   memset(pod->password_buffer, 0, sizeof(pod->password_buffer));
 
   if (pw_0_len == 0)
@@ -750,12 +749,25 @@ Gui::init_param_box(void)
   param_phi_checkbutton = gtk_check_button_new();
   gtk_check_button_set_label(GTK_CHECK_BUTTON(param_phi_checkbutton), "Enable Phi");
   param_mem_dropdown = gtk_drop_down_new_from_strings(mem_strings);
-  param_iterations_text = gtk_text_new();
+  // Iterations Box.
+  param_iterations_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
+  param_iterations_label = gtk_label_new("   Iterations: ");
+  param_iterations_text  = gtk_text_new();
   gtk_widget_add_css_class(param_iterations_text, "basic");
-  param_threads_text = gtk_text_new();
+  gtk_box_append(GTK_BOX(param_iterations_box), param_iterations_label);
+  gtk_box_append(GTK_BOX(param_iterations_box), param_iterations_text);
 
   GtkEntryBuffer* entry {gtk_text_get_buffer(GTK_TEXT(param_iterations_text))};
   gtk_entry_buffer_set_text(entry, "1", 1);
+
+  // Threads Box.
+  param_threads_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
+  param_threads_label = gtk_label_new(" Thread Count: ");
+  param_threads_text  = gtk_text_new();
+  gtk_widget_add_css_class(param_threads_text, "basic");
+  gtk_box_append(GTK_BOX(param_threads_box), param_threads_label);
+  gtk_box_append(GTK_BOX(param_threads_box), param_threads_text);
+
   entry = gtk_text_get_buffer(GTK_TEXT(param_threads_text));
   gtk_entry_buffer_set_text(entry, "1", 1);
 
@@ -763,8 +775,9 @@ Gui::init_param_box(void)
   // Fill the box.
   gtk_box_append(GTK_BOX(param_box), param_phi_checkbutton);
   gtk_box_append(GTK_BOX(param_box), param_mem_dropdown);
-  gtk_box_append(GTK_BOX(param_box), param_iterations_text);
-  gtk_box_append(GTK_BOX(param_box), param_threads_text);
+  gtk_box_append(GTK_BOX(param_box), param_iterations_box);
+  gtk_box_append(GTK_BOX(param_box), param_threads_box);
+  gtk_widget_set_visible(param_box, FALSE);
  }
 
 void
@@ -884,16 +897,19 @@ Gui::set_mode(Mode m)
       gtk_widget_add_css_class(encrypt_button, "highlight");
       gtk_widget_set_visible(password_box, TRUE);
       gtk_widget_set_visible(reentry_box,  TRUE);
+      gtk_widget_set_visible(param_box,    TRUE);
       break;
     case Mode::DECRYPT:
       gtk_widget_add_css_class(decrypt_button, "highlight");
       gtk_widget_set_visible(password_box, TRUE);
       gtk_widget_set_visible(reentry_box,  FALSE);
+      gtk_widget_set_visible(param_box,    FALSE);
       break;
     case Mode::NONE:
       output_text_activated = false;
       gtk_widget_set_visible(password_box, FALSE);
       gtk_widget_set_visible(reentry_box , FALSE);
+      gtk_widget_set_visible(param_box,    FALSE);
 
       GtkEntryBuffer* eb {gtk_text_get_buffer(GTK_TEXT(input_text))};
       gtk_entry_buffer_delete_text(eb, 0, -1); // Delete all text.
