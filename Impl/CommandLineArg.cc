@@ -1,4 +1,5 @@
 #include "CommandLineArg.hh"
+#include "Util.hh"
 // C++ C Lib
 #include <cinttypes>
 #define R_ SSC_RESTRICT
@@ -55,6 +56,7 @@ constexpr uint64_t KIBIBYTE = 1024;
 constexpr uint64_t MEBIBYTE = KIBIBYTE * KIBIBYTE;
 constexpr uint64_t GIBIBYTE = MEBIBYTE * KIBIBYTE;
 
+#if 0
 static uint8_t
 parse_memory(const char* R_ str, const size_t len)
 {
@@ -116,6 +118,7 @@ have_multiplier:
   }
   return mem;
 }
+#endif
 
 static uint8_t
 parse_iterations(const char* R_ str, const size_t len)

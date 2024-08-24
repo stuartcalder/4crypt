@@ -1,4 +1,5 @@
 #include "Gui.hh"
+#include "Util.hh"
 // GTK4
 #include <gtk/gtk.h>
 #include <gio/gio.h>
@@ -71,7 +72,6 @@ fourcrypt::make_os_path(std::string& str)
 std::string
 Gui::getExecutablePath(void)
  {
-  size_t pathsize;
   char* c_execpath {SSC_getExecutablePath(nullptr)};
   SSC_assertMsg(c_execpath != nullptr, "Error: getExecutablePath(): c_execpath was NULL!\n");
   std::string s {c_execpath};
@@ -82,8 +82,8 @@ Gui::getExecutablePath(void)
 std::string
 Gui::getExecutableDirPath(void)
  {
-  std::string str {getExecutablePath()};
-  auto size {str.size()};
+  std::string str  {getExecutablePath()};
+  auto        size {str.size()};
   SSC_assertMsg(size > FOURCRYPT_GUI_BINARY_LENGTH, "Error: ExecutableDirPath invalid size!\n");
 
   SSC_assertMsg(
@@ -296,6 +296,12 @@ Gui::encrypt_thread(
   {
     std::lock_guard {gui->operation_mtx};
 
+    //TODO: Get parameters from the GUI interface.
+    {
+      if (gtk_check_button_get_active(GTK_CHECK_BUTTON(gui->param_phi_checkbutton)))
+        pod->flags |= Core::ENABLE_PHI;
+    }
+
     gui->operation_data.code_error = core->encrypt(
      &gui->operation_data.error_type,
      &gui->operation_data.in_out_dir,
@@ -305,7 +311,7 @@ Gui::encrypt_thread(
     Pod_t::init(*pod);
     PPQ_CSPRNG_init(&pod->rng);
 
-    std::thread th {&status_thread, gui}; //TODO
+    std::thread th {&status_thread, gui};
     th.detach();
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
