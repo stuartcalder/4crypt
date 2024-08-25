@@ -6,7 +6,7 @@ Lto      := -flto
 Optimize := -O3
 Native   := -march=native
 ObjCompile := c++ $(Includes) $(CppStd) $(Lto) $(Optimize) $(Native) -c
-Compile  := c++ $(Includes) $(LinkLibs) $(CppStd) $(Lto) $(Optimize) $(Native)
+Compile    := c++ $(Includes) $(LinkLibs) $(CppStd) $(Lto) $(Optimize) $(Native)
 
 Dir    := /ram/$(USER)/4crypt
 BinDir := $(Dir)/Bin

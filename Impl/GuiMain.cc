@@ -40,6 +40,14 @@ constexpr int FOURCRYPT_TITLE_HEIGHT {195};
 constexpr int WINDOW_WIDTH  {FOURCRYPT_IMG_WIDTH  * 2};
 constexpr int WINDOW_HEIGHT {FOURCRYPT_IMG_HEIGHT * 2}; 
 
+static const char* const memory_usage_strings[] {
+   "128M", "256M" , "512M",
+   "1G"  , "2G"   , "4G",
+   "8G"  , "16G"  , "32G",
+   "64G" , "128G" , "256G",
+   nullptr
+};
+
 static bool
 str_ends_with(const std::string& str, const std::string& with)
  {
@@ -57,11 +65,11 @@ fourcrypt::make_os_path(std::string& str)
   for (char& c : str)
    {
    #if   defined(SSC_OS_UNIXLIKE)
-    if (c == '\\')
-      c = '/';
+    if (c == FOURCRYPT_SLASH_CHAR_WINDOWS)
+      c = FOURCRYPT_SLASH_CHAR_UNIXLIKE;
    #elif defined(SSC_OS_WINDOWS)
-    if (c == '/')
-      c = '\\';
+    if (c == FOURCRYPT_SLASH_CHAR_UNIXLIKE)
+      c = FOURCRYPT_SLASH_CHAR_WINDOWS;
    #else
     #error "Unsupported!"
    #endif
@@ -93,6 +101,9 @@ Gui::getExecutableDirPath(void)
   str.erase(
    str.end() - (FOURCRYPT_GUI_BINARY_LENGTH + 1), // Also erase the trailing '/'.
    str.end());
+  // Consider the possibility that the executable dir is somehow a root directory.
+  if (str.size() == 0)
+    str += FOURCRYPT_SLASH_CHAR_OS
   return str;
  }
 #endif
@@ -296,10 +307,40 @@ Gui::encrypt_thread(
   {
     std::lock_guard {gui->operation_mtx};
 
-    //TODO: Get parameters from the GUI interface.
+    // GUI Parameters.
     {
+      // Phi.
       if (gtk_check_button_get_active(GTK_CHECK_BUTTON(gui->param_phi_checkbutton)))
         pod->flags |= Core::ENABLE_PHI;
+      // Memory Usage.
+      const auto mem_usage_idx {gtk_drop_down_get_selected(GTK_DROP_DOWN(gui->param_mem_dropdown))};
+      if (mem_usage_idx != GTK_INVALID_LIST_POSITION)
+       {
+        const char* mem_usage {memory_usage_strings[mem_usage_idx]};
+        if (mem_usage != nullptr)
+         {
+          uint8_t mem {parse_memory(mem_usage, std::strlen(mem_usage))};
+          pod->memory_low  = mem;
+          pod->memory_high = mem;
+         }
+       }
+      // Iterations.
+      GtkEntryBuffer* ebuf     {gtk_text_get_buffer(GTK_TEXT(gui->param_iterations_text))};
+      const char* ebuf_cstr    {gtk_entry_buffer_get_text(ebuf)};
+      const uint8_t iterations {parse_iterations(ebuf_cstr, std::strlen(ebuf_cstr))};
+      if (iterations > 0)
+        pod->iterations = iterations;
+      // Threads Count.
+      ebuf             = gtk_text_get_buffer(GTK_TEXT(gui->param_threads_text));
+      ebuf_cstr        = gtk_entry_buffer_get_text(ebuf);
+      uint64_t threads {parse_integer(ebuf_cstr, std::strlen(ebuf_cstr))};
+      pod->thread_count = threads;
+      // Thread Batch Size.
+      ebuf      = gtk_text_get_buffer(GTK_TEXT(gui->param_batch_size_text));
+      ebuf_cstr = gtk_entry_buffer_get_text(ebuf);
+      uint64_t batch_size {parse_integer(ebuf_cstr, std::strlen(ebuf_cstr))};
+      if (batch_size <= pod->thread_count)
+        pod->thread_batch_size = batch_size;
     }
 
     gui->operation_data.code_error = core->encrypt(
@@ -744,20 +785,13 @@ Gui::init_output_box(void)
 void
 Gui::init_param_box(void)
  {
-  static const char* const mem_strings[] {
-   "128M", "256M" , "512M",
-   "1G"  , "2G"   , "4G",
-   "8G"  , "16G"  , "32G",
-   "64G" , "128G" , "256G",
-   nullptr
-  };
   param_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 1);
   param_phi_checkbutton = gtk_check_button_new();
   gtk_check_button_set_label(GTK_CHECK_BUTTON(param_phi_checkbutton), "Enable Phi");
-  param_mem_dropdown = gtk_drop_down_new_from_strings(mem_strings);
+  param_mem_dropdown = gtk_drop_down_new_from_strings(memory_usage_strings);
   // Iterations Box.
   param_iterations_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
-  param_iterations_label = gtk_label_new("   Iterations: ");
+  param_iterations_label = gtk_label_new("   Iterations:      ");
   param_iterations_text  = gtk_text_new();
   gtk_widget_add_css_class(param_iterations_text, "basic");
   gtk_box_append(GTK_BOX(param_iterations_box), param_iterations_label);
@@ -768,7 +802,7 @@ Gui::init_param_box(void)
 
   // Threads Box.
   param_threads_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
-  param_threads_label = gtk_label_new(" Thread Count: ");
+  param_threads_label = gtk_label_new(" Thread Count:      ");
   param_threads_text  = gtk_text_new();
   gtk_widget_add_css_class(param_threads_text, "basic");
   gtk_box_append(GTK_BOX(param_threads_box), param_threads_label);
@@ -777,12 +811,23 @@ Gui::init_param_box(void)
   entry = gtk_text_get_buffer(GTK_TEXT(param_threads_text));
   gtk_entry_buffer_set_text(entry, "1", 1);
 
+  // Batch size.
+  param_batch_size_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
+  param_batch_size_label = gtk_label_new(" Thread Batch Size: ");
+  param_batch_size_text  = gtk_text_new();
+  gtk_widget_add_css_class(param_batch_size_text, "basic");
+  gtk_box_append(GTK_BOX(param_batch_size_box), param_batch_size_label);
+  gtk_box_append(GTK_BOX(param_batch_size_box), param_batch_size_text);
+
+  entry = gtk_text_get_buffer(GTK_TEXT(param_batch_size_text));
+  gtk_entry_buffer_set_text(entry, "1", 1);
 
   // Fill the box.
   gtk_box_append(GTK_BOX(param_box), param_phi_checkbutton);
   gtk_box_append(GTK_BOX(param_box), param_mem_dropdown);
   gtk_box_append(GTK_BOX(param_box), param_iterations_box);
   gtk_box_append(GTK_BOX(param_box), param_threads_box);
+  gtk_box_append(GTK_BOX(param_box), param_batch_size_box);
   gtk_widget_set_visible(param_box, FALSE);
  }
 

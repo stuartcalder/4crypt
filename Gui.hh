@@ -10,21 +10,24 @@
 #include <mutex>
 #include <string>
 
+#define FOURCRYPT_SLASH_CHAR_UNIXLIKE '/'
+#define FOURCRYPT_SLASH_CHAR_WINDOWS  '\\'
+
 // OS-specific binary names.
 #if   defined(SSC_OS_UNIXLIKE)
  #define FOURCRYPT_GUI_BINARY        "g4crypt"
  #define FOURCRYPT_GUI_BINARY_LENGTH 7
+ #define FOURCRYPT_SLASH_CHAR_OS     FOURCRYPT_SLASH_CHAR_UNIXLIKE
 #elif defined(SSC_OS_WINDOWS)
  #define FOURCRYPT_GUI_BINARY        "g4crypt.exe"
  #define FOURCRYPT_GUI_BINARY_LENGTH 11
+ #define FOURCRYPT_SLASH_CHAR_OS     FOURCRYPT_SLASH_CHAR_WINDOWS
 #else
  #error "Unsupported OS".
 #endif
 
-#if defined(FOURCRYPT_IS_PORTABLE)
-#elif defined(__gnu_linux__)
-#else
- #error "Unsupported!"
+#if !defined(FOURCRYPT_IS_PORTABLE) && !defined(__gnu_linux__)
+ #error "Unsupported! Not Portable or GNU/Linux!"
 #endif
 
 namespace fourcrypt {
@@ -102,7 +105,9 @@ class Gui
   GtkWidget*      param_threads_box      {};
   GtkWidget*      param_threads_label    {};
   GtkWidget*      param_threads_text     {};
-  GtkWidget*      param_batch_size_dropdown {};
+  GtkWidget*      param_batch_size_box   {};
+  GtkWidget*      param_batch_size_label {};
+  GtkWidget*      param_batch_size_text  {};
 
   GtkWidget*      password_box   {};
   GtkWidget*      password_label {};
