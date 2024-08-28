@@ -14,8 +14,8 @@
 #include <cstdlib>
 #include <cstdio>
 // SSC
+#include <SSC/Process.h>
 #ifdef FOURCRYPT_IS_PORTABLE
- #include <SSC/Process.h>
  #ifndef SSC_HAS_GETEXECUTABLEPATH
   #warning "Trying to build a portable 4crypt while SSC does not support SSC_getExecutablePath()!"
   #error   "Unsatisfiable build requirements."
@@ -121,7 +121,7 @@ Gui::getResourcePath(void)
  }
 
 Gui::Gui(Core* param_core, int param_argc, char** param_argv)
-: core{param_core}, argc{param_argc}, argv{param_argv}
+: core{param_core}, argc{param_argc}, argv{param_argv}, number_processors{SSC_getNumberProcessors()}
  {
   pod = core->getPod();
   gtk_init();
@@ -814,7 +814,7 @@ Gui::init_param_box(void)
   param_mem_dropdown = gtk_drop_down_new_from_strings(memory_usage_strings);
   gtk_widget_set_tooltip_text(
    param_mem_dropdown,
-   "Choose how much RAM the Key Derivation Function should consume on Encrypt/Decrypt operations. "
+   "Choose how much RAM each thread of the Key Derivation Function should consume on Encrypt/Decrypt operations. "
    "Choosing more RAM will make the operation slower, but provide more security against brute force attacks.");
   // Iterations Box.
   param_iterations_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
@@ -840,7 +840,9 @@ Gui::init_param_box(void)
   gtk_widget_add_css_class(param_threads_text, "basic");
   gtk_widget_set_tooltip_text(
    param_threads_text,
-   "Choose how many parallel threads the Key Derivation Function will use. "); //TODO: FINISH ME.
+   "Choose how many parallel threads the Key Derivation Function will use. "
+   "Increasing this value will multiply the amount of RAM used for key "
+   "derivation. Be aware.");
   gtk_box_append(GTK_BOX(param_threads_box), param_threads_label);
   gtk_box_append(GTK_BOX(param_threads_box), param_threads_text);
 
@@ -852,6 +854,11 @@ Gui::init_param_box(void)
   param_batch_size_label = gtk_label_new(" Thread Batch Size: ");
   param_batch_size_text  = gtk_text_new();
   gtk_widget_add_css_class(param_batch_size_text, "basic");
+  gtk_widget_set_tooltip_text(
+   param_batch_size_text,
+   "Choose how many Key Derivation Function threads shall be executed in parallel."
+   "If this number is less than the total number of KDF threads to execute, said "
+   "threads shall be executed sequentially in batches.");
   gtk_box_append(GTK_BOX(param_batch_size_box), param_batch_size_label);
   gtk_box_append(GTK_BOX(param_batch_size_box), param_batch_size_text);
 
@@ -873,7 +880,8 @@ Gui::init_password_box(void)
   password_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
   password_label = gtk_label_new("Password:");
   password_entry = gtk_password_entry_new();
-  g_signal_connect(password_entry, "activate", G_CALLBACK(on_password_entry_activate), this); //TODO
+  gtk_widget_set_tooltip_text(password_entry, "Enter the password here.");
+  g_signal_connect(password_entry, "activate", G_CALLBACK(on_password_entry_activate), this);
   gtk_box_append(GTK_BOX(password_box), password_label);
   gtk_box_append(GTK_BOX(password_box), password_entry);
   gtk_widget_set_size_request(password_box, -1, TEXT_HEIGHT);
@@ -889,6 +897,7 @@ Gui::init_reentry_box(void)
   reentry_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
   reentry_label = gtk_label_new("Re-Entry:");
   reentry_entry = gtk_password_entry_new();
+  gtk_widget_set_tooltip_text(reentry_entry, "Re-enter the password here, to check for consistency.");
   g_signal_connect(reentry_entry, "activate", G_CALLBACK(on_reentry_entry_activate), this); //TODO
   gtk_box_append(GTK_BOX(reentry_box), reentry_label);
   gtk_box_append(GTK_BOX(reentry_box), reentry_entry);

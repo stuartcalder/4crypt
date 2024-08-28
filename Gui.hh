@@ -126,6 +126,7 @@ class Gui
   int             argc {};                  // "argc" passed in from main(int argc, char* argv[])
   char**          argv {};                  // "argv" passed in from main(int argc, char* argv[])
   bool            output_text_activated {}; // Has the user pressed "enter" on the output text at least once?
+  int             number_processors {}; // How many processors does the executing user have on their machine?
  // Private Methods //
   void init_application_window(void);
   void init_grid(void);
