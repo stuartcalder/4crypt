@@ -96,18 +96,23 @@ class Gui
   GtkWidget*      output_text   {};
   GtkWidget*      output_button {};
 
-  GtkWidget*      param_box {};
-  GtkWidget*      param_phi_checkbutton  {};
-  GtkWidget*      param_mem_dropdown     {};
-  GtkWidget*      param_iterations_box   {};
-  GtkWidget*      param_iterations_label {};
-  GtkWidget*      param_iterations_text  {};
-  GtkWidget*      param_threads_box      {};
-  GtkWidget*      param_threads_label    {};
-  GtkWidget*      param_threads_text     {};
-  GtkWidget*      param_batch_size_box   {};
-  GtkWidget*      param_batch_size_label {};
-  GtkWidget*      param_batch_size_text  {};
+  GtkWidget*      encrypt_param_box {};
+  GtkWidget*      encrypt_param_phi_checkbutton  {};
+  GtkWidget*      encrypt_param_mem_dropdown     {};
+  GtkWidget*      encrypt_param_iterations_box   {};
+  GtkWidget*      encrypt_param_iterations_label {};
+  GtkWidget*      encrypt_param_iterations_text  {};
+  GtkWidget*      encrypt_param_threads_box      {};
+  GtkWidget*      encrypt_param_threads_label    {};
+  GtkWidget*      encrypt_param_threads_text     {};
+  GtkWidget*      encrypt_param_batch_size_box   {};
+  GtkWidget*      encrypt_param_batch_size_label {};
+  GtkWidget*      encrypt_param_batch_size_text  {};
+
+  GtkWidget*      decrypt_param_box {}; //TODO
+  GtkWidget*      decrypt_param_batch_size_box   {}; //TODO
+  GtkWidget*      decrypt_param_batch_size_label {};  //TODO
+  GtkWidget*      decrypt_param_batch_size_text  {};  //TODO
 
   GtkWidget*      password_box   {};
   GtkWidget*      password_label {};
@@ -134,7 +139,8 @@ class Gui
   void init_crypt_buttons(void);
   void init_input_box(void);
   void init_output_box(void);
-  void init_param_box(void);
+  void init_encrypt_param_box(void);
+  void init_decrypt_param_box(void); //TODO
   void init_password_box(void);
   void init_reentry_box(void);
   void init_status_box(void);

@@ -310,10 +310,10 @@ Gui::encrypt_thread(
     // GUI Parameters.
     {
       // Phi.
-      if (gtk_check_button_get_active(GTK_CHECK_BUTTON(gui->param_phi_checkbutton)))
+      if (gtk_check_button_get_active(GTK_CHECK_BUTTON(gui->encrypt_param_phi_checkbutton)))
         pod->flags |= Core::ENABLE_PHI;
       // Memory Usage.
-      const auto mem_usage_idx {gtk_drop_down_get_selected(GTK_DROP_DOWN(gui->param_mem_dropdown))};
+      const auto mem_usage_idx {gtk_drop_down_get_selected(GTK_DROP_DOWN(gui->encrypt_param_mem_dropdown))};
       if (mem_usage_idx != GTK_INVALID_LIST_POSITION)
        {
         const char* mem_usage {memory_usage_strings[mem_usage_idx]};
@@ -325,18 +325,18 @@ Gui::encrypt_thread(
          }
        }
       // Iterations.
-      GtkEntryBuffer* ebuf     {gtk_text_get_buffer(GTK_TEXT(gui->param_iterations_text))};
+      GtkEntryBuffer* ebuf     {gtk_text_get_buffer(GTK_TEXT(gui->encrypt_param_iterations_text))};
       const char* ebuf_cstr    {gtk_entry_buffer_get_text(ebuf)};
       const uint8_t iterations {parse_iterations(ebuf_cstr, std::strlen(ebuf_cstr))};
       if (iterations > 0)
         pod->iterations = iterations;
       // Threads Count.
-      ebuf             = gtk_text_get_buffer(GTK_TEXT(gui->param_threads_text));
+      ebuf             = gtk_text_get_buffer(GTK_TEXT(gui->encrypt_param_threads_text));
       ebuf_cstr        = gtk_entry_buffer_get_text(ebuf);
       uint64_t threads {parse_integer(ebuf_cstr, std::strlen(ebuf_cstr))};
       pod->thread_count = threads;
       // Thread Batch Size.
-      ebuf      = gtk_text_get_buffer(GTK_TEXT(gui->param_batch_size_text));
+      ebuf      = gtk_text_get_buffer(GTK_TEXT(gui->encrypt_param_batch_size_text));
       ebuf_cstr = gtk_entry_buffer_get_text(ebuf);
       uint64_t batch_size {parse_integer(ebuf_cstr, std::strlen(ebuf_cstr))};
       if (batch_size <= pod->thread_count)
@@ -679,8 +679,11 @@ Gui::on_application_activate(GtkApplication* gtk_app, void* self)
   // Create a Box for output.
   gui->init_output_box();
 
-  // Create a Box for parameter entry.
-  gui->init_param_box();
+  // Create a Box for encryption parameter entry.
+  gui->init_encrypt_param_box();
+
+  // Create a Box for decryption parameter entry.
+  gui->init_decrypt_param_box();
 
   // Create a Box for passwords.
   gui->init_password_box();
@@ -799,79 +802,100 @@ Gui::init_output_box(void)
  }
 
 void
-Gui::init_param_box(void)
+Gui::init_encrypt_param_box(void)
  {
-  param_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 1);
-  param_phi_checkbutton = gtk_check_button_new();
-  gtk_check_button_set_label(GTK_CHECK_BUTTON(param_phi_checkbutton), "Enable Phi");
+  encrypt_param_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 1);
+  encrypt_param_phi_checkbutton = gtk_check_button_new();
+  gtk_check_button_set_label(GTK_CHECK_BUTTON(encrypt_param_phi_checkbutton), "Enable Phi");
   gtk_widget_set_tooltip_text(
-   param_phi_checkbutton,
+   encrypt_param_phi_checkbutton,
    "WARNING: This enables the Phi function. "
    "Enabling the Phi function hardens 4crypt's Key Derivation Function, "
    "greatly increasing the work necessary to attack your password with "
    "brute force, but introduces the potential for cache-timing attacks. "
    "Do NOT use this feature unless you understand the security implications!");
-  param_mem_dropdown = gtk_drop_down_new_from_strings(memory_usage_strings);
+  encrypt_param_mem_dropdown = gtk_drop_down_new_from_strings(memory_usage_strings);
   gtk_widget_set_tooltip_text(
-   param_mem_dropdown,
+   encrypt_param_mem_dropdown,
    "Choose how much RAM each thread of the Key Derivation Function should consume on Encrypt/Decrypt operations. "
    "Choosing more RAM will make the operation slower, but provide more security against brute force attacks.");
   // Iterations Box.
-  param_iterations_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
-  param_iterations_label = gtk_label_new("   Iterations:      ");
-  param_iterations_text  = gtk_text_new();
-  gtk_widget_add_css_class(param_iterations_text, "basic");
+  encrypt_param_iterations_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
+  encrypt_param_iterations_label = gtk_label_new("   Iterations:      ");
+  encrypt_param_iterations_text  = gtk_text_new();
+  gtk_widget_add_css_class(encrypt_param_iterations_text, "basic");
   gtk_widget_set_tooltip_text(
-   param_iterations_text,
+   encrypt_param_iterations_text,
    "Choose how many times each thread of the Key Derivation Function will iterate. "
    "Increasing this value will linearly increase the amount of time and work necessary "
    "for each Key Derivation Function thread, linearly increasing the cost of a brute "
    "force attack.");
-  gtk_box_append(GTK_BOX(param_iterations_box), param_iterations_label);
-  gtk_box_append(GTK_BOX(param_iterations_box), param_iterations_text);
+  gtk_box_append(GTK_BOX(encrypt_param_iterations_box), encrypt_param_iterations_label);
+  gtk_box_append(GTK_BOX(encrypt_param_iterations_box), encrypt_param_iterations_text);
 
-  GtkEntryBuffer* entry {gtk_text_get_buffer(GTK_TEXT(param_iterations_text))};
+  GtkEntryBuffer* entry {gtk_text_get_buffer(GTK_TEXT(encrypt_param_iterations_text))};
   gtk_entry_buffer_set_text(entry, "1", 1);
 
   // Threads Box.
-  param_threads_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
-  param_threads_label = gtk_label_new(" Thread Count:      ");
-  param_threads_text  = gtk_text_new();
-  gtk_widget_add_css_class(param_threads_text, "basic");
+  encrypt_param_threads_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
+  encrypt_param_threads_label = gtk_label_new(" Thread Count:      ");
+  encrypt_param_threads_text  = gtk_text_new();
+  gtk_widget_add_css_class(encrypt_param_threads_text, "basic");
   gtk_widget_set_tooltip_text(
-   param_threads_text,
+   encrypt_param_threads_text,
    "Choose how many parallel threads the Key Derivation Function will use. "
    "Increasing this value will multiply the amount of RAM used for key "
    "derivation. Be aware.");
-  gtk_box_append(GTK_BOX(param_threads_box), param_threads_label);
-  gtk_box_append(GTK_BOX(param_threads_box), param_threads_text);
+  gtk_box_append(GTK_BOX(encrypt_param_threads_box), encrypt_param_threads_label);
+  gtk_box_append(GTK_BOX(encrypt_param_threads_box), encrypt_param_threads_text);
 
-  entry = gtk_text_get_buffer(GTK_TEXT(param_threads_text));
+  entry = gtk_text_get_buffer(GTK_TEXT(encrypt_param_threads_text));
   gtk_entry_buffer_set_text(entry, "1", 1);
 
   // Batch size.
-  param_batch_size_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
-  param_batch_size_label = gtk_label_new(" Thread Batch Size: ");
-  param_batch_size_text  = gtk_text_new();
-  gtk_widget_add_css_class(param_batch_size_text, "basic");
+  encrypt_param_batch_size_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
+  encrypt_param_batch_size_label = gtk_label_new(" Thread Batch Size: ");
+  encrypt_param_batch_size_text  = gtk_text_new();
+  gtk_widget_add_css_class(encrypt_param_batch_size_text, "basic");
   gtk_widget_set_tooltip_text(
-   param_batch_size_text,
+   encrypt_param_batch_size_text,
    "Choose how many Key Derivation Function threads shall be executed in parallel."
    "If this number is less than the total number of KDF threads to execute, said "
    "threads shall be executed sequentially in batches.");
-  gtk_box_append(GTK_BOX(param_batch_size_box), param_batch_size_label);
-  gtk_box_append(GTK_BOX(param_batch_size_box), param_batch_size_text);
+  gtk_box_append(GTK_BOX(encrypt_param_batch_size_box), encrypt_param_batch_size_label);
+  gtk_box_append(GTK_BOX(encrypt_param_batch_size_box), encrypt_param_batch_size_text);
 
-  entry = gtk_text_get_buffer(GTK_TEXT(param_batch_size_text));
+  entry = gtk_text_get_buffer(GTK_TEXT(encrypt_param_batch_size_text));
   gtk_entry_buffer_set_text(entry, "1", 1);
 
   // Fill the box.
-  gtk_box_append(GTK_BOX(param_box), param_phi_checkbutton);
-  gtk_box_append(GTK_BOX(param_box), param_mem_dropdown);
-  gtk_box_append(GTK_BOX(param_box), param_iterations_box);
-  gtk_box_append(GTK_BOX(param_box), param_threads_box);
-  gtk_box_append(GTK_BOX(param_box), param_batch_size_box);
-  gtk_widget_set_visible(param_box, FALSE);
+  gtk_box_append(GTK_BOX(encrypt_param_box), encrypt_param_phi_checkbutton);
+  gtk_box_append(GTK_BOX(encrypt_param_box), encrypt_param_mem_dropdown);
+  gtk_box_append(GTK_BOX(encrypt_param_box), encrypt_param_iterations_box);
+  gtk_box_append(GTK_BOX(encrypt_param_box), encrypt_param_threads_box);
+  gtk_box_append(GTK_BOX(encrypt_param_box), encrypt_param_batch_size_box);
+  gtk_widget_set_visible(encrypt_param_box, FALSE);
+ }
+
+void
+Gui::init_decrypt_param_box(void)
+ {
+  decrypt_param_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 1);
+  decrypt_param_batch_size_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
+  decrypt_param_batch_size_label = gtk_label_new(" Thread Batch Size: ");
+  decrypt_param_batch_size_text  = gtk_text_new();
+  gtk_widget_set_tooltip_text(
+   decrypt_param_batch_size_text,
+   "Choose how many Key Derivation Function threads shall be executed in parallel."
+   "If this number is less than the total number of KDF threads to execute, said "
+   "threads shall be executed sequentially in batches.");
+
+  GtkEntryBuffer* eb {gtk_text_get_buffer(GTK_TEXT(decrypt_param_batch_size_text))};
+  gtk_entry_buffer_set_text(eb, "1", 1);
+
+  gtk_box_append(GTK_BOX(decrypt_param_box), decrypt_param_batch_size_label);
+  gtk_box_append(GTK_BOX(decrypt_param_box), decrypt_param_batch_size_text);
+  gtk_widget_set_visible(decrypt_param_box, FALSE);
  }
 
 void
@@ -950,7 +974,7 @@ Gui::attach_grid(void)
   gtk_grid_attach(GTK_GRID(grid), decrypt_button, 2, grid_y_idx, 2, 1);
   ++grid_y_idx;
 
-  gtk_grid_attach(GTK_GRID(grid), param_box, 0, grid_y_idx, 4, 1);
+  gtk_grid_attach(GTK_GRID(grid), encrypt_param_box, 0, grid_y_idx, 4, 1);
   ++grid_y_idx;
 
   gtk_grid_attach(GTK_GRID(grid), input_box  , 0, grid_y_idx, 4, 1);
@@ -991,21 +1015,21 @@ Gui::set_mode(Mode m)
    {
     case Mode::ENCRYPT:
       gtk_widget_add_css_class(encrypt_button, "highlight");
-      gtk_widget_set_visible(password_box, TRUE);
-      gtk_widget_set_visible(reentry_box,  TRUE);
-      gtk_widget_set_visible(param_box,    TRUE);
+      gtk_widget_set_visible(password_box,      TRUE);
+      gtk_widget_set_visible(reentry_box,       TRUE);
+      gtk_widget_set_visible(encrypt_param_box, TRUE);
       break;
     case Mode::DECRYPT:
       gtk_widget_add_css_class(decrypt_button, "highlight");
-      gtk_widget_set_visible(password_box, TRUE);
-      gtk_widget_set_visible(reentry_box,  FALSE);
-      gtk_widget_set_visible(param_box,    FALSE);
+      gtk_widget_set_visible(password_box,      TRUE);
+      gtk_widget_set_visible(reentry_box,       FALSE);
+      gtk_widget_set_visible(encrypt_param_box, FALSE);
       break;
     case Mode::NONE:
       output_text_activated = false;
-      gtk_widget_set_visible(password_box, FALSE);
-      gtk_widget_set_visible(reentry_box , FALSE);
-      gtk_widget_set_visible(param_box,    FALSE);
+      gtk_widget_set_visible(password_box,      FALSE);
+      gtk_widget_set_visible(reentry_box ,      FALSE);
+      gtk_widget_set_visible(encrypt_param_box, FALSE);
 
       GtkEntryBuffer* eb {gtk_text_get_buffer(GTK_TEXT(input_text))};
       gtk_entry_buffer_delete_text(eb, 0, -1); // Delete all text.
