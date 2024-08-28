@@ -616,8 +616,16 @@ Gui::get_password(void)
   const char* pw_1 {gtk_editable_get_text(GTK_EDITABLE(reentry_entry))};
   size_t pw_0_len {std::strlen(pw_0)};
   size_t pw_1_len {std::strlen(pw_1)};
-  SSC_assertMsg(pw_0_len <= Core::MAX_PW_BYTES, "pw_0_len > MAX_PW_BYTES!\n");
-  SSC_assertMsg(pw_1_len <= Core::MAX_PW_BYTES, "pw_1_len > MAX_PW_BYTES!\n");
+  if (pw_0_len >= Core::MAX_PW_BYTES)
+   {
+    std::fprintf(stderr, "Error: Input password length %zu exceeds maximum, %zu.\n", pw_0_len, Core::MAX_PW_BYTES);
+    return false;
+   }
+  if (pw_1_len >= Core::MAX_PW_BYTES)
+   {
+    std::fprintf(stderr, "Error: Password Re-Entry length %zu exceeds maximum, %zu.\n", pw_1_len, Core::MAX_PW_BYTES);
+    return false;
+   }
   bool equal {(pw_0_len == pw_1_len) and (not std::strcmp(pw_0, pw_1))};
   memset(pod->password_buffer, 0, sizeof(pod->password_buffer));
 
@@ -735,6 +743,7 @@ Gui::init_logo_image(void)
   gtk_widget_set_size_request(logo_image, FOURCRYPT_IMG_WIDTH, FOURCRYPT_IMG_HEIGHT);
   gtk_widget_set_hexpand(logo_image, TRUE);
   gtk_widget_set_vexpand(logo_image, TRUE);
+  gtk_widget_set_tooltip_text(logo_image, "4crypt");
  }
 
 void
@@ -742,8 +751,11 @@ Gui::init_crypt_buttons(void)
  {
   encrypt_button = gtk_button_new_with_label("Encrypt");
   g_signal_connect(encrypt_button, "clicked", G_CALLBACK(on_encrypt_button_clicked), this);
+  gtk_widget_set_tooltip_text(encrypt_button, "Encrypt a file using a password.");
+
   decrypt_button = gtk_button_new_with_label("Decrypt");
   g_signal_connect(decrypt_button, "clicked", G_CALLBACK(on_decrypt_button_clicked), this);
+  gtk_widget_set_tooltip_text(decrypt_button, "Decrypt a file using a password.");
  }
 
 void
@@ -753,7 +765,9 @@ Gui::init_input_box(void)
   input_label  = gtk_label_new(" Input:");
   input_text   = gtk_text_new();
   gtk_widget_add_css_class(input_text, "basic");
+  gtk_widget_set_tooltip_text(input_text, "Enter an input file path.");
   input_button = gtk_button_new_with_label("Pick File");
+  gtk_widget_set_tooltip_text(input_button, "Choose an input file path from the filesystem.");
   g_signal_connect(input_text  , "activate", G_CALLBACK(on_input_text_activate) , this);
   g_signal_connect(input_button, "clicked" , G_CALLBACK(on_input_button_clicked), this);
   // Fill the box with a label and text.
@@ -771,7 +785,9 @@ Gui::init_output_box(void)
   output_label  = gtk_label_new("Output:");
   output_text   = gtk_text_new();
   gtk_widget_add_css_class(output_text, "basic");
+  gtk_widget_set_tooltip_text(output_text, "Enter an output file path.");
   output_button = gtk_button_new_with_label("Pick File");
+  gtk_widget_set_tooltip_text(output_button, "Choose an output file path from the filesystem.");
   g_signal_connect(output_text  , "activate", G_CALLBACK(on_output_text_activate) , this);
   g_signal_connect(output_button, "clicked" , G_CALLBACK(on_output_button_clicked), this);
   // Fill the box with a label and text.
@@ -788,12 +804,29 @@ Gui::init_param_box(void)
   param_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 1);
   param_phi_checkbutton = gtk_check_button_new();
   gtk_check_button_set_label(GTK_CHECK_BUTTON(param_phi_checkbutton), "Enable Phi");
+  gtk_widget_set_tooltip_text(
+   param_phi_checkbutton,
+   "WARNING: This enables the Phi function. "
+   "Enabling the Phi function hardens 4crypt's Key Derivation Function, "
+   "greatly increasing the work necessary to attack your password with "
+   "brute force, but introduces the potential for cache-timing attacks. "
+   "Do NOT use this feature unless you understand the security implications!");
   param_mem_dropdown = gtk_drop_down_new_from_strings(memory_usage_strings);
+  gtk_widget_set_tooltip_text(
+   param_mem_dropdown,
+   "Choose how much RAM the Key Derivation Function should consume on Encrypt/Decrypt operations. "
+   "Choosing more RAM will make the operation slower, but provide more security against brute force attacks.");
   // Iterations Box.
   param_iterations_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
   param_iterations_label = gtk_label_new("   Iterations:      ");
   param_iterations_text  = gtk_text_new();
   gtk_widget_add_css_class(param_iterations_text, "basic");
+  gtk_widget_set_tooltip_text(
+   param_iterations_text,
+   "Choose how many times each thread of the Key Derivation Function will iterate. "
+   "Increasing this value will linearly increase the amount of time and work necessary "
+   "for each Key Derivation Function thread, linearly increasing the cost of a brute "
+   "force attack.");
   gtk_box_append(GTK_BOX(param_iterations_box), param_iterations_label);
   gtk_box_append(GTK_BOX(param_iterations_box), param_iterations_text);
 
@@ -805,6 +838,9 @@ Gui::init_param_box(void)
   param_threads_label = gtk_label_new(" Thread Count:      ");
   param_threads_text  = gtk_text_new();
   gtk_widget_add_css_class(param_threads_text, "basic");
+  gtk_widget_set_tooltip_text(
+   param_threads_text,
+   "Choose how many parallel threads the Key Derivation Function will use. "); //TODO: FINISH ME.
   gtk_box_append(GTK_BOX(param_threads_box), param_threads_label);
   gtk_box_append(GTK_BOX(param_threads_box), param_threads_text);
 
