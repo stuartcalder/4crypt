@@ -1025,13 +1025,14 @@ Gui::set_mode(Mode m)
   if (gtk_widget_has_css_class(decrypt_button, "highlight"))
     gtk_widget_remove_css_class(decrypt_button, "highlight");
   mode = m;
+  const gboolean expert_mode {gtk_check_button_get_active(GTK_CHECK_BUTTON(expert_mode_checkbutton))};
   switch (mode)
    {
     case Mode::ENCRYPT:
       gtk_widget_add_css_class(encrypt_button, "highlight");
       gtk_widget_set_visible(password_box,      TRUE);
       gtk_widget_set_visible(reentry_box,       TRUE);
-      gtk_widget_set_visible(encrypt_param_box, TRUE);
+      gtk_widget_set_visible(encrypt_param_box, expert_mode);
       gtk_widget_set_visible(decrypt_param_box, FALSE);
       break;
     case Mode::DECRYPT:
@@ -1039,7 +1040,7 @@ Gui::set_mode(Mode m)
       gtk_widget_set_visible(password_box,      TRUE);
       gtk_widget_set_visible(reentry_box,       FALSE);
       gtk_widget_set_visible(encrypt_param_box, FALSE);
-      gtk_widget_set_visible(decrypt_param_box, TRUE);
+      gtk_widget_set_visible(decrypt_param_box, expert_mode);
       break;
     case Mode::NONE:
       output_text_activated = false;
