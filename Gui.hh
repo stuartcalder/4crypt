@@ -81,6 +81,7 @@ class Gui
 
   GtkWidget*      encrypt_button {};     // Click me to switch to encrypt mode.
   GtkWidget*      decrypt_button {};     // Click me to switch to decrypt mode.
+  GtkWidget*      expert_mode_checkbutton {}; //TODO
   GtkWidget*      start_button   {};     // Click me to begin encrypting/decrypting.
 
   GtkWidget*      progress_box   {};     // Contain the progress bar.

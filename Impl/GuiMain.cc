@@ -1,7 +1,6 @@
 #include "Gui.hh"
 #include "Util.hh"
 // GTK4
-#include <gtk/gtk.h>
 #include <gio/gio.h>
 // C++ STL
 #include <algorithm>
@@ -673,6 +672,13 @@ Gui::on_application_activate(GtkApplication* gtk_app, void* self)
   // Create the Encrypt and Decrypt buttons.
   gui->init_crypt_buttons();
 
+  gui->expert_mode_checkbutton = gtk_check_button_new();
+  gtk_check_button_set_label(GTK_CHECK_BUTTON(gui->expert_mode_checkbutton), "Expert Mode");
+  gtk_widget_set_tooltip_text(
+   gui->expert_mode_checkbutton,
+   "Enables Export Mode, where you may get specific with your selection of encryption/decryption parameters.");
+
+
   // Create a Box for input.
   gui->init_input_box();
 
@@ -974,6 +980,9 @@ Gui::attach_grid(void)
 
   gtk_grid_attach(GTK_GRID(grid), encrypt_button, 0, grid_y_idx, 2, 1);
   gtk_grid_attach(GTK_GRID(grid), decrypt_button, 2, grid_y_idx, 2, 1);
+  ++grid_y_idx;
+
+  gtk_grid_attach(GTK_GRID(grid), expert_mode_checkbutton, 0, grid_y_idx, 1, 1);
   ++grid_y_idx;
 
   gtk_grid_attach(GTK_GRID(grid), encrypt_param_box, 0, grid_y_idx, 4, 1);
