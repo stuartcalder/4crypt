@@ -882,8 +882,10 @@ Gui::init_decrypt_param_box(void)
  {
   decrypt_param_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 1);
   decrypt_param_batch_size_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
-  decrypt_param_batch_size_label = gtk_label_new(" Thread Batch Size: ");
+  decrypt_param_batch_size_label = gtk_label_new(" TBS: ");
+  //decrypt_param_batch_size_label = gtk_label_new(" Thread Batch Size: ");
   decrypt_param_batch_size_text  = gtk_text_new();
+  gtk_widget_add_css_class(decrypt_param_batch_size_text, "basic");
   gtk_widget_set_tooltip_text(
    decrypt_param_batch_size_text,
    "Choose how many Key Derivation Function threads shall be executed in parallel."
@@ -893,8 +895,9 @@ Gui::init_decrypt_param_box(void)
   GtkEntryBuffer* eb {gtk_text_get_buffer(GTK_TEXT(decrypt_param_batch_size_text))};
   gtk_entry_buffer_set_text(eb, "1", 1);
 
-  gtk_box_append(GTK_BOX(decrypt_param_box), decrypt_param_batch_size_label);
-  gtk_box_append(GTK_BOX(decrypt_param_box), decrypt_param_batch_size_text);
+  gtk_box_append(GTK_BOX(decrypt_param_box),            decrypt_param_batch_size_box);
+  gtk_box_append(GTK_BOX(decrypt_param_batch_size_box), decrypt_param_batch_size_label);
+  gtk_box_append(GTK_BOX(decrypt_param_batch_size_box), decrypt_param_batch_size_text);
   gtk_widget_set_visible(decrypt_param_box, FALSE);
  }
 
@@ -966,7 +969,6 @@ Gui::attach_grid(void)
   int grid_y_idx {0};
 
   // Attach the widgets to the grid according to the following syntax:
-  // gtk_grid_attach(grid, widget, grid_x_idx, grid_y_idx, horizontal_fill, vertical_fill)
   gtk_grid_attach(GTK_GRID(grid), logo_image , 0, grid_y_idx, 4, 1);
   ++grid_y_idx;
 
@@ -975,6 +977,9 @@ Gui::attach_grid(void)
   ++grid_y_idx;
 
   gtk_grid_attach(GTK_GRID(grid), encrypt_param_box, 0, grid_y_idx, 4, 1);
+  ++grid_y_idx;
+  
+  gtk_grid_attach(GTK_GRID(grid), decrypt_param_box, 0, grid_y_idx, 4, 1);
   ++grid_y_idx;
 
   gtk_grid_attach(GTK_GRID(grid), input_box  , 0, grid_y_idx, 4, 1);
@@ -1018,18 +1023,21 @@ Gui::set_mode(Mode m)
       gtk_widget_set_visible(password_box,      TRUE);
       gtk_widget_set_visible(reentry_box,       TRUE);
       gtk_widget_set_visible(encrypt_param_box, TRUE);
+      gtk_widget_set_visible(decrypt_param_box, FALSE);
       break;
     case Mode::DECRYPT:
       gtk_widget_add_css_class(decrypt_button, "highlight");
       gtk_widget_set_visible(password_box,      TRUE);
       gtk_widget_set_visible(reentry_box,       FALSE);
       gtk_widget_set_visible(encrypt_param_box, FALSE);
+      gtk_widget_set_visible(decrypt_param_box, TRUE);
       break;
     case Mode::NONE:
       output_text_activated = false;
       gtk_widget_set_visible(password_box,      FALSE);
       gtk_widget_set_visible(reentry_box ,      FALSE);
       gtk_widget_set_visible(encrypt_param_box, FALSE);
+      gtk_widget_set_visible(decrypt_param_box, FALSE);
 
       GtkEntryBuffer* eb {gtk_text_get_buffer(GTK_TEXT(input_text))};
       gtk_entry_buffer_delete_text(eb, 0, -1); // Delete all text.
