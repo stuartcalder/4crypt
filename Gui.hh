@@ -81,7 +81,7 @@ class Gui
 
   GtkWidget*      encrypt_button {};     // Click me to switch to encrypt mode.
   GtkWidget*      decrypt_button {};     // Click me to switch to decrypt mode.
-  GtkWidget*      expert_mode_checkbutton {}; //TODO
+  GtkWidget*      expert_mode_checkbutton {}; // Click me to enable/disable expert-level parameter selection.
   GtkWidget*      start_button   {};     // Click me to begin encrypting/decrypting.
 
   GtkWidget*      progress_box   {};     // Contain the progress bar.
@@ -169,16 +169,17 @@ class Gui
   static gboolean make_status_visible(void* vgui);
   static gboolean make_status_invisible(void* vgui);
  //// Private Static Pseudo-Methods.
-  static void on_application_activate(GtkApplication*, void*);
-  static void on_encrypt_button_clicked(GtkWidget*,    void*);
-  static void on_decrypt_button_clicked(GtkWidget*,    void*);
-  static void on_input_button_clicked(GtkWidget*,      void*);
-  static void on_input_text_activate(GtkWidget*,       void*);
-  static void on_output_button_clicked(GtkWidget*,     void*);
-  static void on_output_text_activate(GtkWidget*,      void*);
-  static void on_start_button_clicked(GtkWidget*,      void*);
-  static void on_password_entry_activate(GtkWidget*,   void*);
-  static void on_reentry_entry_activate(GtkWidget*,    void*);
+  static void on_application_activate(GtkApplication*,        void*);
+  static void on_encrypt_button_clicked(GtkWidget*,           void*);
+  static void on_decrypt_button_clicked(GtkWidget*,           void*);
+  static void on_input_button_clicked(GtkWidget*,             void*);
+  static void on_input_text_activate(GtkWidget*,              void*);
+  static void on_output_button_clicked(GtkWidget*,            void*);
+  static void on_output_text_activate(GtkWidget*,             void*);
+  static void on_start_button_clicked(GtkWidget*,             void*);
+  static void on_password_entry_activate(GtkWidget*,          void*);
+  static void on_reentry_entry_activate(GtkWidget*,           void*);
+  static void on_expert_mode_checkbutton_toggled(GtkWidget*, void*); //TODO
  };
 
 } // ! namespace fourcrypt

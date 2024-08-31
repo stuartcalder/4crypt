@@ -482,6 +482,24 @@ Gui::on_reentry_entry_activate(GtkWidget* ree, void* self)
  }
 
 void
+Gui::on_expert_mode_checkbutton_toggled(GtkWidget* emc, void* self)
+ {
+  Gui*  gui                {static_cast<Gui*>(self)};
+  const gboolean is_active {gtk_check_button_get_active(GTK_CHECK_BUTTON(emc))};
+  switch (gui->mode)
+   {
+    case Mode::ENCRYPT:
+      gtk_widget_set_visible(gui->encrypt_param_box, is_active);
+      gtk_widget_set_visible(gui->decrypt_param_box, FALSE);
+      break;
+    case Mode::DECRYPT:
+      gtk_widget_set_visible(gui->encrypt_param_box, FALSE);
+      gtk_widget_set_visible(gui->decrypt_param_box, is_active);
+      break;
+   }
+ }
+
+void
 Gui::on_input_text_activate(GtkWidget* text, void* self)
  {
   Gui* gui {static_cast<Gui*>(self)};
@@ -677,6 +695,7 @@ Gui::on_application_activate(GtkApplication* gtk_app, void* self)
   gtk_widget_set_tooltip_text(
    gui->expert_mode_checkbutton,
    "Enables Export Mode, where you may get specific with your selection of encryption/decryption parameters.");
+  g_signal_connect(gui->expert_mode_checkbutton, "toggled", G_CALLBACK(on_expert_mode_checkbutton_toggled), gui);
 
 
   // Create a Box for input.
