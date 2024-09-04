@@ -72,8 +72,9 @@ class Gui
     Core::InOutDir  in_out_dir {Core::InOutDir::NONE};
   } operation_data {};
 
-  GtkApplication* application {};
-  GtkFileDialog*  file_dialog {};        // Input & Output file dialogs.
+  GtkApplication* application  {};
+  GtkFileDialog*  file_dialog  {};        // Input & Output file dialogs.
+  GtkAlertDialog* alert_dialog {};        // Dialog for errors.
   GtkWidget*      application_window {}; // Main window for displaying stuff.
   GtkWidget*      grid {};               // Organize UI elements using cells.
 
@@ -110,10 +111,10 @@ class Gui
   GtkWidget*      encrypt_param_batch_size_label {};
   GtkWidget*      encrypt_param_batch_size_text  {};
 
-  GtkWidget*      decrypt_param_box {}; //TODO
-  GtkWidget*      decrypt_param_batch_size_box   {}; //TODO
-  GtkWidget*      decrypt_param_batch_size_label {};  //TODO
-  GtkWidget*      decrypt_param_batch_size_text  {};  //TODO
+  GtkWidget*      decrypt_param_box {};
+  GtkWidget*      decrypt_param_batch_size_box   {};
+  GtkWidget*      decrypt_param_batch_size_label {};
+  GtkWidget*      decrypt_param_batch_size_text  {};
 
   GtkWidget*      password_box   {};
   GtkWidget*      password_label {};
@@ -141,13 +142,13 @@ class Gui
   void init_input_box(void);
   void init_output_box(void);
   void init_encrypt_param_box(void);
-  void init_decrypt_param_box(void); //TODO
+  void init_decrypt_param_box(void);
   void init_password_box(void);
   void init_reentry_box(void);
   void init_status_box(void);
   void init_progress_box(void);
-  void attach_grid(void);
 
+  void attach_grid(void);
   void set_mode(Mode);
   bool verify_inputs(void);
   void encrypt(void);
@@ -179,7 +180,7 @@ class Gui
   static void on_start_button_clicked(GtkWidget*,             void*);
   static void on_password_entry_activate(GtkWidget*,          void*);
   static void on_reentry_entry_activate(GtkWidget*,           void*);
-  static void on_expert_mode_checkbutton_toggled(GtkWidget*, void*); //TODO
+  static void on_expert_mode_checkbutton_toggled(GtkWidget*, void*);
  };
 
 } // ! namespace fourcrypt

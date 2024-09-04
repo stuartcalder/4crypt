@@ -126,6 +126,7 @@ Gui::Gui(Core* param_core, int param_argc, char** param_argv)
   gtk_init();
 
   file_dialog = gtk_file_dialog_new();
+  alert_dialog = gtk_alert_dialog_new("ALERT!");
 
   // Initialize some CSS stuff.
   SSC_assertMsg(gdk_display_get_default(), "DEFAULT DISPLAY IS NULL\n");
@@ -138,9 +139,11 @@ Gui::Gui(Core* param_core, int param_argc, char** param_argv)
    GTK_STYLE_PROVIDER(provider),
    GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
  }
+
 Gui::~Gui()
  {
   g_object_unref(file_dialog);
+  g_object_unref(alert_dialog);
  }
 
 void
@@ -307,7 +310,8 @@ Gui::encrypt_thread(
     std::lock_guard {gui->operation_mtx};
 
     // GUI Parameters.
-    {
+    if (gtk_check_button_get_active(GTK_CHECK_BUTTON(gui->expert_mode_checkbutton)))
+     {
       // Phi.
       if (gtk_check_button_get_active(GTK_CHECK_BUTTON(gui->encrypt_param_phi_checkbutton)))
         pod->flags |= Core::ENABLE_PHI;
@@ -340,7 +344,11 @@ Gui::encrypt_thread(
       uint64_t batch_size {parse_integer(ebuf_cstr, std::strlen(ebuf_cstr))};
       if (batch_size <= pod->thread_count)
         pod->thread_batch_size = batch_size;
-    }
+     }
+    // TODO: Automatic parameter selection.
+    else
+     {
+     }
 
     gui->operation_data.code_error = core->encrypt(
      &gui->operation_data.error_type,
@@ -466,7 +474,6 @@ Gui::on_password_entry_activate(GtkWidget* pwe, void* self)
      gui->start_button,
      "clicked",
      gui);
-  //TODO
  }
 
 void
@@ -478,13 +485,12 @@ Gui::on_reentry_entry_activate(GtkWidget* ree, void* self)
      gui->start_button,
      "clicked",
      gui);
-  //TODO
  }
 
 void
 Gui::on_expert_mode_checkbutton_toggled(GtkWidget* emc, void* self)
  {
-  Gui*  gui                {static_cast<Gui*>(self)};
+  Gui*           gui       {static_cast<Gui*>(self)};
   const gboolean is_active {gtk_check_button_get_active(GTK_CHECK_BUTTON(emc))};
   switch (gui->mode)
    {
@@ -694,7 +700,7 @@ Gui::on_application_activate(GtkApplication* gtk_app, void* self)
   gtk_check_button_set_label(GTK_CHECK_BUTTON(gui->expert_mode_checkbutton), "Expert Mode");
   gtk_widget_set_tooltip_text(
    gui->expert_mode_checkbutton,
-   "Enables Export Mode, where you may get specific with your selection of encryption/decryption parameters.");
+   "Enables Expert Mode, where you may get specific with your selection of encryption/decryption parameters.");
   g_signal_connect(gui->expert_mode_checkbutton, "toggled", G_CALLBACK(on_expert_mode_checkbutton_toggled), gui);
 
 
@@ -950,7 +956,7 @@ Gui::init_reentry_box(void)
   reentry_label = gtk_label_new("Re-Entry:");
   reentry_entry = gtk_password_entry_new();
   gtk_widget_set_tooltip_text(reentry_entry, "Re-enter the password here, to check for consistency.");
-  g_signal_connect(reentry_entry, "activate", G_CALLBACK(on_reentry_entry_activate), this); //TODO
+  g_signal_connect(reentry_entry, "activate", G_CALLBACK(on_reentry_entry_activate), this);
   gtk_box_append(GTK_BOX(reentry_box), reentry_label);
   gtk_box_append(GTK_BOX(reentry_box), reentry_entry);
   gtk_widget_set_size_request(reentry_box, -1, TEXT_HEIGHT);
@@ -993,42 +999,43 @@ Gui::attach_grid(void)
  {
   int grid_y_idx {0};
 
+  GtkGrid* const my_grid {GTK_GRID(grid)};
   // Attach the widgets to the grid according to the following syntax:
-  gtk_grid_attach(GTK_GRID(grid), logo_image , 0, grid_y_idx, 4, 1);
+  gtk_grid_attach(my_grid, logo_image , 0, grid_y_idx, 4, 1);
   ++grid_y_idx;
 
-  gtk_grid_attach(GTK_GRID(grid), encrypt_button, 0, grid_y_idx, 2, 1);
-  gtk_grid_attach(GTK_GRID(grid), decrypt_button, 2, grid_y_idx, 2, 1);
+  gtk_grid_attach(my_grid, encrypt_button, 0, grid_y_idx, 2, 1);
+  gtk_grid_attach(my_grid, decrypt_button, 2, grid_y_idx, 2, 1);
   ++grid_y_idx;
 
-  gtk_grid_attach(GTK_GRID(grid), expert_mode_checkbutton, 0, grid_y_idx, 1, 1);
+  gtk_grid_attach(my_grid, expert_mode_checkbutton, 0, grid_y_idx, 1, 1);
   ++grid_y_idx;
 
-  gtk_grid_attach(GTK_GRID(grid), encrypt_param_box, 0, grid_y_idx, 4, 1);
+  gtk_grid_attach(my_grid, encrypt_param_box, 0, grid_y_idx, 4, 1);
   ++grid_y_idx;
   
-  gtk_grid_attach(GTK_GRID(grid), decrypt_param_box, 0, grid_y_idx, 4, 1);
+  gtk_grid_attach(my_grid, decrypt_param_box, 0, grid_y_idx, 4, 1);
   ++grid_y_idx;
 
-  gtk_grid_attach(GTK_GRID(grid), input_box  , 0, grid_y_idx, 4, 1);
+  gtk_grid_attach(my_grid, input_box  , 0, grid_y_idx, 4, 1);
   ++grid_y_idx;
 
-  gtk_grid_attach(GTK_GRID(grid), output_box  , 0, grid_y_idx, 4, 1);
+  gtk_grid_attach(my_grid, output_box  , 0, grid_y_idx, 4, 1);
   ++grid_y_idx;
 
-  gtk_grid_attach(GTK_GRID(grid), password_box, 0, grid_y_idx, 4, 1);
+  gtk_grid_attach(my_grid, password_box, 0, grid_y_idx, 4, 1);
   ++grid_y_idx;
 
-  gtk_grid_attach(GTK_GRID(grid), reentry_box , 0, grid_y_idx, 4, 1);
+  gtk_grid_attach(my_grid, reentry_box , 0, grid_y_idx, 4, 1);
   ++grid_y_idx;
 
-  gtk_grid_attach(GTK_GRID(grid), start_button, 0, grid_y_idx, 4, 1);
+  gtk_grid_attach(my_grid, start_button, 0, grid_y_idx, 4, 1);
   ++grid_y_idx;
 
-  gtk_grid_attach(GTK_GRID(grid), progress_box, 0, grid_y_idx, 4, 1);
+  gtk_grid_attach(my_grid, progress_box, 0, grid_y_idx, 4, 1);
   ++grid_y_idx;
 
-  gtk_grid_attach(GTK_GRID(grid), status_box, 0, grid_y_idx, 4, 1);
+  gtk_grid_attach(my_grid, status_box, 0, grid_y_idx, 4, 1);
   ++grid_y_idx;
 
   // Set the grid as a child of the application window, then present the application window.
