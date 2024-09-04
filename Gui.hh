@@ -82,6 +82,11 @@ class Gui
 
   GtkWidget*      encrypt_button {};     // Click me to switch to encrypt mode.
   GtkWidget*      decrypt_button {};     // Click me to switch to decrypt mode.
+  GtkWidget*      strength_box {}; //TODO
+  GtkWidget*      strength_fast_checkbutton     {}; //TODO
+  GtkWidget*      strength_standard_checkbutton {}; //TODO
+  GtkWidget*      strength_strong_checkbutton   {}; //TODO
+  GtkWidget*      strength_expert_checkbutton   {}; //TODO
   GtkWidget*      expert_mode_checkbutton {}; // Click me to enable/disable expert-level parameter selection.
   GtkWidget*      start_button   {};     // Click me to begin encrypting/decrypting.
 
@@ -139,6 +144,7 @@ class Gui
   void init_grid(void);
   void init_logo_image(void);
   void init_crypt_buttons(void);
+  void init_strength_box(void); //TODO
   void init_input_box(void);
   void init_output_box(void);
   void init_encrypt_param_box(void);
@@ -180,7 +186,13 @@ class Gui
   static void on_start_button_clicked(GtkWidget*,             void*);
   static void on_password_entry_activate(GtkWidget*,          void*);
   static void on_reentry_entry_activate(GtkWidget*,           void*);
-  static void on_expert_mode_checkbutton_toggled(GtkWidget*, void*);
+  static void on_expert_mode_checkbutton_toggled(GtkWidget*,  void*);
+
+  //TODO
+  static void on_strength_fast_checkbutton_toggled(GtkWidget*    , void*);
+  static void on_strength_standard_checkbutton_toggled(GtkWidget*, void*);
+  static void on_strength_strong_checkbutton_toggled(GtkWidget*  , void*);
+  static void on_strength_expert_checkbutton_toggled(GtkWidget*  , void*);
  };
 
 } // ! namespace fourcrypt
