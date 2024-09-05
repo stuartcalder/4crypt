@@ -706,7 +706,7 @@ Gui::on_application_activate(GtkApplication* gtk_app, void* self)
   // Create the Encrypt and Decrypt buttons.
   gui->init_crypt_buttons();
 
-  gui->init_strength_box(); //TODO
+  gui->init_strength_box();
 
   gui->expert_mode_checkbutton = gtk_check_button_new();
   gtk_check_button_set_label(GTK_CHECK_BUTTON(gui->expert_mode_checkbutton), "Expert Mode");
@@ -824,6 +824,7 @@ Gui::init_strength_box(void)
    "Choose Standard encryption parameters.");
   g_signal_connect(strength_standard_checkbutton, "toggled", G_CALLBACK(on_strength_standard_checkbutton_toggled), this);
   gtk_widget_set_visible(strength_standard_checkbutton, FALSE);
+  gtk_check_button_set_active(GTK_CHECK_BUTTON(strength_standard_checkbutton), TRUE);
 
   strength_strong_checkbutton = gtk_check_button_new();
   gtk_check_button_set_label(GTK_CHECK_BUTTON(strength_strong_checkbutton), "Strong");
@@ -862,6 +863,7 @@ Gui::on_strength_fast_checkbutton_toggled(GtkWidget* sfc, void* vgui)
     gtk_check_button_set_active(GTK_CHECK_BUTTON(gui->strength_standard_checkbutton), FALSE);
     gtk_check_button_set_active(GTK_CHECK_BUTTON(gui->strength_strong_checkbutton),   FALSE);
     gtk_check_button_set_active(GTK_CHECK_BUTTON(gui->strength_expert_checkbutton),   FALSE);
+    gtk_widget_set_visible(gui->encrypt_param_box, FALSE);
    }
  }
 void
@@ -881,6 +883,7 @@ Gui::on_strength_standard_checkbutton_toggled(GtkWidget* ssc, void* vgui)
     gtk_check_button_set_active(GTK_CHECK_BUTTON(gui->strength_fast_checkbutton)  , FALSE);
     gtk_check_button_set_active(GTK_CHECK_BUTTON(gui->strength_strong_checkbutton), FALSE);
     gtk_check_button_set_active(GTK_CHECK_BUTTON(gui->strength_expert_checkbutton), FALSE);
+    gtk_widget_set_visible(gui->encrypt_param_box, FALSE);
    }
  }
 void
@@ -894,9 +897,13 @@ Gui::on_strength_strong_checkbutton_toggled(GtkWidget* ssc, void* vgui)
     if (is_active and gui->mode != Mode::ENCRYPT)
       std::fprintf(stderr, "Error: strength_strong_checkbutton activated and it's not encrypt mode!");
    }
-  gtk_check_button_set_active(GTK_CHECK_BUTTON(gui->strength_fast_checkbutton)    , FALSE);
-  gtk_check_button_set_active(GTK_CHECK_BUTTON(gui->strength_standard_checkbutton), FALSE);
-  gtk_check_button_set_active(GTK_CHECK_BUTTON(gui->strength_expert_checkbutton)  , FALSE);
+  if (is_active)
+   {
+    gtk_check_button_set_active(GTK_CHECK_BUTTON(gui->strength_fast_checkbutton)    , FALSE);
+    gtk_check_button_set_active(GTK_CHECK_BUTTON(gui->strength_standard_checkbutton), FALSE);
+    gtk_check_button_set_active(GTK_CHECK_BUTTON(gui->strength_expert_checkbutton)  , FALSE);
+    gtk_widget_set_visible(gui->encrypt_param_box, FALSE);
+   }
  }
 void
 Gui::on_strength_expert_checkbutton_toggled(GtkWidget* sec, void* vgui)
@@ -904,9 +911,12 @@ Gui::on_strength_expert_checkbutton_toggled(GtkWidget* sec, void* vgui)
   Gui*           gui       {static_cast<Gui*>(vgui)};
   const gboolean is_active {gtk_check_button_get_active(GTK_CHECK_BUTTON(sec))};
 
-  gtk_check_button_set_active(GTK_CHECK_BUTTON(gui->strength_fast_checkbutton)    , FALSE);
-  gtk_check_button_set_active(GTK_CHECK_BUTTON(gui->strength_standard_checkbutton), FALSE);
-  gtk_check_button_set_active(GTK_CHECK_BUTTON(gui->strength_strong_checkbutton)  , FALSE);
+  if (is_active)
+   {
+    gtk_check_button_set_active(GTK_CHECK_BUTTON(gui->strength_fast_checkbutton)    , FALSE);
+    gtk_check_button_set_active(GTK_CHECK_BUTTON(gui->strength_standard_checkbutton), FALSE);
+    gtk_check_button_set_active(GTK_CHECK_BUTTON(gui->strength_strong_checkbutton)  , FALSE);
+   }
   switch (gui->mode)
    {
     case Mode::ENCRYPT:
@@ -1136,13 +1146,8 @@ Gui::attach_grid(void)
   gtk_grid_attach(my_grid, decrypt_button, 2, grid_y_idx, 2, 1);
   ++grid_y_idx;
 
-  #if 1
   gtk_grid_attach(my_grid, strength_box, 0, grid_y_idx, 4, 1);
   ++grid_y_idx;
-  #else
-  gtk_grid_attach(my_grid, expert_mode_checkbutton, 0, grid_y_idx, 1, 1);
-  ++grid_y_idx;
-  #endif
 
   gtk_grid_attach(my_grid, encrypt_param_box, 0, grid_y_idx, 4, 1);
   ++grid_y_idx;
@@ -1192,9 +1197,9 @@ Gui::set_mode(Mode m)
       gtk_widget_set_visible(password_box,      TRUE);
       gtk_widget_set_visible(reentry_box,       TRUE);
       gtk_widget_set_visible(encrypt_param_box, expert_mode);
-      gtk_widget_set_visible(strength_strong_checkbutton  , not expert_mode);
-      gtk_widget_set_visible(strength_standard_checkbutton, not expert_mode);
-      gtk_widget_set_visible(strength_fast_checkbutton    , not expert_mode);
+      gtk_widget_set_visible(strength_strong_checkbutton  , TRUE);
+      gtk_widget_set_visible(strength_standard_checkbutton, TRUE);
+      gtk_widget_set_visible(strength_fast_checkbutton    , TRUE);
       gtk_widget_set_visible(decrypt_param_box, FALSE);
       break;
     case Mode::DECRYPT:
