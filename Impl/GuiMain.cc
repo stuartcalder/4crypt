@@ -112,7 +112,7 @@ Gui::getExecutableDirPath(void)
 std::string
 Gui::getResourcePath(void)
  {
- #if defined(FOURCRYPT_IS_PORTABLE)
+ #if   defined(FOURCRYPT_IS_PORTABLE)
   return getExecutableDirPath();
  #elif defined(__gnu_linux__)
   return std::string{"/usr/share/4crypt"};
@@ -349,15 +349,15 @@ Gui::encrypt_thread(
      }
     else if (gtk_check_button_get_active(GTK_CHECK_BUTTON(gui->strength_strong_checkbutton)))
      {
-      //TODO: Automatic strong parameter selection.
+      Pod_t::set_strong(*pod);
      }
     else if (gtk_check_button_get_active(GTK_CHECK_BUTTON(gui->strength_standard_checkbutton)))
      {
-      //TODO: Automatic standard parameter selection.
+      Pod_t::set_normal(*pod); //TODO: Rename normal to standard or vice-versa.
      }
     else // (Assume fast parameter selection.)
      {
-      //TODO: Automatic fast parameter selection.
+      Pod_t::set_fast(*pod);
      }
 
     gui->operation_data.code_error = core->encrypt(
@@ -818,7 +818,7 @@ Gui::init_strength_box(void)
   gtk_widget_set_visible(strength_fast_checkbutton, FALSE);
 
   strength_standard_checkbutton = gtk_check_button_new();
-  gtk_check_button_set_label(GTK_CHECK_BUTTON(strength_standard_checkbutton), "Normal");
+  gtk_check_button_set_label(GTK_CHECK_BUTTON(strength_standard_checkbutton), "Standard");
   gtk_widget_set_tooltip_text(
    strength_standard_checkbutton,
    "Choose Standard encryption parameters.");
@@ -874,8 +874,15 @@ Gui::on_strength_standard_checkbutton_toggled(GtkWidget* ssc, void* vgui)
 
   if constexpr(Debug)
    {
+    static int num {};
     if (is_active and gui->mode != Mode::ENCRYPT)
-      std::fprintf(stderr, "Error: strength_standard_checkbutton activated and it's not encrypt mode!");
+     {
+      ++num;
+      if (num > 1)
+       {
+        std::fprintf(stderr, "Error: strength_standard_checkbutton activated and it's not encrypt mode!");
+       }
+     }
    }
 
   if (is_active)

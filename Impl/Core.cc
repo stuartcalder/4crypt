@@ -1,4 +1,5 @@
 #include "Core.hh"
+#include "Util.hh"
 // SSC
 #include <SSC/Terminal.h>
 #include <SSC/Print.h>
@@ -17,7 +18,7 @@ using namespace fourcrypt;
 static_assert(Core::MAX_PW_BYTES == 125, "MAX_PW_BYTES changed!");
 #define MAX_PW_BYTES_STR "125"
 
-#if defined(SSC_OS_UNIXLIKE)
+#if   defined(SSC_OS_UNIXLIKE)
  #define NEWLINE_ "\n"
 #elif defined(SSC_OS_WINDOWS)
  #define NEWLINE_ "\n\r"
@@ -187,6 +188,45 @@ void Core::PlainOldData::touchup(PlainOldData& pod)
     pod.thread_batch_size = pod.thread_count;
 }
 
+void Core::PlainOldData::set_fast(PlainOldData& pod)
+{
+  pod.memory_low  = MEM_FAST;
+  pod.memory_high = MEM_FAST;
+}
+
+void Core::PlainOldData::set_normal(PlainOldData& pod)
+{
+  pod.memory_low  = MEM_NORMAL;
+  pod.memory_high = MEM_NORMAL;
+}
+
+void Core::PlainOldData::set_strong(PlainOldData& pod)
+{
+  #ifdef SSC_HAS_GETAVAILABLESYSTEMMEMORY
+  const uint64_t available {SSC_getAvailableSystemMemory()};
+  if ((static_cast<uint64_t>(1) << (MEM_STRONG + 6)) < available)
+   {
+    pod.memory_low  = MEM_STRONG;
+    pod.memory_high = MEM_STRONG;
+   }
+  else
+   {
+    PlainOldData::set_normal(pod);
+   }
+  uint64_t n_threads;
+  for (n_threads = 2; true; ++n_threads)
+   {
+    if (((static_cast<uint64_t>(1) << (pod.memory_high + 6)) * n_threads) < available)
+      break;
+   }
+  pod.thread_count = n_threads;
+
+  #else
+  PlainOldData::set_normal(pod);
+  #endif
+  pod.flags |= ENABLE_PHI;
+}
+
 PlainOldData* Core::getPod()
 {
   return this->pod;
@@ -223,16 +263,17 @@ SSC_CodeError_t Core::encrypt(
 
   // Normalize the padding.
   this->normalizePadding(input_filesize);
-  InOutDir err_io_dir = InOutDir::NONE;
+  InOutDir err_io_dir {InOutDir::NONE};
 
   if (status_callback != nullptr)
     status_callback(status_callback_data);
   // Map the input and output files.
-  SSC_CodeError_t err = this->mapFiles(
-   &err_io_dir,
-   input_filesize,
-   input_filesize + mypod->padding_size + Core::getMetadataSize(),
-   InOutDir::NONE);
+  SSC_CodeError_t err {
+   this->mapFiles(
+    &err_io_dir,
+    input_filesize,
+    input_filesize + mypod->padding_size + Core::getMetadataSize(),
+    InOutDir::NONE)};
   if (err) {
     *err_typ = ErrType::MEMMAP;
     *err_dir = err_io_dir;
@@ -242,7 +283,7 @@ SSC_CodeError_t Core::encrypt(
   // If the password has not already been initialized, then initialize it.
   if (mypod->password_size == 0) {
     // Get the encryption password.
-    this->getPassword(!(mypod->flags & Core::ENTER_PASS_ONCE), false);
+    this->getPassword(not (mypod->flags & Core::ENTER_PASS_ONCE), false);
     if (mypod->flags & Core::SUPPLEMENT_ENTROPY)
       // Get the entropy password and hash it into the RNG.
       this->getPassword(false, true);
@@ -255,9 +296,9 @@ SSC_CodeError_t Core::encrypt(
   if (status_callback != nullptr)
     status_callback(status_callback_data);
   this->runKDF();
-  const uint8_t* in   = mypod->input_map.ptr;
-  uint8_t*       out  = mypod->output_map.ptr;
-  size_t         n_in = mypod->input_map.size;
+  const uint8_t* in   {mypod->input_map.ptr};
+  uint8_t*       out  {mypod->output_map.ptr};
+  size_t         n_in {mypod->input_map.size};
   if (status_callback != nullptr)
     status_callback(status_callback_data);
   out = this->writeHeader(out); // Write the header of the ciphertext file.
@@ -962,7 +1003,7 @@ bool Core::verifyBasicMetadata(
   }
   if (map->size < Core::getMinimumOutputSize())
     return false;
-  if (memcmp(map->ptr, Core::magic, sizeof(Core::magic)))
+  if (memcmp(map->ptr, Core::magic, sizeof(Core::magic)) != 0)
     return false;
   size_t fp_sz;
   if (SSC_FilePath_getSize(fpath, &fp_sz))
@@ -1041,7 +1082,7 @@ std::string Core::makeMemoryString(const uint64_t value)
 uint8_t
 Core::getDefaultMemoryUsageBitShift(void)
 {
-#if defined(SSC_HAS_GETAVAILABLESYSTEMMEMORY)
+#ifdef SSC_HAS_GETAVAILABLESYSTEMMEMORY
   const uint64_t available {static_cast<uint64_t>(SSC_getAvailableSystemMemory())};
 
   // Scan through all the bits until the highest bit is detected. Determine the equivalent bit shift from 0.
@@ -1061,6 +1102,6 @@ Core::getDefaultMemoryUsageBitShift(void)
     return shift;
   }
 #else
-  return MEM_DEFAULT;
+  return MEM_NORMAL;
 #endif
 }
