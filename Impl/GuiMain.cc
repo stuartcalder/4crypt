@@ -365,6 +365,17 @@ Gui::encrypt_thread(
      &gui->operation_data.in_out_dir,
      status_callback,
      gui);
+    if (gui->operation_data.code_error == 0)
+     {
+      gui->set_status_label_is_successful(true);
+     }
+    else
+     {
+      gui->set_status_label_is_successful(false);
+      //TODO: Handle different error codes and set different error messages consequentially.
+      gtk_alert_dialog_set_message(gui->alert_dialog, "Error: Encryption failure! Try choosing fast mode, or manually choosing less memory.");
+      gtk_alert_dialog_choose(gui->alert_dialog, nullptr, nullptr, nullptr, nullptr);
+     }
     Pod_t::del(*pod);
     Pod_t::init(*pod);
     PPQ_CSPRNG_init(&pod->rng);
@@ -411,6 +422,17 @@ Gui::decrypt_thread(
     Pod_t::del(*pod);
     Pod_t::init(*pod);
     PPQ_CSPRNG_init(&pod->rng);
+    if (gui->operation_data.code_error == 0)
+     {
+      gui->set_status_label_is_successful(true);
+     }
+    else
+     {
+      gui->set_status_label_is_successful(false);
+      //TODO: Handle different error codes and set different error messages consequentially.
+      gtk_alert_dialog_set_message(gui->alert_dialog, "Error: Decryption failure! Try choosing a smaller thread batch size."); 
+      gtk_alert_dialog_choose(gui->alert_dialog, nullptr, nullptr, nullptr, nullptr);
+     }
 
     std::thread th {&status_thread, gui};
     th.detach();

@@ -18,14 +18,18 @@ label.success {
     border:       solid 2px green;
     border-width: 2px;
     */
+    color:        green;
     font-weight:  bold;
 }
 
 label.failure {
     font-family:  'Monospace';
     font-size:    14px;
+    /*
     border:       solid 2px red;
     border-width: 2px;
+    */
+    color:        red;
     font-weight:  bold;
 }
 
