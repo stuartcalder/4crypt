@@ -691,6 +691,21 @@ Gui::clear_password_entries(void)
  }
 
 void
+Gui::set_status_label_is_successful(bool is_successful)
+ {
+  if (is_successful)
+   {
+    gtk_label_set_text(GTK_LABEL(status_label), "Success!");
+    gtk_widget_add_css_class(status_label, "success");
+   }
+  else
+   {
+    gtk_label_set_text(GTK_LABEL(status_label), "Failure!");
+    gtk_widget_add_css_class(status_label, "failure");
+   }
+ }
+
+void
 Gui::on_application_activate(GtkApplication* gtk_app, void* self)
  {
   // Create the application window.

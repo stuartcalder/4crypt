@@ -55,6 +55,10 @@ namespace fourcrypt
     static constexpr const uint8_t MEM_NORMAL = 24; // 1   Gibibyte.
     static constexpr const uint8_t MEM_STRONG = 25; // 2   Gibibytes.
     static constexpr const uint8_t MEM_DEFAULT = MEM_NORMAL;
+    static constexpr const uint64_t memoryFromBitShift(uint8_t bitshift)
+     {
+      return static_cast<uint64_t>(1) << (bitshift + 6);
+     }
   
     static constexpr const uint64_t PAD_FACTOR = 64;
     static constexpr const uint64_t MAC_SIZE = 64;

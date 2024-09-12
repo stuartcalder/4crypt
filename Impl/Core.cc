@@ -204,7 +204,7 @@ void Core::PlainOldData::set_strong(PlainOldData& pod)
 {
   #ifdef SSC_HAS_GETAVAILABLESYSTEMMEMORY
   const uint64_t available {SSC_getAvailableSystemMemory()};
-  if ((static_cast<uint64_t>(1) << (MEM_STRONG + 6)) < available)
+  if (Core::memoryFromBitShift(MEM_STRONG) < available)
    {
     pod.memory_low  = MEM_STRONG;
     pod.memory_high = MEM_STRONG;
@@ -216,7 +216,7 @@ void Core::PlainOldData::set_strong(PlainOldData& pod)
   uint64_t n_threads;
   for (n_threads = 2; true; ++n_threads)
    {
-    if (((static_cast<uint64_t>(1) << (pod.memory_high + 6)) * n_threads) < available)
+    if ((Core::memoryFromBitShift(pod.memory_high) * n_threads) < available)
       break;
    }
   pod.thread_count = n_threads;
@@ -747,34 +747,23 @@ SSC_CodeError_t Core::describe(
   if (mypod->memory_low == mypod->memory_high) {
     printf(
      "The KDF Memory Bound is.........%s\n",
-     Core::makeMemoryStringBitShift(
-      mypod->memory_low + 6).c_str());
+     Core::makeMemoryStringBitShift(Core::memoryFromBitShift(mypod->memory_low)).c_str());
   }
   else {
-    printf(
-     "The KDF Lower Memory Bound is...%s\n",
-     Core::makeMemoryStringBitShift(
-      mypod->memory_low + 6).c_str());
-    printf(
-     "The KDF Upper Memory Bound is...%s\n",
-     Core::makeMemoryStringBitShift(
-      mypod->memory_high + 6).c_str());
+    printf("The KDF Lower Memory Bound is...%s\n", Core::makeMemoryStringBitShift(Core::memoryFromBitShift(mypod->memory_low)).c_str());
+    printf("The KDF Upper Memory Bound is...%s\n", Core::makeMemoryStringBitShift(Core::memoryFromBitShift(mypod->memory_high)).c_str());
   }
   printf("The KDF Thread Count is.........%" PRIu64 " thread(s).\n", mypod->thread_count);
-  printf(
-   "Each KDF thread iterates........%" PRIu8 " time(s).\n", mypod->iterations);
+  printf("Each KDF thread iterates........%" PRIu8 " time(s).\n", mypod->iterations);
+
   printf("The Threefish512 Tweak is.......0x");
-  SSC_printBytes(
-   mypod->tf_tweak,
-   PPQ_THREEFISH512_TWEAK_BYTES);
+  SSC_printBytes(mypod->tf_tweak, PPQ_THREEFISH512_TWEAK_BYTES);
+
   printf("\nThe Catena512 Salt is...........0x");
-  SSC_printBytes(
-   mypod->catena_salt,
-   sizeof(mypod->catena_salt));
+  SSC_printBytes(mypod->catena_salt, sizeof(mypod->catena_salt));
+
   printf("\nThreefish512 CTR-Mode's IV is...0x");
-  SSC_printBytes(
-   mypod->tf_ctr_iv,
-   sizeof(mypod->tf_ctr_iv));
+  SSC_printBytes(mypod->tf_ctr_iv, sizeof(mypod->tf_ctr_iv));
   putchar('\n');
   return 0;
 }

@@ -21,6 +21,14 @@ label.success {
     font-weight:  bold;
 }
 
+label.failure {
+    font-family:  'Monospace';
+    font-size:    14px;
+    border:       solid 2px red;
+    border-width: 2px;
+    font-weight:  bold;
+}
+
 text {
     font-family:  'Monospace';
     font-size:    12px;
