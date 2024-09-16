@@ -5,6 +5,7 @@
 // C++ STL
 #include <algorithm>
 #include <chrono>
+#include <map>
 #include <string>
 #include <thread>
 #include <utility>
@@ -47,6 +48,22 @@ static const char* const memory_usage_strings[] {
    "8G"  , "16G"  , "32G",
    "64G" , "128G" , "256G",
    nullptr
+};
+
+static const std::map<SSC_CodeError_t, const char*> error_msg {
+  {Core::ERROR_NO_INPUT_FILENAME         , "No input file provided!"},
+  {Core::ERROR_NO_OUTPUT_FILENAME        , "No output file provided!"},
+  {Core::ERROR_INPUT_MEMMAP_FAILED       , "Failed to memory-map the input file!"},
+  {Core::ERROR_OUTPUT_MEMMAP_FAILED      , "Failed to memory-map the output file!"},
+  {Core::ERROR_GETTING_INPUT_FILESIZE    , "Failed to get the size of the input file!"},
+  {Core::ERROR_INPUT_FILESIZE_TOO_SMALL  , "The input file is too small to be a 4crypt-encrypted file!"},
+  {Core::ERROR_INVALID_4CRYPT_FILE       , "The input file is NOT a 4crypt-encrypted file!"},
+  {Core::ERROR_INPUT_SIZE_MISMATCH       , "The size field of the input file does not match the file's size!"},
+  {Core::ERROR_RESERVED_BYTES_USED       , "Reserved bytes of the input file were used!"},
+  {Core::ERROR_OUTPUT_FILE_EXISTS        , "The output file already exists!"},
+  {Core::ERROR_MAC_VALIDATION_FAILED     , "Failed to validate the Message Authentication Code. The input file may be corrupted or may have been maliciously modified!"},
+  {Core::ERROR_KDF_FAILED                , "Failed to compute cryptographic keys! For encryption try a lesser mode; for decryption lower the thread batch size!"},
+  {Core::ERROR_METADATA_VALIDATION_FAILED, "Failed to validate the input file's metadata!"}
 };
 
 static bool
@@ -381,7 +398,7 @@ Gui::encrypt_thread(
        {
         Gui* g {static_cast<Gui*>(vgui)};
         g->set_status_label_success(false);
-        gtk_alert_dialog_set_detail(g->alert_dialog, "Encrypt failure! Try choosing fast mode, or manually choosing less memory using Expert Mode.");
+        gtk_alert_dialog_set_detail(g->alert_dialog, error_msg.at(g->operation_data.code_error));
         gtk_alert_dialog_show(g->alert_dialog, nullptr);
         return G_SOURCE_REMOVE;
        },
@@ -448,7 +465,7 @@ Gui::decrypt_thread(
        {
         Gui* g {static_cast<Gui*>(vgui)};
         g->set_status_label_success(false);
-        gtk_alert_dialog_set_detail(g->alert_dialog, "Decryption failure! Try choosing a smaller thread batch size.");
+        gtk_alert_dialog_set_detail(g->alert_dialog, error_msg.at(g->operation_data.code_error));
         gtk_alert_dialog_show(g->alert_dialog, nullptr);
         return G_SOURCE_REMOVE;
        },
