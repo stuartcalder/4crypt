@@ -163,7 +163,7 @@ class Gui
   void on_output_filepath_updated(void);
   bool get_password(void);
   void clear_password_entries(void);
-  void set_status_label_is_successful(bool);
+  void set_status_label_success(bool);
 
   // Update progress bar percentage until it's full.
   static void     update_progress_callback(void* cb_data);

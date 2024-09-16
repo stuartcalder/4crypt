@@ -129,6 +129,7 @@ Gui::Gui(Core* param_core, int param_argc, char** param_argv)
 
   file_dialog = gtk_file_dialog_new();
   alert_dialog = gtk_alert_dialog_new("ALERT!");
+  gtk_alert_dialog_set_modal(alert_dialog, TRUE);
 
   // Initialize some CSS stuff.
   SSC_assertMsg(gdk_display_get_default(), "DEFAULT DISPLAY IS NULL\n");
@@ -367,14 +368,24 @@ Gui::encrypt_thread(
      gui);
     if (gui->operation_data.code_error == 0)
      {
-      gui->set_status_label_is_successful(true);
+      g_idle_add([](void* vgui) -> gboolean
+       {
+        static_cast<Gui*>(vgui)->set_status_label_success(true);
+        return G_SOURCE_REMOVE;
+       },
+       gui);
      }
     else
      {
-      gui->set_status_label_is_successful(false);
-      //TODO: Handle different error codes and set different error messages consequentially.
-      gtk_alert_dialog_set_message(gui->alert_dialog, "Error: Encryption failure! Try choosing fast mode, or manually choosing less memory.");
-      gtk_alert_dialog_choose(gui->alert_dialog, nullptr, nullptr, nullptr, nullptr);
+      g_idle_add([](void* vgui) -> gboolean
+       {
+        Gui* g {static_cast<Gui*>(vgui)};
+        g->set_status_label_success(false);
+        gtk_alert_dialog_set_detail(g->alert_dialog, "Encrypt failure! Try choosing fast mode, or manually choosing less memory using Expert Mode.");
+        gtk_alert_dialog_show(g->alert_dialog, nullptr);
+        return G_SOURCE_REMOVE;
+       },
+       gui);
      }
     Pod_t::del(*pod);
     Pod_t::init(*pod);
@@ -424,14 +435,24 @@ Gui::decrypt_thread(
     PPQ_CSPRNG_init(&pod->rng);
     if (gui->operation_data.code_error == 0)
      {
-      gui->set_status_label_is_successful(true);
+      g_idle_add([](void* vgui) -> gboolean
+       {
+        static_cast<Gui*>(vgui)->set_status_label_success(true);
+        return G_SOURCE_REMOVE;
+       },
+       gui);
      }
     else
      {
-      gui->set_status_label_is_successful(false);
-      //TODO: Handle different error codes and set different error messages consequentially.
-      gtk_alert_dialog_set_message(gui->alert_dialog, "Error: Decryption failure! Try choosing a smaller thread batch size."); 
-      gtk_alert_dialog_choose(gui->alert_dialog, nullptr, nullptr, nullptr, nullptr);
+      g_idle_add([](void *vgui) -> gboolean
+       {
+        Gui* g {static_cast<Gui*>(vgui)};
+        g->set_status_label_success(false);
+        gtk_alert_dialog_set_detail(g->alert_dialog, "Decryption failure! Try choosing a smaller thread batch size.");
+        gtk_alert_dialog_show(g->alert_dialog, nullptr);
+        return G_SOURCE_REMOVE;
+       },
+       gui);
      }
 
     std::thread th {&status_thread, gui};
@@ -713,16 +734,20 @@ Gui::clear_password_entries(void)
  }
 
 void
-Gui::set_status_label_is_successful(bool is_successful)
+Gui::set_status_label_success(bool is_successful)
  {
   if (is_successful)
    {
     gtk_label_set_text(GTK_LABEL(status_label), "Success!");
+    if (gtk_widget_has_css_class(status_label, "failure"))
+      gtk_widget_remove_css_class(status_label, "failure");
     gtk_widget_add_css_class(status_label, "success");
    }
   else
    {
     gtk_label_set_text(GTK_LABEL(status_label), "Failure!");
+    if (gtk_widget_has_css_class(status_label, "success"))
+      gtk_widget_remove_css_class(status_label, "success");
     gtk_widget_add_css_class(status_label, "failure");
    }
  }
