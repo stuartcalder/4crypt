@@ -747,11 +747,11 @@ SSC_CodeError_t Core::describe(
   if (mypod->memory_low == mypod->memory_high) {
     printf(
      "The KDF Memory Bound is.........%s\n",
-     Core::makeMemoryStringBitShift(Core::memoryFromBitShift(mypod->memory_low)).c_str());
+     Core::makeMemoryStringBitShift(mypod->memory_low).c_str());
   }
   else {
-    printf("The KDF Lower Memory Bound is...%s\n", Core::makeMemoryStringBitShift(Core::memoryFromBitShift(mypod->memory_low)).c_str());
-    printf("The KDF Upper Memory Bound is...%s\n", Core::makeMemoryStringBitShift(Core::memoryFromBitShift(mypod->memory_high)).c_str());
+    printf("The KDF Lower Memory Bound is...%s\n", Core::makeMemoryStringBitShift(mypod->memory_low).c_str());
+    printf("The KDF Upper Memory Bound is...%s\n", Core::makeMemoryStringBitShift(mypod->memory_high).c_str());
   }
   printf("The KDF Thread Count is.........%" PRIu64 " thread(s).\n", mypod->thread_count);
   printf("Each KDF thread iterates........%" PRIu8 " time(s).\n", mypod->iterations);
@@ -1006,7 +1006,7 @@ bool Core::verifyBasicMetadata(
 
 std::string Core::makeMemoryStringBitShift(const uint8_t mem_bitshift)
 {
-  return Core::makeMemoryString(static_cast<uint64_t>(1) << mem_bitshift);
+  return Core::makeMemoryString(static_cast<uint64_t>(1) << (mem_bitshift + 6));
 }
 
 std::string Core::makeMemoryString(const uint64_t value)

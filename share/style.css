@@ -1,6 +1,5 @@
 button.highlight {
     background-color: #007BFF; /* blue */
-    color:            blue;
     border:           solid 2px blue;
     border-width:     2px;
     font-weight:      bold;
