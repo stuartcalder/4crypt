@@ -63,7 +63,7 @@ class Gui
   std::string      mOutputFilepath {};
   std::mutex       operation_is_ongoing_mtx {};
   std::mutex       status_is_blinking_mtx   {};
-  bool             operation_is_ongoing {};
+  bool             mOperationIsOngoing {};
   bool             status_is_blinking   {};
   std::mutex       operation_mtx {};
   struct OpData {
