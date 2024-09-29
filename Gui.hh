@@ -61,7 +61,7 @@ class Gui
  // Private Data //
   std::string      mInputFilepath  {};
   std::string      mOutputFilepath {};
-  std::mutex       operation_is_ongoing_mtx {};
+  std::mutex       mOperationIsOngoingMtx {};
   std::mutex       status_is_blinking_mtx   {};
   bool             mOperationIsOngoing {};
   bool             status_is_blinking   {};

@@ -281,9 +281,9 @@ Gui::end_operation(void* vgui)
   Gui* g {static_cast<Gui*>(vgui)};
   gtk_widget_set_visible(g->progress_box, FALSE);
   gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(g->progress_bar), 0.0);
-  g->operation_is_ongoing_mtx.lock();
+  g->mOperationIsOngoingMtx.lock();
   g->mOperationIsOngoing = false;
-  g->operation_is_ongoing_mtx.unlock();
+  g->mOperationIsOngoingMtx.unlock();
   return G_SOURCE_REMOVE;
  }
 
@@ -429,11 +429,11 @@ Gui::encrypt_thread(
 void
 Gui::encrypt(void)
  {
-  operation_is_ongoing_mtx.lock();
+  mOperationIsOngoingMtx.lock();
   if (not mOperationIsOngoing)
    {
     mOperationIsOngoing = true;
-    operation_is_ongoing_mtx.unlock();
+    mOperationIsOngoingMtx.unlock();
     pod->execute_mode = ExeMode::ENCRYPT;
     Pod_t::touchup(*pod);
     gtk_widget_set_visible(progress_box, TRUE);
@@ -442,7 +442,7 @@ Gui::encrypt(void)
     th.detach();
    }
   else
-    operation_is_ongoing_mtx.unlock();
+    mOperationIsOngoingMtx.unlock();
  }
 
 void
@@ -496,11 +496,11 @@ Gui::decrypt_thread(
 void
 Gui::decrypt(void)
  {
-  operation_is_ongoing_mtx.lock();
+  mOperationIsOngoingMtx.lock();
   if (not mOperationIsOngoing)
    {
     mOperationIsOngoing = true;
-    operation_is_ongoing_mtx.unlock();
+    mOperationIsOngoingMtx.unlock();
     pod->execute_mode = ExeMode::DECRYPT;
     gtk_widget_set_visible(progress_box, TRUE);
 
@@ -508,7 +508,7 @@ Gui::decrypt(void)
     th.detach();
    }
   else
-    operation_is_ongoing_mtx.unlock();
+    mOperationIsOngoingMtx.unlock();
  }
 
 void
