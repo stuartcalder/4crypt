@@ -246,7 +246,7 @@ Gui::on_output_button_clicked(GtkWidget* button, void* self)
        nullptr)};
      if (file != nullptr)
       {
-       lambda_self->output_filepath = g_file_get_path(file);
+       lambda_self->mOutputFilepath = g_file_get_path(file);
       }
     }),
    gui);
@@ -534,11 +534,11 @@ Gui::on_start_button_clicked(GtkWidget* button, void* self)
 
   pod->input_filename = new char [gui->mInputFilepath.size() + 1];
   memcpy(pod->input_filename, gui->mInputFilepath.c_str(), gui->mInputFilepath.size() + 1);
-  pod->output_filename = new char [gui->output_filepath.size() + 1];
-  memcpy(pod->output_filename, gui->output_filepath.c_str(), gui->output_filepath.size() + 1);
+  pod->output_filename = new char [gui->mOutputFilepath.size() + 1];
+  memcpy(pod->output_filename, gui->mOutputFilepath.c_str(), gui->mOutputFilepath.size() + 1);
 
   pod->input_filename_size  = gui->mInputFilepath.size();
-  pod->output_filename_size = gui->output_filepath.size();
+  pod->output_filename_size = gui->mOutputFilepath.size();
 
   switch (gui->mode)
    {
@@ -607,7 +607,7 @@ Gui::on_output_text_activate(GtkWidget* text, void* self)
   Gui* gui {static_cast<Gui*>(self)};
 
   GtkEntryBuffer* buffer {gtk_text_get_buffer(GTK_TEXT(text))};
-  gui->output_filepath = gtk_entry_buffer_get_text(buffer);
+  gui->mOutputFilepath = gtk_entry_buffer_get_text(buffer);
   gui->output_text_activated = true;
  }
 
@@ -640,7 +640,7 @@ Gui::verify_inputs(void)
   filepath_cstr = gtk_entry_buffer_get_text(text_buffer);
   filepath      = filepath_cstr;
   make_os_path(filepath);
-  output_filepath = filepath;
+  mOutputFilepath = filepath;
 
   //TODO: Explain to the user that it's invalid for the output file to already exist.
   if (SSC_FilePath_exists(filepath.c_str()))
@@ -680,7 +680,7 @@ Gui::on_input_filepath_updated(void)
        std::string ofp {mInputFilepath + ".4c"};
        if (not SSC_FilePath_exists(ofp.c_str()))
         {
-         output_filepath = std::move(ofp);
+         mOutputFilepath = std::move(ofp);
          output_filepath_updated = true;
         }
       } break;
@@ -694,7 +694,7 @@ Gui::on_input_filepath_updated(void)
          ofp.erase(ofp.end() - 3, ofp.end());
          if (not SSC_FilePath_exists(ofp.c_str()))
           {
-           output_filepath = std::move(ofp);
+           mOutputFilepath = std::move(ofp);
            output_filepath_updated = true;
           }
         }
@@ -702,7 +702,7 @@ Gui::on_input_filepath_updated(void)
     }
    // After mode-specific updates, update the text in the text boxes.
    std::printf("input_filepath was %s\n", mInputFilepath.c_str());
-   std::printf("output_filepath was %s\n", output_filepath.c_str());
+   std::printf("output_filepath was %s\n", mOutputFilepath.c_str());
    GtkEntryBuffer* buffer {gtk_text_get_buffer(GTK_TEXT(input_text))};
    gtk_entry_buffer_set_text(
     buffer,
@@ -717,7 +717,7 @@ Gui::on_output_filepath_updated(void)
  {
   std::printf("on_output_filepath_updated() called with mode %i\n", (int)mode);
   GtkEntryBuffer* buffer {gtk_text_get_buffer(GTK_TEXT(output_text))};
-  gtk_entry_buffer_set_text(buffer, output_filepath.c_str(), output_filepath.size());
+  gtk_entry_buffer_set_text(buffer, mOutputFilepath.c_str(), mOutputFilepath.size());
  }
 
 bool
