@@ -59,7 +59,7 @@ class Gui
   int run(void);
  private:
  // Private Data //
-  std::string      input_filepath  {};
+  std::string      mInputFilepath {};
   std::string      output_filepath {};
   std::mutex       operation_is_ongoing_mtx {};
   std::mutex       status_is_blinking_mtx   {};

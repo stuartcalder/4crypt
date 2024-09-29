@@ -216,7 +216,7 @@ Gui::on_input_button_clicked(GtkWidget* button, void* self)
        nullptr)};
      if (file != nullptr)
       {
-       lambda_self->input_filepath = g_file_get_path(file);
+       lambda_self->mInputFilepath = g_file_get_path(file);
        lambda_self->on_input_filepath_updated();
       }
     }),
@@ -532,12 +532,12 @@ Gui::on_start_button_clicked(GtkWidget* button, void* self)
   if (not gui->get_password())
     return;
 
-  pod->input_filename = new char [gui->input_filepath.size() + 1];
-  memcpy(pod->input_filename, gui->input_filepath.c_str(), gui->input_filepath.size() + 1);
+  pod->input_filename = new char [gui->mInputFilepath.size() + 1];
+  memcpy(pod->input_filename, gui->mInputFilepath.c_str(), gui->mInputFilepath.size() + 1);
   pod->output_filename = new char [gui->output_filepath.size() + 1];
   memcpy(pod->output_filename, gui->output_filepath.c_str(), gui->output_filepath.size() + 1);
 
-  pod->input_filename_size  = gui->input_filepath.size();
+  pod->input_filename_size  = gui->mInputFilepath.size();
   pod->output_filename_size = gui->output_filepath.size();
 
   switch (gui->mode)
@@ -597,7 +597,7 @@ Gui::on_input_text_activate(GtkWidget* text, void* self)
   Gui* gui {static_cast<Gui*>(self)};
 
   GtkEntryBuffer* buffer {gtk_text_get_buffer(GTK_TEXT(text))};
-  gui->input_filepath = gtk_entry_buffer_get_text(buffer);
+  gui->mInputFilepath = gtk_entry_buffer_get_text(buffer);
   gui->on_input_filepath_updated();
  }
 
@@ -626,7 +626,7 @@ Gui::verify_inputs(void)
   };
   std::string filepath {filepath_cstr};
   make_os_path(filepath);
-  input_filepath = filepath;
+  mInputFilepath = filepath;
 
   //TODO: Explain to the user that it's invalid for the input file to not exist.
   if (!SSC_FilePath_exists(filepath.c_str()))
@@ -666,7 +666,7 @@ Gui::on_input_filepath_updated(void)
        // Do not make an assumption if the user has specified an output filepath.
        if (!output_text_activated)
         {
-         if (str_ends_with(input_filepath, ".4c"))
+         if (str_ends_with(mInputFilepath, ".4c"))
            set_mode(Mode::DECRYPT);
          else
            set_mode(Mode::ENCRYPT);
@@ -677,7 +677,7 @@ Gui::on_input_filepath_updated(void)
       {
        // The input filepath was set during encrypt mode. Assume that the output filepath
        // will be the same as the input filepath, but with ".4c" appended.
-       std::string ofp {input_filepath + ".4c"};
+       std::string ofp {mInputFilepath + ".4c"};
        if (not SSC_FilePath_exists(ofp.c_str()))
         {
          output_filepath = std::move(ofp);
@@ -688,9 +688,9 @@ Gui::on_input_filepath_updated(void)
       {
        //TODO: The input filepath was set during decrypt mode. Assume that the output filepath
        // will be the same as the input filepath, but with ".4c" removed. (Assuming it ended in ".4c").
-       if (str_ends_with(input_filepath, ".4c"))
+       if (str_ends_with(mInputFilepath, ".4c"))
         {
-         std::string ofp {input_filepath};
+         std::string ofp {mInputFilepath};
          ofp.erase(ofp.end() - 3, ofp.end());
          if (not SSC_FilePath_exists(ofp.c_str()))
           {
@@ -701,13 +701,13 @@ Gui::on_input_filepath_updated(void)
       } break;
     }
    // After mode-specific updates, update the text in the text boxes.
-   std::printf("input_filepath was %s\n", input_filepath.c_str());
+   std::printf("input_filepath was %s\n", mInputFilepath.c_str());
    std::printf("output_filepath was %s\n", output_filepath.c_str());
    GtkEntryBuffer* buffer {gtk_text_get_buffer(GTK_TEXT(input_text))};
    gtk_entry_buffer_set_text(
     buffer,
-    input_filepath.c_str(),
-    input_filepath.size());
+    mInputFilepath.c_str(),
+    mInputFilepath.size());
    if (output_filepath_updated)
      on_output_filepath_updated();
  }
