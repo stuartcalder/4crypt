@@ -337,7 +337,7 @@ Gui::encrypt_thread(
   Core*  core {gui->core};
   Pod_t* pod  {gui->pod};
   {
-    std::lock_guard {gui->operation_mtx};
+    std::lock_guard {gui->mOperationMtx};
 
     // Expert mode parameter selection.
     if (gtk_check_button_get_active(GTK_CHECK_BUTTON(gui->strength_expert_checkbutton)))
@@ -388,12 +388,12 @@ Gui::encrypt_thread(
       Pod_t::set_fast(*pod);
      }
 
-    gui->operation_data.code_error = core->encrypt(
-     &gui->operation_data.error_type,
-     &gui->operation_data.in_out_dir,
+    gui->mOperationData.code_error = core->encrypt(
+     &gui->mOperationData.error_type,
+     &gui->mOperationData.in_out_dir,
      status_callback,
      gui);
-    if (gui->operation_data.code_error == 0)
+    if (gui->mOperationData.code_error == 0)
      {
       g_idle_add([](void* vgui) -> gboolean
        {
@@ -408,7 +408,7 @@ Gui::encrypt_thread(
        {
         Gui* g {static_cast<Gui*>(vgui)};
         g->set_status_label_success(false);
-        gtk_alert_dialog_set_detail(g->alert_dialog, error_msg.at(g->operation_data.code_error));
+        gtk_alert_dialog_set_detail(g->alert_dialog, error_msg.at(g->mOperationData.code_error));
         gtk_alert_dialog_show(g->alert_dialog, nullptr);
         return G_SOURCE_REMOVE;
        },
@@ -454,16 +454,16 @@ Gui::decrypt_thread(
   Core*  core {gui->core};
   Pod_t* pod  {gui->pod};
   {
-    std::lock_guard {gui->operation_mtx};
-    gui->operation_data.code_error = core->decrypt(
-     &gui->operation_data.error_type,
-     &gui->operation_data.in_out_dir,
+    std::lock_guard {gui->mOperationMtx};
+    gui->mOperationData.code_error = core->decrypt(
+     &gui->mOperationData.error_type,
+     &gui->mOperationData.in_out_dir,
      status_callback,
      gui);
     Pod_t::del(*pod);
     Pod_t::init(*pod);
     PPQ_CSPRNG_init(&pod->rng);
-    if (gui->operation_data.code_error == 0)
+    if (gui->mOperationData.code_error == 0)
      {
       g_idle_add([](void* vgui) -> gboolean
        {
@@ -478,7 +478,7 @@ Gui::decrypt_thread(
        {
         Gui* g {static_cast<Gui*>(vgui)};
         g->set_status_label_success(false);
-        gtk_alert_dialog_set_detail(g->alert_dialog, error_msg.at(g->operation_data.code_error));
+        gtk_alert_dialog_set_detail(g->alert_dialog, error_msg.at(g->mOperationData.code_error));
         gtk_alert_dialog_show(g->alert_dialog, nullptr);
         return G_SOURCE_REMOVE;
        },
@@ -849,9 +849,9 @@ Gui::on_application_activate(GtkApplication* gtk_app, void* self)
 int
 Gui::run(void)
  {
-  application = gtk_application_new("cc.calder.fourcrypt", G_APPLICATION_DEFAULT_FLAGS);
-  g_signal_connect(application, "activate", G_CALLBACK(on_application_activate), this);
-  int run_result {g_application_run(G_APPLICATION(application), argc, argv)};
+  mApplication = gtk_application_new("cc.calder.fourcrypt", G_APPLICATION_DEFAULT_FLAGS);
+  g_signal_connect(mApplication, "activate", G_CALLBACK(on_application_activate), this);
+  int run_result {g_application_run(G_APPLICATION(mApplication), argc, argv)};
   if (run_result != 0)
     fprintf(stderr, "Error: g_application_run() returned %i!\n", run_result);
   return run_result;
@@ -860,7 +860,7 @@ Gui::run(void)
 void
 Gui::init_application_window(void)
  {
-  application_window = gtk_application_window_new(application);
+  application_window = gtk_application_window_new(mApplication);
   gtk_window_set_title(GTK_WINDOW(application_window), "4crypt");
   gtk_widget_set_size_request(application_window, WINDOW_WIDTH, WINDOW_HEIGHT);
   gtk_widget_set_hexpand(application_window, FALSE);
