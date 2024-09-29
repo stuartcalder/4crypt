@@ -281,7 +281,9 @@ Gui::end_operation(void* vgui)
   Gui* g {static_cast<Gui*>(vgui)};
   gtk_widget_set_visible(g->progress_box, FALSE);
   gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(g->progress_bar), 0.0);
+  g->operation_is_ongoing_mtx.lock();
   g->operation_is_ongoing = false;
+  g->operation_is_ongoing_mtx.unlock();
   return G_SOURCE_REMOVE;
  }
 
@@ -305,17 +307,25 @@ void
 Gui::status_thread(void* vgui)
  {
   Gui* gui {static_cast<Gui*>(vgui)};
+  gui->status_is_blinking_mtx.lock();
   if (not gui->status_is_blinking)
    {
     gui->status_is_blinking = true;
-    while (gui->status_is_blinking)
+    gui->status_is_blinking_mtx.unlock();
+    bool is_blinking {true};
+    while (is_blinking)
      {
       g_idle_add(&make_status_visible, gui);
       std::this_thread::sleep_for(std::chrono::milliseconds(750));
       g_idle_add(&make_status_invisible, gui);
       std::this_thread::sleep_for(std::chrono::milliseconds(750));
+      gui->status_is_blinking_mtx.lock();
+      is_blinking = gui->status_is_blinking;
+      gui->status_is_blinking_mtx.unlock();
      }
    }
+  else
+    gui->status_is_blinking_mtx.unlock();
  }
 
 void
@@ -419,9 +429,11 @@ Gui::encrypt_thread(
 void
 Gui::encrypt(void)
  {
+  operation_is_ongoing_mtx.lock();
   if (not operation_is_ongoing)
    {
     operation_is_ongoing = true;
+    operation_is_ongoing_mtx.unlock();
     pod->execute_mode = ExeMode::ENCRYPT;
     Pod_t::touchup(*pod);
     gtk_widget_set_visible(progress_box, TRUE);
@@ -429,7 +441,8 @@ Gui::encrypt(void)
     std::thread th {&encrypt_thread, &update_progress_callback, this};
     th.detach();
    }
-  //TODO: Handle errors and error types.
+  else
+    operation_is_ongoing_mtx.unlock();
  }
 
 void
@@ -483,16 +496,19 @@ Gui::decrypt_thread(
 void
 Gui::decrypt(void)
  {
+  operation_is_ongoing_mtx.lock();
   if (not operation_is_ongoing)
    {
     operation_is_ongoing = true;
+    operation_is_ongoing_mtx.unlock();
     pod->execute_mode = ExeMode::DECRYPT;
     gtk_widget_set_visible(progress_box, TRUE);
 
     std::thread th {&decrypt_thread, &update_progress_callback, this};
     th.detach();
    }
-  //TODO: Handle errors and error types.
+  else
+    operation_is_ongoing_mtx.unlock();
  }
 
 void
@@ -598,7 +614,9 @@ Gui::on_output_text_activate(GtkWidget* text, void* self)
 bool
 Gui::verify_inputs(void)
  {
+  status_is_blinking_mtx.lock();
   status_is_blinking = false;
+  status_is_blinking_mtx.unlock();
   // Get the input text data.
   GtkEntryBuffer* text_buffer {
    gtk_text_get_buffer(GTK_TEXT(input_text))
@@ -1269,7 +1287,9 @@ Gui::attach_grid(void)
 void
 Gui::set_mode(Mode m)
  {
+  status_is_blinking_mtx.lock();
   status_is_blinking = false;
+  status_is_blinking_mtx.unlock();
   if (gtk_widget_has_css_class(encrypt_button, "highlight"))
     gtk_widget_remove_css_class(encrypt_button, "highlight");
   if (gtk_widget_has_css_class(decrypt_button, "highlight"))

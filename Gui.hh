@@ -6,7 +6,6 @@
 // GTK4
 #include <gtk/gtk.h>
 // C++ STL
-#include <atomic>
 #include <mutex>
 #include <string>
 
@@ -60,11 +59,12 @@ class Gui
   int run(void);
  private:
  // Private Data //
-  std::string     input_filepath  {};
-  std::string     output_filepath {};
-
-  std::atomic_bool operation_is_ongoing {};
-  std::atomic_bool status_is_blinking   {};
+  std::string      input_filepath  {};
+  std::string      output_filepath {};
+  std::mutex       operation_is_ongoing_mtx {};
+  std::mutex       status_is_blinking_mtx   {};
+  bool             operation_is_ongoing {};
+  bool             status_is_blinking   {};
   std::mutex       operation_mtx {};
   struct OpData {
     SSC_CodeError_t code_error {0};
