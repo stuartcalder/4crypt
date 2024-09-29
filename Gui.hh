@@ -62,9 +62,9 @@ class Gui
   std::string      mInputFilepath  {};
   std::string      mOutputFilepath {};
   std::mutex       mOperationIsOngoingMtx {};
-  std::mutex       status_is_blinking_mtx   {};
-  bool             mOperationIsOngoing {};
-  bool             status_is_blinking   {};
+  std::mutex       mStatusIsBlinkingMtx   {};
+  bool             mOperationIsOngoing  {};
+  bool             mStatusIsBlinking    {};
   std::mutex       operation_mtx {};
   struct OpData {
     SSC_CodeError_t code_error {0};
@@ -171,7 +171,7 @@ class Gui
   static void     encrypt_thread(Core::StatusCallback_f* status_callback, void* status_callback_data);
   // Decryption happens in a separate thread, and we pass in a progress bar update function and a Gui* as its callback data.
   static void     decrypt_thread(Core::StatusCallback_f* status_callback, void* status_callback_data);
-  // Update the status text and blink it on-screen until dismissed by falsifying @status_is_blinking.
+  // Update the status text and blink it on-screen until dismissed by falsifying @mStatusIsBlinking.
   static void     status_thread(void* vgui);
   static gboolean end_operation(void* vgui);
   static gboolean make_status_visible(void* vgui);

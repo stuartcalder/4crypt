@@ -307,11 +307,11 @@ void
 Gui::status_thread(void* vgui)
  {
   Gui* gui {static_cast<Gui*>(vgui)};
-  gui->status_is_blinking_mtx.lock();
-  if (not gui->status_is_blinking)
+  gui->mStatusIsBlinkingMtx.lock();
+  if (not gui->mStatusIsBlinking)
    {
-    gui->status_is_blinking = true;
-    gui->status_is_blinking_mtx.unlock();
+    gui->mStatusIsBlinking = true;
+    gui->mStatusIsBlinkingMtx.unlock();
     bool is_blinking {true};
     while (is_blinking)
      {
@@ -319,13 +319,13 @@ Gui::status_thread(void* vgui)
       std::this_thread::sleep_for(std::chrono::milliseconds(750));
       g_idle_add(&make_status_invisible, gui);
       std::this_thread::sleep_for(std::chrono::milliseconds(750));
-      gui->status_is_blinking_mtx.lock();
-      is_blinking = gui->status_is_blinking;
-      gui->status_is_blinking_mtx.unlock();
+      gui->mStatusIsBlinkingMtx.lock();
+      is_blinking = gui->mStatusIsBlinking;
+      gui->mStatusIsBlinkingMtx.unlock();
      }
    }
   else
-    gui->status_is_blinking_mtx.unlock();
+    gui->mStatusIsBlinkingMtx.unlock();
  }
 
 void
@@ -614,9 +614,9 @@ Gui::on_output_text_activate(GtkWidget* text, void* self)
 bool
 Gui::verify_inputs(void)
  {
-  status_is_blinking_mtx.lock();
-  status_is_blinking = false;
-  status_is_blinking_mtx.unlock();
+  mStatusIsBlinkingMtx.lock();
+  mStatusIsBlinking = false;
+  mStatusIsBlinkingMtx.unlock();
   // Get the input text data.
   GtkEntryBuffer* text_buffer {
    gtk_text_get_buffer(GTK_TEXT(input_text))
@@ -1287,9 +1287,9 @@ Gui::attach_grid(void)
 void
 Gui::set_mode(Mode m)
  {
-  status_is_blinking_mtx.lock();
-  status_is_blinking = false;
-  status_is_blinking_mtx.unlock();
+  mStatusIsBlinkingMtx.lock();
+  mStatusIsBlinking = false;
+  mStatusIsBlinkingMtx.unlock();
   if (gtk_widget_has_css_class(encrypt_button, "highlight"))
     gtk_widget_remove_css_class(encrypt_button, "highlight");
   if (gtk_widget_has_css_class(decrypt_button, "highlight"))
