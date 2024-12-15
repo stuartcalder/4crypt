@@ -73,125 +73,126 @@ class Gui
   } mOperationData {};
 
   GtkApplication* mApplication {};
-  GtkFileDialog*  file_dialog  {};        // Input & Output file dialogs.
-  GtkAlertDialog* alert_dialog {};        // Dialog for errors.
-  GtkWidget*      application_window {}; // Main window for displaying stuff.
-  GtkWidget*      grid {};               // Organize UI elements using cells.
+  GtkFileDialog*  mFileDialog  {};       // Input & Output file dialogs.
+  GtkAlertDialog* mAlertDialog {};       // Dialog for errors.
 
-  GtkWidget*      logo_image {};         // Blue Dragon.
+  GtkWidget*      mApplicationWindow {}; // Main window for displaying stuff.
+  GtkWidget*      mGrid {};              // Organize UI elements using cells.
+  GtkWidget*      mLogoImage {};         // Blue Dragon.
+  GtkWidget*      mEncryptButton {};     // Click me to switch to encrypt mode.
+  GtkWidget*      mDecryptButton {};     // Click me to switch to decrypt mode.
 
-  GtkWidget*      encrypt_button {};     // Click me to switch to encrypt mode.
-  GtkWidget*      decrypt_button {};     // Click me to switch to decrypt mode.
-  GtkWidget*      strength_box   {};
-  GtkWidget*      strength_fast_checkbutton     {};
-  GtkWidget*      strength_standard_checkbutton {};
-  GtkWidget*      strength_strong_checkbutton   {};
-  GtkWidget*      strength_expert_checkbutton   {};
-  GtkWidget*      expert_mode_checkbutton {}; // Click me to enable/disable expert-level parameter selection.
-  GtkWidget*      start_button   {};     // Click me to begin encrypting/decrypting.
+  GtkWidget*      mStrengthBox   {};
+  GtkWidget*      mStrengthFastCheckbutton     {};
+  GtkWidget*      mStrengthStandardCheckbutton {};
+  GtkWidget*      mStrengthStrongCheckbutton   {};
+  GtkWidget*      mStrengthExpertCheckbutton   {};
+  GtkWidget*      mExpertModeCheckbutton       {}; // Click me to enable/disable expert-level parameter selection.
+  GtkWidget*      mStartButton {};     // Click me to begin encrypting/decrypting.
 
-  GtkWidget*      progress_box   {};     // Contain the progress bar.
-  GtkWidget*      progress_bar   {};     // I track the progress of encryption/decryption.
+  GtkWidget*      mProgressBox {};     // Contain the progress bar.
+  GtkWidget*      mProgressBar {};     // I track the progress of encryption/decryption.
 
-  GtkWidget*      input_box    {};       // Contain the Label, Text, & Button for input.
-  GtkWidget*      input_label  {};
-  GtkWidget*      input_text   {};
-  GtkWidget*      input_button {};
+  GtkWidget*      mInputBox    {};       // Contain the Label, Text, & Button for input.
+  GtkWidget*      mInputLabel  {};
+  GtkWidget*      mInputText   {};
+  GtkWidget*      mInputButton {};
 
-  GtkWidget*      output_box    {};      // Contain the Label, Text, & Button for output.
-  GtkWidget*      output_label  {};
-  GtkWidget*      output_text   {};
-  GtkWidget*      output_button {};
+  GtkWidget*      mOutputBox    {};      // Contain the Label, Text, & Button for output.
+  GtkWidget*      mOutputLabel  {};
+  GtkWidget*      mOutputText   {};
+  GtkWidget*      mOutputButton {};
 
-  GtkWidget*      encrypt_param_box {};
-  GtkWidget*      encrypt_param_phi_checkbutton  {};
-  GtkWidget*      encrypt_param_mem_dropdown     {};
-  GtkWidget*      encrypt_param_iterations_box   {};
-  GtkWidget*      encrypt_param_iterations_label {};
-  GtkWidget*      encrypt_param_iterations_text  {};
-  GtkWidget*      encrypt_param_threads_box      {};
-  GtkWidget*      encrypt_param_threads_label    {};
-  GtkWidget*      encrypt_param_threads_text     {};
-  GtkWidget*      encrypt_param_batch_size_box   {};
-  GtkWidget*      encrypt_param_batch_size_label {};
-  GtkWidget*      encrypt_param_batch_size_text  {};
+  GtkWidget*      mEncryptParamBox {};
+  GtkWidget*      mEncryptParamPhiCheckbutton    {};
+  GtkWidget*      mEncryptParamMemoryDropdown    {};
+  GtkWidget*      mEncryptParamIterationsBox     {};
+  GtkWidget*      mEncryptParamIterationsLabel   {};
+  GtkWidget*      mEncryptParamIterationsText    {};
+  GtkWidget*      mEncryptParamThreadBox         {};
+  GtkWidget*      mEncryptParamThreadLabel       {};
+  GtkWidget*      mEncryptParamThreadText        {};
+  GtkWidget*      mEncryptParamBatchSizeBox      {};
+  GtkWidget*      mEncryptParamBatchSizeLabel    {};
+  GtkWidget*      mEncryptParamBatchSizeText     {};
 
-  GtkWidget*      decrypt_param_box {};
-  GtkWidget*      decrypt_param_batch_size_box   {};
-  GtkWidget*      decrypt_param_batch_size_label {};
-  GtkWidget*      decrypt_param_batch_size_text  {};
+  GtkWidget*      mDecryptParamBox            {};
+  GtkWidget*      mDecryptParamBatchSizeBox   {};
+  GtkWidget*      mDecryptParamBatchSizeLabel {};
+  GtkWidget*      mDecryptParamBatchSizeText  {};
 
-  GtkWidget*      password_box   {};
-  GtkWidget*      password_label {};
-  GtkWidget*      password_entry {};
+  GtkWidget*      mPasswordBox   {};
+  GtkWidget*      mPasswordLabel {};
+  GtkWidget*      mPasswordEntry {};
 
-  GtkWidget*      reentry_box   {};
-  GtkWidget*      reentry_label {};
-  GtkWidget*      reentry_entry {};
+  GtkWidget*      mReentryBox   {};
+  GtkWidget*      mReentryLabel {};
+  GtkWidget*      mReentryEntry {};
 
-  GtkWidget*      status_box   {};
-  GtkWidget*      status_label {};
+  GtkWidget*      mStatusBox   {};
+  GtkWidget*      mStatusLabel {};
 
-  Core*           core {};                  // Access the primary 4crypt methods through me.
-  Pod_t*          pod  {};                  // Access the primary 4crypt data through me.
-  Mode            mode {Mode::NONE};        // Encrypt mode? Decrypt mode?
-  int             argc {};                  // "argc" passed in from main(int argc, char* argv[])
-  char**          argv {};                  // "argv" passed in from main(int argc, char* argv[])
-  bool            output_text_activated {}; // Has the user pressed "enter" on the output text at least once?
-  int             number_processors {}; // How many processors does the executing user have on their machine?
+  Core*           mCore {};                // Access the primary 4crypt methods through me.
+  Pod_t*          mPod  {};                // Access the primary 4crypt data through me.
+  Mode            mMode {Mode::NONE};      // Encrypt mode? Decrypt mode?
+  int             mArgc {};                // "argc" passed in from main(int argc, char* argv[])
+  char**          mArgv {};                // "argv" passed in from main(int argc, char* argv[])
+  bool            mOutputTextActivated {}; // Has the user pressed "enter" on the output text at least once?
+  int             mNumberProcessors    {}; // How many processors does the executing user have on their machine?
  // Private Methods //
-  void init_application_window(void);
-  void init_grid(void);
-  void init_logo_image(void);
-  void init_crypt_buttons(void);
-  void init_strength_box(void);
-  void init_input_box(void);
-  void init_output_box(void);
-  void init_encrypt_param_box(void);
-  void init_decrypt_param_box(void);
-  void init_password_box(void);
-  void init_reentry_box(void);
-  void init_status_box(void);
-  void init_progress_box(void);
+  void initApplicationWindow(void);
+  void initGrid(void);
+  void initLogoImage(void);
+  void initCryptButtons(void);
+  void initStrengthBox(void);
+  void initInputBox(void);
+  void initOutputBox(void);
+  void initEncryptParamBox(void);
+  void initDecryptParamBox(void);
+  void initPasswordBox(void);
+  void initReentryBox(void);
+  void initStatusBox(void);
+  void initProgressBox(void);
 
-  void attach_grid(void);
-  void set_mode(Mode);
-  bool verify_inputs(void);
+  void attachGrid(void);
+  void setMode(Mode);
+  bool verifyInputs(void);
   void encrypt(void);
   void decrypt(void);
-  void on_input_filepath_updated(void);
-  void on_output_filepath_updated(void);
-  bool get_password(void);
-  void clear_password_entries(void);
-  void set_status_label_success(bool);
+  void onInputFilepathUpdated(void);
+  void onOutputFilepathUpdated(void);
+  bool getPassword(void);
+  void clearPasswordEntries(void);
+  void setStatusLabelSuccess(bool);
 
   // Update progress bar percentage until it's full.
-  static void     update_progress_callback(void* cb_data);
+  static void updateProgressCallback(void* cb_data);
   // Encryption happens in a separate thread, and we pass in a progress bar update function and a Gui* as its callback data.
-  static void     encrypt_thread(Core::StatusCallback_f* status_callback, void* status_callback_data);
+  static void encryptThread(Core::StatusCallback_f* status_callback, void* status_callback_data);
   // Decryption happens in a separate thread, and we pass in a progress bar update function and a Gui* as its callback data.
-  static void     decrypt_thread(Core::StatusCallback_f* status_callback, void* status_callback_data);
+  static void decryptThread(Core::StatusCallback_f* status_callback, void* status_callback_data);
   // Update the status text and blink it on-screen until dismissed by falsifying @mStatusIsBlinking.
-  static void     status_thread(void* vgui);
-  static gboolean end_operation(void* vgui);
-  static gboolean make_status_visible(void* vgui);
-  static gboolean make_status_invisible(void* vgui);
+  static void statusThread(void* vgui);
+
+  static gboolean endOperation(void* vgui);
+  static gboolean makeStatusVisible(void* vgui);
+  static gboolean makeStatusInvisible(void* vgui);
  //// Private Static Pseudo-Methods.
-  static void on_application_activate(GtkApplication*,        void*);
-  static void on_encrypt_button_clicked(GtkWidget*,           void*);
-  static void on_decrypt_button_clicked(GtkWidget*,           void*);
-  static void on_input_button_clicked(GtkWidget*,             void*);
-  static void on_input_text_activate(GtkWidget*,              void*);
-  static void on_output_button_clicked(GtkWidget*,            void*);
-  static void on_output_text_activate(GtkWidget*,             void*);
-  static void on_start_button_clicked(GtkWidget*,             void*);
-  static void on_password_entry_activate(GtkWidget*,          void*);
-  static void on_reentry_entry_activate(GtkWidget*,           void*);
-  static void on_expert_mode_checkbutton_toggled(GtkWidget*,  void*);
-  static void on_strength_fast_checkbutton_toggled(GtkWidget*    , void*);
-  static void on_strength_standard_checkbutton_toggled(GtkWidget*, void*);
-  static void on_strength_strong_checkbutton_toggled(GtkWidget*  , void*);
-  static void on_strength_expert_checkbutton_toggled(GtkWidget*  , void*);
+  static void onApplicationActivate(GtkApplication*,        void*);
+  static void onEncryptButtonClicked(GtkWidget*,           void*);
+  static void onDecryptButtonClicked(GtkWidget*,           void*);
+  static void onInputButtonClicked(GtkWidget*,             void*);
+  static void onInputTextActivate(GtkWidget*,              void*);
+  static void onOutputButtonClicked(GtkWidget*,            void*);
+  static void onOutputTextActivate(GtkWidget*,             void*);
+  static void onStartButtonClicked(GtkWidget*,             void*);
+  static void onPasswordEntryActivate(GtkWidget*,          void*);
+  static void onReentryEntryActivate(GtkWidget*,           void*);
+  static void onExpertModeCheckbuttonToggled(GtkWidget*,  void*);
+  static void onStrengthFastCheckbuttonToggled(GtkWidget*    , void*);
+  static void onStrengthStandardCheckbuttonToggled(GtkWidget*, void*);
+  static void onStrengthStrongCheckbuttonToggled(GtkWidget*  , void*);
+  static void onStrengthExpertCheckbuttonToggled(GtkWidget*  , void*);
  };
 
 } // ! namespace fourcrypt

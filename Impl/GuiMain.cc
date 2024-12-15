@@ -42,7 +42,7 @@ constexpr int WINDOW_HEIGHT {FOURCRYPT_IMG_HEIGHT * 2};
 
 constexpr bool Debug {true};
 
-static const char* const memory_usage_strings[] {
+static const char* const memoryUsageStrings[] {
    "128M", "256M" , "512M",
    "1G"  , "2G"   , "4G",
    "8G"  , "16G"  , "32G",
@@ -139,14 +139,14 @@ Gui::getResourcePath(void)
  }
 
 Gui::Gui(Core* param_core, int param_argc, char** param_argv)
-: core{param_core}, argc{param_argc}, argv{param_argv}, number_processors{SSC_getNumberProcessors()}
+: mCore{param_core}, mArgc{param_argc}, mArgv{param_argv}, mNumberProcessors{SSC_getNumberProcessors()}
  {
-  pod = core->getPod();
+  mPod = mCore->getPod();
   gtk_init();
 
-  file_dialog = gtk_file_dialog_new();
-  alert_dialog = gtk_alert_dialog_new("ALERT!");
-  gtk_alert_dialog_set_modal(alert_dialog, TRUE);
+  mFileDialog  = gtk_file_dialog_new();
+  mAlertDialog = gtk_alert_dialog_new("ALERT!");
+  gtk_alert_dialog_set_modal(mAlertDialog, TRUE);
 
   // Initialize some CSS stuff.
   SSC_assertMsg(gdk_display_get_default(), "DEFAULT DISPLAY IS NULL\n");
@@ -162,42 +162,42 @@ Gui::Gui(Core* param_core, int param_argc, char** param_argv)
 
 Gui::~Gui()
  {
-  g_object_unref(file_dialog);
-  g_object_unref(alert_dialog);
+  g_object_unref(mFileDialog);
+  g_object_unref(mAlertDialog);
  }
 
 void
-Gui::on_encrypt_button_clicked(GtkWidget* button, void* self)
+Gui::onEncryptButtonClicked(GtkWidget* button, void* self)
  {
   Gui* gui {static_cast<Gui*>(self)};
   std::puts("Encrypt button was pushed.");
-  gui->clear_password_entries();
-  if (gui->mode != Mode::ENCRYPT)
-    gui->set_mode(Mode::ENCRYPT);
+  gui->clearPasswordEntries();
+  if (gui->mMode != Mode::ENCRYPT)
+    gui->setMode(Mode::ENCRYPT);
   else
-    gui->set_mode(Mode::NONE);
+    gui->setMode(Mode::NONE);
  }
 
 void
-Gui::on_decrypt_button_clicked(GtkWidget* button, void* self)
+Gui::onDecryptButtonClicked(GtkWidget* button, void* self)
  {
   Gui* gui {static_cast<Gui*>(self)};
   std::puts("Decrypt button was pushed.");
-  gui->clear_password_entries();
-  if (gui->mode != Mode::DECRYPT)
-    gui->set_mode(Mode::DECRYPT);
+  gui->clearPasswordEntries();
+  if (gui->mMode != Mode::DECRYPT)
+    gui->setMode(Mode::DECRYPT);
   else
-    gui->set_mode(Mode::NONE);
+    gui->setMode(Mode::NONE);
  }
 
 void
-Gui::on_input_button_clicked(GtkWidget* button, void* self)
+Gui::onInputButtonClicked(GtkWidget* button, void* self)
  {
   Gui* gui {static_cast<Gui*>(self)};
   std::puts("Input button was pushed.");
   gtk_file_dialog_open(
-   gui->file_dialog,
-   GTK_WINDOW(gui->application_window),
+   gui->mFileDialog,
+   GTK_WINDOW(gui->mApplicationWindow),
    nullptr, // (GCancellable*)
    static_cast<GAsyncReadyCallback>([]
     (GObject*      fdialog,
@@ -217,20 +217,20 @@ Gui::on_input_button_clicked(GtkWidget* button, void* self)
      if (file != nullptr)
       {
        lambda_self->mInputFilepath = g_file_get_path(file);
-       lambda_self->on_input_filepath_updated();
+       lambda_self->onInputFilepathUpdated();
       }
     }),
    gui); // (gpointer)
  }
 
 void
-Gui::on_output_button_clicked(GtkWidget* button, void* self)
+Gui::onOutputButtonClicked(GtkWidget* button, void* self)
  {
   Gui* gui {static_cast<Gui*>(self)};
   std::puts("Output button was pushed.");
   gtk_file_dialog_save(
-   gui->file_dialog,
-   GTK_WINDOW(gui->application_window),
+   gui->mFileDialog,
+   GTK_WINDOW(gui->mApplicationWindow),
    nullptr, // (GCancellable*)
    static_cast<GAsyncReadyCallback>([]
     (GObject*      fdialog,
@@ -258,13 +258,13 @@ using InOutDir = Core::InOutDir;
 using ErrType  = Core::ErrType;
 
 void
-Gui::update_progress_callback(void* v_gui)
+Gui::updateProgressCallback(void* v_gui)
  {
   g_idle_add(
    static_cast<GSourceFunc>([](void* vgui) -> gboolean
     {
      Gui*            gui {static_cast<Gui*>(vgui)};
-     GtkProgressBar* pb  {GTK_PROGRESS_BAR(gui->progress_bar)};
+     GtkProgressBar* pb  {GTK_PROGRESS_BAR(gui->mProgressBar)};
      double old_fraction {gtk_progress_bar_get_fraction(pb)};
      double new_fraction {old_fraction + PROGRESS_PULSE_STEP};
      if (new_fraction > 1.0)
@@ -276,11 +276,11 @@ Gui::update_progress_callback(void* v_gui)
  }
 
 gboolean
-Gui::end_operation(void* vgui)
+Gui::endOperation(void* vgui)
  {
   Gui* g {static_cast<Gui*>(vgui)};
-  gtk_widget_set_visible(g->progress_box, FALSE);
-  gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(g->progress_bar), 0.0);
+  gtk_widget_set_visible(g->mProgressBox, FALSE);
+  gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(g->mProgressBar), 0.0);
   g->mOperationIsOngoingMtx.lock();
   g->mOperationIsOngoing = false;
   g->mOperationIsOngoingMtx.unlock();
@@ -288,23 +288,23 @@ Gui::end_operation(void* vgui)
  }
 
 gboolean
-Gui::make_status_visible(void* vgui)
+Gui::makeStatusVisible(void* vgui)
  {
   Gui* g {static_cast<Gui*>(vgui)};
-  gtk_widget_set_visible(g->status_box, TRUE);
+  gtk_widget_set_visible(g->mStatusBox, TRUE);
   return G_SOURCE_REMOVE;
  }
 
 gboolean
-Gui::make_status_invisible(void* vgui)
+Gui::makeStatusInvisible(void* vgui)
  {
   Gui* g {static_cast<Gui*>(vgui)};
-  gtk_widget_set_visible(g->status_box, FALSE);
+  gtk_widget_set_visible(g->mStatusBox, FALSE);
   return G_SOURCE_REMOVE;
  }
 
 void
-Gui::status_thread(void* vgui)
+Gui::statusThread(void* vgui)
  {
   Gui* gui {static_cast<Gui*>(vgui)};
   gui->mStatusIsBlinkingMtx.lock();
@@ -315,9 +315,9 @@ Gui::status_thread(void* vgui)
     bool is_blinking {true};
     while (is_blinking)
      {
-      g_idle_add(&make_status_visible, gui);
+      g_idle_add(&makeStatusVisible, gui);
       std::this_thread::sleep_for(std::chrono::milliseconds(750));
-      g_idle_add(&make_status_invisible, gui);
+      g_idle_add(&makeStatusInvisible, gui);
       std::this_thread::sleep_for(std::chrono::milliseconds(750));
       gui->mStatusIsBlinkingMtx.lock();
       is_blinking = gui->mStatusIsBlinking;
@@ -329,27 +329,27 @@ Gui::status_thread(void* vgui)
  }
 
 void
-Gui::encrypt_thread(
+Gui::encryptThread(
  Core::StatusCallback_f* status_callback,
  void*                   status_callback_data)
  {
   Gui*   gui  {static_cast<Gui*>(status_callback_data)};
-  Core*  core {gui->core};
-  Pod_t* pod  {gui->pod};
+  Core*  core {gui->mCore};
+  Pod_t* pod  {gui->mPod};
   {
     std::lock_guard {gui->mOperationMtx};
 
     // Expert mode parameter selection.
-    if (gtk_check_button_get_active(GTK_CHECK_BUTTON(gui->strength_expert_checkbutton)))
+    if (gtk_check_button_get_active(GTK_CHECK_BUTTON(gui->mStrengthExpertCheckbutton)))
      {
       // Phi.
-      if (gtk_check_button_get_active(GTK_CHECK_BUTTON(gui->encrypt_param_phi_checkbutton)))
+      if (gtk_check_button_get_active(GTK_CHECK_BUTTON(gui->mEncryptParamPhiCheckbutton)))
         pod->flags |= Core::ENABLE_PHI;
       // Memory Usage.
-      const auto mem_usage_idx {gtk_drop_down_get_selected(GTK_DROP_DOWN(gui->encrypt_param_mem_dropdown))};
+      const auto mem_usage_idx {gtk_drop_down_get_selected(GTK_DROP_DOWN(gui->mEncryptParamMemoryDropdown))};
       if (mem_usage_idx != GTK_INVALID_LIST_POSITION)
        {
-        const char* mem_usage {memory_usage_strings[mem_usage_idx]};
+        const char* mem_usage {memoryUsageStrings[mem_usage_idx]};
         if (mem_usage != nullptr)
          {
           uint8_t mem {parse_memory(mem_usage, std::strlen(mem_usage))};
@@ -358,28 +358,28 @@ Gui::encrypt_thread(
          }
        }
       // Iterations.
-      GtkEntryBuffer* ebuf     {gtk_text_get_buffer(GTK_TEXT(gui->encrypt_param_iterations_text))};
+      GtkEntryBuffer* ebuf     {gtk_text_get_buffer(GTK_TEXT(gui->mEncryptParamIterationsText))};
       const char* ebuf_cstr    {gtk_entry_buffer_get_text(ebuf)};
       const uint8_t iterations {parse_iterations(ebuf_cstr, std::strlen(ebuf_cstr))};
       if (iterations > 0)
         pod->iterations = iterations;
       // Threads Count.
-      ebuf             = gtk_text_get_buffer(GTK_TEXT(gui->encrypt_param_threads_text));
+      ebuf             = gtk_text_get_buffer(GTK_TEXT(gui->mEncryptParamThreadText));
       ebuf_cstr        = gtk_entry_buffer_get_text(ebuf);
       uint64_t threads {parse_integer(ebuf_cstr, std::strlen(ebuf_cstr))};
       pod->thread_count = threads;
       // Thread Batch Size.
-      ebuf      = gtk_text_get_buffer(GTK_TEXT(gui->encrypt_param_batch_size_text));
+      ebuf      = gtk_text_get_buffer(GTK_TEXT(gui->mEncryptParamBatchSizeText));
       ebuf_cstr = gtk_entry_buffer_get_text(ebuf);
       uint64_t batch_size {parse_integer(ebuf_cstr, std::strlen(ebuf_cstr))};
       if (batch_size <= pod->thread_count)
         pod->thread_batch_size = batch_size;
      }
-    else if (gtk_check_button_get_active(GTK_CHECK_BUTTON(gui->strength_strong_checkbutton)))
+    else if (gtk_check_button_get_active(GTK_CHECK_BUTTON(gui->mStrengthStrongCheckbutton)))
      {
       Pod_t::set_strong(*pod);
      }
-    else if (gtk_check_button_get_active(GTK_CHECK_BUTTON(gui->strength_standard_checkbutton)))
+    else if (gtk_check_button_get_active(GTK_CHECK_BUTTON(gui->mStrengthStandardCheckbutton)))
      {
       Pod_t::set_normal(*pod); //TODO: Rename normal to standard or vice-versa.
      }
@@ -397,7 +397,7 @@ Gui::encrypt_thread(
      {
       g_idle_add([](void* vgui) -> gboolean
        {
-        static_cast<Gui*>(vgui)->set_status_label_success(true);
+        static_cast<Gui*>(vgui)->setStatusLabelSuccess(true);
         return G_SOURCE_REMOVE;
        },
        gui);
@@ -407,9 +407,9 @@ Gui::encrypt_thread(
       g_idle_add([](void* vgui) -> gboolean
        {
         Gui* g {static_cast<Gui*>(vgui)};
-        g->set_status_label_success(false);
-        gtk_alert_dialog_set_detail(g->alert_dialog, error_msg.at(g->mOperationData.code_error));
-        gtk_alert_dialog_show(g->alert_dialog, nullptr);
+        g->setStatusLabelSuccess(false);
+        gtk_alert_dialog_set_detail(g->mAlertDialog, error_msg.at(g->mOperationData.code_error));
+        gtk_alert_dialog_show(g->mAlertDialog, nullptr);
         return G_SOURCE_REMOVE;
        },
        gui);
@@ -418,11 +418,11 @@ Gui::encrypt_thread(
     Pod_t::init(*pod);
     PPQ_CSPRNG_init(&pod->rng);
 
-    std::thread th {&status_thread, gui};
+    std::thread th {&statusThread, gui};
     th.detach();
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
-    g_idle_add(&end_operation, gui);
+    g_idle_add(&endOperation, gui);
   }
  }
 
@@ -434,11 +434,11 @@ Gui::encrypt(void)
    {
     mOperationIsOngoing = true;
     mOperationIsOngoingMtx.unlock();
-    pod->execute_mode = ExeMode::ENCRYPT;
-    Pod_t::touchup(*pod);
-    gtk_widget_set_visible(progress_box, TRUE);
+    mPod->execute_mode = ExeMode::ENCRYPT;
+    Pod_t::touchup(*mPod);
+    gtk_widget_set_visible(mProgressBox, TRUE);
 
-    std::thread th {&encrypt_thread, &update_progress_callback, this};
+    std::thread th {&encryptThread, &updateProgressCallback, this};
     th.detach();
    }
   else
@@ -446,13 +446,13 @@ Gui::encrypt(void)
  }
 
 void
-Gui::decrypt_thread(
+Gui::decryptThread(
  Core::StatusCallback_f* status_callback,
  void*                   status_callback_data)
  {
   Gui*   gui  {static_cast<Gui*>(status_callback_data)};
-  Core*  core {gui->core};
-  Pod_t* pod  {gui->pod};
+  Core*  core {gui->mCore};
+  Pod_t* pod  {gui->mPod};
   {
     std::lock_guard {gui->mOperationMtx};
     gui->mOperationData.code_error = core->decrypt(
@@ -467,7 +467,7 @@ Gui::decrypt_thread(
      {
       g_idle_add([](void* vgui) -> gboolean
        {
-        static_cast<Gui*>(vgui)->set_status_label_success(true);
+        static_cast<Gui*>(vgui)->setStatusLabelSuccess(true);
         return G_SOURCE_REMOVE;
        },
        gui);
@@ -477,19 +477,19 @@ Gui::decrypt_thread(
       g_idle_add([](void *vgui) -> gboolean
        {
         Gui* g {static_cast<Gui*>(vgui)};
-        g->set_status_label_success(false);
-        gtk_alert_dialog_set_detail(g->alert_dialog, error_msg.at(g->mOperationData.code_error));
-        gtk_alert_dialog_show(g->alert_dialog, nullptr);
+        g->setStatusLabelSuccess(false);
+        gtk_alert_dialog_set_detail(g->mAlertDialog, error_msg.at(g->mOperationData.code_error));
+        gtk_alert_dialog_show(g->mAlertDialog, nullptr);
         return G_SOURCE_REMOVE;
        },
        gui);
      }
 
-    std::thread th {&status_thread, gui};
+    std::thread th {&statusThread, gui};
     th.detach();
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
-    g_idle_add(&end_operation, gui);
+    g_idle_add(&endOperation, gui);
   }
  }
 
@@ -501,10 +501,10 @@ Gui::decrypt(void)
    {
     mOperationIsOngoing = true;
     mOperationIsOngoingMtx.unlock();
-    pod->execute_mode = ExeMode::DECRYPT;
-    gtk_widget_set_visible(progress_box, TRUE);
+    mPod->execute_mode = ExeMode::DECRYPT;
+    gtk_widget_set_visible(mProgressBox, TRUE);
 
-    std::thread th {&decrypt_thread, &update_progress_callback, this};
+    std::thread th {&decryptThread, &updateProgressCallback, this};
     th.detach();
    }
   else
@@ -512,13 +512,13 @@ Gui::decrypt(void)
  }
 
 void
-Gui::on_start_button_clicked(GtkWidget* button, void* self)
+Gui::onStartButtonClicked(GtkWidget* button, void* self)
  {
   Gui*   gui {static_cast<Gui*>(self)};
-  Pod_t* pod {gui->pod};
+  Pod_t* pod {gui->mPod};
 
   std::puts("Start button was pushed.");
-  if (not gui->verify_inputs())
+  if (not gui->verifyInputs())
     return;
 
   // Reset the POD if it's been initialized.
@@ -529,7 +529,7 @@ Gui::on_start_button_clicked(GtkWidget* button, void* self)
     PPQ_CSPRNG_init(&pod->rng);
    }
 
-  if (not gui->get_password())
+  if (not gui->getPassword())
     return;
 
   pod->input_filename = new char [gui->mInputFilepath.size() + 1];
@@ -540,7 +540,7 @@ Gui::on_start_button_clicked(GtkWidget* button, void* self)
   pod->input_filename_size  = gui->mInputFilepath.size();
   pod->output_filename_size = gui->mOutputFilepath.size();
 
-  switch (gui->mode)
+  switch (gui->mMode)
    {
     case Mode::ENCRYPT:
       gui->encrypt();
@@ -552,74 +552,74 @@ Gui::on_start_button_clicked(GtkWidget* button, void* self)
  }
 
 void
-Gui::on_password_entry_activate(GtkWidget* pwe, void* self)
+Gui::onPasswordEntryActivate(GtkWidget* pwe, void* self)
  {
   Gui* gui {static_cast<Gui*>(self)};
-  if (gui->mode == Mode::DECRYPT)
+  if (gui->mMode == Mode::DECRYPT)
     g_signal_emit_by_name(
-     gui->start_button,
+     gui->mStartButton,
      "clicked",
      gui);
  }
 
 void
-Gui::on_reentry_entry_activate(GtkWidget* ree, void* self)
+Gui::onReentryEntryActivate(GtkWidget* ree, void* self)
  {
   Gui* gui {static_cast<Gui*>(self)};
-  if (gui->mode == Mode::ENCRYPT)
+  if (gui->mMode == Mode::ENCRYPT)
     g_signal_emit_by_name(
-     gui->start_button,
+     gui->mStartButton,
      "clicked",
      gui);
  }
 
 void
-Gui::on_expert_mode_checkbutton_toggled(GtkWidget* emc, void* self)
+Gui::onExpertModeCheckbuttonToggled(GtkWidget* emc, void* self)
  {
   Gui*           gui       {static_cast<Gui*>(self)};
   const gboolean is_active {gtk_check_button_get_active(GTK_CHECK_BUTTON(emc))};
-  switch (gui->mode)
+  switch (gui->mMode)
    {
     case Mode::ENCRYPT:
-      gtk_widget_set_visible(gui->encrypt_param_box, is_active);
-      gtk_widget_set_visible(gui->decrypt_param_box, FALSE);
+      gtk_widget_set_visible(gui->mEncryptParamBox, is_active);
+      gtk_widget_set_visible(gui->mDecryptParamBox, FALSE);
       break;
     case Mode::DECRYPT:
-      gtk_widget_set_visible(gui->encrypt_param_box, FALSE);
-      gtk_widget_set_visible(gui->decrypt_param_box, is_active);
+      gtk_widget_set_visible(gui->mEncryptParamBox, FALSE);
+      gtk_widget_set_visible(gui->mDecryptParamBox, is_active);
       break;
    }
  }
 
 void
-Gui::on_input_text_activate(GtkWidget* text, void* self)
+Gui::onInputTextActivate(GtkWidget* text, void* self)
  {
   Gui* gui {static_cast<Gui*>(self)};
 
   GtkEntryBuffer* buffer {gtk_text_get_buffer(GTK_TEXT(text))};
   gui->mInputFilepath = gtk_entry_buffer_get_text(buffer);
-  gui->on_input_filepath_updated();
+  gui->onInputFilepathUpdated();
  }
 
 void
-Gui::on_output_text_activate(GtkWidget* text, void* self)
+Gui::onOutputTextActivate(GtkWidget* text, void* self)
  {
   Gui* gui {static_cast<Gui*>(self)};
 
   GtkEntryBuffer* buffer {gtk_text_get_buffer(GTK_TEXT(text))};
   gui->mOutputFilepath = gtk_entry_buffer_get_text(buffer);
-  gui->output_text_activated = true;
+  gui->mOutputTextActivated = true;
  }
 
 bool
-Gui::verify_inputs(void)
+Gui::verifyInputs(void)
  {
   mStatusIsBlinkingMtx.lock();
   mStatusIsBlinking = false;
   mStatusIsBlinkingMtx.unlock();
   // Get the input text data.
   GtkEntryBuffer* text_buffer {
-   gtk_text_get_buffer(GTK_TEXT(input_text))
+   gtk_text_get_buffer(GTK_TEXT(mInputText))
   };
   const char* filepath_cstr {
    gtk_entry_buffer_get_text(text_buffer)
@@ -636,7 +636,7 @@ Gui::verify_inputs(void)
    }
 
   // Get the output text data.
-  text_buffer   = gtk_text_get_buffer(GTK_TEXT(output_text));
+  text_buffer   = gtk_text_get_buffer(GTK_TEXT(mOutputText));
   filepath_cstr = gtk_entry_buffer_get_text(text_buffer);
   filepath      = filepath_cstr;
   make_os_path(filepath);
@@ -652,11 +652,11 @@ Gui::verify_inputs(void)
  }
 
 void
-Gui::on_input_filepath_updated(void)
+Gui::onInputFilepathUpdated(void)
  {
    bool output_filepath_updated {};
-   std::printf("on_input_filepath_updated() called with mode %i\n", (int)mode);
-   switch (mode)
+   std::printf("onInputFilepathUpdated() called with mode %i\n", (int)mMode);
+   switch (mMode)
     {
      case Mode::NONE:
       {
@@ -664,13 +664,13 @@ Gui::on_input_filepath_updated(void)
        // Assume the mode will be ENCRYPT when the filepath doesn't end in ".4c".
        // Assume the mode will be DECRYPT when the filepath does end in ".4c".
        // Do not make an assumption if the user has specified an output filepath.
-       if (!output_text_activated)
+       if (not mOutputTextActivated)
         {
          if (str_ends_with(mInputFilepath, ".4c"))
-           set_mode(Mode::DECRYPT);
+           setMode(Mode::DECRYPT);
          else
-           set_mode(Mode::ENCRYPT);
-         on_input_filepath_updated();
+           setMode(Mode::ENCRYPT);
+         onInputFilepathUpdated();
         }
       } break;
      case Mode::ENCRYPT:
@@ -703,28 +703,28 @@ Gui::on_input_filepath_updated(void)
    // After mode-specific updates, update the text in the text boxes.
    std::printf("input_filepath was %s\n", mInputFilepath.c_str());
    std::printf("output_filepath was %s\n", mOutputFilepath.c_str());
-   GtkEntryBuffer* buffer {gtk_text_get_buffer(GTK_TEXT(input_text))};
+   GtkEntryBuffer* buffer {gtk_text_get_buffer(GTK_TEXT(mInputText))};
    gtk_entry_buffer_set_text(
     buffer,
     mInputFilepath.c_str(),
     mInputFilepath.size());
    if (output_filepath_updated)
-     on_output_filepath_updated();
+     onOutputFilepathUpdated();
  }
 
 void
-Gui::on_output_filepath_updated(void)
+Gui::onOutputFilepathUpdated(void)
  {
-  std::printf("on_output_filepath_updated() called with mode %i\n", (int)mode);
-  GtkEntryBuffer* buffer {gtk_text_get_buffer(GTK_TEXT(output_text))};
+  std::printf("onOutputFilepathUpdated() called with mode %i\n", (int)mMode);
+  GtkEntryBuffer* buffer {gtk_text_get_buffer(GTK_TEXT(mOutputText))};
   gtk_entry_buffer_set_text(buffer, mOutputFilepath.c_str(), mOutputFilepath.size());
  }
 
 bool
-Gui::get_password(void)
+Gui::getPassword(void)
  {
-  const char* pw_0 {gtk_editable_get_text(GTK_EDITABLE(password_entry))};
-  const char* pw_1 {gtk_editable_get_text(GTK_EDITABLE(reentry_entry))};
+  const char* pw_0 {gtk_editable_get_text(GTK_EDITABLE(mPasswordEntry))};
+  const char* pw_1 {gtk_editable_get_text(GTK_EDITABLE(mReentryEntry))};
   size_t pw_0_len {std::strlen(pw_0)};
   size_t pw_1_len {std::strlen(pw_1)};
   if (pw_0_len >= Core::MAX_PW_BYTES)
@@ -738,233 +738,233 @@ Gui::get_password(void)
     return false;
    }
   bool equal {(pw_0_len == pw_1_len) and (not std::strcmp(pw_0, pw_1))};
-  memset(pod->password_buffer, 0, sizeof(pod->password_buffer));
+  memset(mPod->password_buffer, 0, sizeof(mPod->password_buffer));
 
   if (pw_0_len == 0)
     return false;
-  switch (mode)
+  switch (mMode)
    {
     case Mode::ENCRYPT:
       // ENCRYPT mode requires that we get the same password input at least twice.
       if (not equal)
         return false;
-      memcpy(pod->password_buffer, pw_0, pw_0_len);
-      pod->password_size = pw_0_len;
+      memcpy(mPod->password_buffer, pw_0, pw_0_len);
+      mPod->password_size = pw_0_len;
       break;
     case Mode::DECRYPT:
-      memcpy(pod->password_buffer, pw_0, pw_0_len);
-      pod->password_size = pw_0_len;
+      memcpy(mPod->password_buffer, pw_0, pw_0_len);
+      mPod->password_size = pw_0_len;
       break;
    }
   return true;
  }
 
 void
-Gui::clear_password_entries(void)
+Gui::clearPasswordEntries(void)
  {
-  GtkEditable* e {GTK_EDITABLE(password_entry)};
+  GtkEditable* e {GTK_EDITABLE(mPasswordEntry)};
   gtk_editable_delete_text(e, 0, -1);
-  e = GTK_EDITABLE(reentry_entry);
+  e = GTK_EDITABLE(mReentryEntry);
   gtk_editable_delete_text(e, 0, -1);
  }
 
 void
-Gui::set_status_label_success(bool is_successful)
+Gui::setStatusLabelSuccess(bool is_successful)
  {
   if (is_successful)
    {
-    gtk_label_set_text(GTK_LABEL(status_label), "Success!");
-    if (gtk_widget_has_css_class(status_label, "failure"))
-      gtk_widget_remove_css_class(status_label, "failure");
-    gtk_widget_add_css_class(status_label, "success");
+    gtk_label_set_text(GTK_LABEL(mStatusLabel), "Success!");
+    if (gtk_widget_has_css_class(mStatusLabel, "failure"))
+      gtk_widget_remove_css_class(mStatusLabel, "failure");
+    gtk_widget_add_css_class(mStatusLabel, "success");
    }
   else
    {
-    gtk_label_set_text(GTK_LABEL(status_label), "Failure!");
-    if (gtk_widget_has_css_class(status_label, "success"))
-      gtk_widget_remove_css_class(status_label, "success");
-    gtk_widget_add_css_class(status_label, "failure");
+    gtk_label_set_text(GTK_LABEL(mStatusLabel), "Failure!");
+    if (gtk_widget_has_css_class(mStatusLabel, "success"))
+      gtk_widget_remove_css_class(mStatusLabel, "success");
+    gtk_widget_add_css_class(mStatusLabel, "failure");
    }
  }
 
 void
-Gui::on_application_activate(GtkApplication* gtk_app, void* self)
+Gui::onApplicationActivate(GtkApplication* gtk_app, void* self)
  {
   // Create the application window.
   Gui* gui {static_cast<Gui*>(self)};
-  gui->init_application_window();
+  gui->initApplicationWindow();
   
   // Create the grid and configure it.
-  gui->init_grid();
+  gui->initGrid();
 
   // Add the Core dragon logo.
-  gui->init_logo_image();
+  gui->initLogoImage();
 
   // Create the Encrypt and Decrypt buttons.
-  gui->init_crypt_buttons();
+  gui->initCryptButtons();
 
-  gui->init_strength_box();
+  gui->initStrengthBox();
 
-  gui->expert_mode_checkbutton = gtk_check_button_new();
-  gtk_check_button_set_label(GTK_CHECK_BUTTON(gui->expert_mode_checkbutton), "Expert Mode");
+  gui->mExpertModeCheckbutton = gtk_check_button_new();
+  gtk_check_button_set_label(GTK_CHECK_BUTTON(gui->mExpertModeCheckbutton), "Expert Mode");
   gtk_widget_set_tooltip_text(
-   gui->expert_mode_checkbutton,
+   gui->mExpertModeCheckbutton,
    "Enables Expert Mode, where you may get specific with your selection of encryption/decryption parameters.");
-  g_signal_connect(gui->expert_mode_checkbutton, "toggled", G_CALLBACK(on_expert_mode_checkbutton_toggled), gui);
+  g_signal_connect(gui->mExpertModeCheckbutton, "toggled", G_CALLBACK(onExpertModeCheckbuttonToggled), gui);
 
 
   // Create a Box for input.
-  gui->init_input_box();
+  gui->initInputBox();
 
   // Create a Box for output.
-  gui->init_output_box();
+  gui->initOutputBox();
 
   // Create a Box for encryption parameter entry.
-  gui->init_encrypt_param_box();
+  gui->initEncryptParamBox();
 
   // Create a Box for decryption parameter entry.
-  gui->init_decrypt_param_box();
+  gui->initDecryptParamBox();
 
   // Create a Box for passwords.
-  gui->init_password_box();
+  gui->initPasswordBox();
 
   // Create a Box for re-entering passwords.
-  gui->init_reentry_box();
+  gui->initReentryBox();
 
-  gui->init_status_box();
+  gui->initStatusBox();
 
   // Initialize the start button.
-  gui->start_button = gtk_button_new_with_label("Start");
-  g_signal_connect(gui->start_button, "clicked", G_CALLBACK(on_start_button_clicked), gui);
+  gui->mStartButton= gtk_button_new_with_label("Start");
+  g_signal_connect(gui->mStartButton, "clicked", G_CALLBACK(onStartButtonClicked), gui);
 
   // Initialize the progress box and its bar.
-  gui->init_progress_box();
+  gui->initProgressBox();
 
   // Initialize the grid.
-  gui->attach_grid();
+  gui->attachGrid();
 
-  gtk_window_present(GTK_WINDOW(gui->application_window));
+  gtk_window_present(GTK_WINDOW(gui->mApplicationWindow));
  }
 
 int
 Gui::run(void)
  {
   mApplication = gtk_application_new("cc.calder.fourcrypt", G_APPLICATION_DEFAULT_FLAGS);
-  g_signal_connect(mApplication, "activate", G_CALLBACK(on_application_activate), this);
-  int run_result {g_application_run(G_APPLICATION(mApplication), argc, argv)};
+  g_signal_connect(mApplication, "activate", G_CALLBACK(onApplicationActivate), this);
+  int run_result {g_application_run(G_APPLICATION(mApplication), mArgc, mArgv)};
   if (run_result != 0)
     fprintf(stderr, "Error: g_application_run() returned %i!\n", run_result);
   return run_result;
  }
 
 void
-Gui::init_application_window(void)
+Gui::initApplicationWindow(void)
  {
-  application_window = gtk_application_window_new(mApplication);
-  gtk_window_set_title(GTK_WINDOW(application_window), "4crypt");
-  gtk_widget_set_size_request(application_window, WINDOW_WIDTH, WINDOW_HEIGHT);
-  gtk_widget_set_hexpand(application_window, FALSE);
-  gtk_widget_set_vexpand(application_window, FALSE);
+  mApplicationWindow = gtk_application_window_new(mApplication);
+  gtk_window_set_title(GTK_WINDOW(mApplicationWindow), "4crypt");
+  gtk_widget_set_size_request(mApplicationWindow, WINDOW_WIDTH, WINDOW_HEIGHT);
+  gtk_widget_set_hexpand(mApplicationWindow, FALSE);
+  gtk_widget_set_vexpand(mApplicationWindow, FALSE);
  }
 
 void
-Gui::init_grid(void)
+Gui::initGrid(void)
  {
-  grid = gtk_grid_new();
-  gtk_widget_set_valign(grid, GTK_ALIGN_START);
-  gtk_window_set_child(GTK_WINDOW(application_window), grid);
-  gtk_grid_set_column_homogeneous(GTK_GRID(grid), TRUE);
+  mGrid = gtk_grid_new();
+  gtk_widget_set_valign(mGrid, GTK_ALIGN_START);
+  gtk_window_set_child(GTK_WINDOW(mApplicationWindow), mGrid);
+  gtk_grid_set_column_homogeneous(GTK_GRID(mGrid), TRUE);
  }
 
 void
-Gui::init_logo_image(void)
+Gui::initLogoImage(void)
  {
   std::string logo_path {getResourcePath() + "/logo.png"};
   make_os_path(logo_path);
-  logo_image = gtk_image_new_from_file(logo_path.c_str());
-  gtk_image_set_icon_size(GTK_IMAGE(logo_image), GTK_ICON_SIZE_LARGE);
-  gtk_widget_set_size_request(logo_image, FOURCRYPT_IMG_WIDTH, FOURCRYPT_IMG_HEIGHT);
-  gtk_widget_set_hexpand(logo_image, TRUE);
-  gtk_widget_set_vexpand(logo_image, TRUE);
-  gtk_widget_set_tooltip_text(logo_image, "4crypt");
+  mLogoImage = gtk_image_new_from_file(logo_path.c_str());
+  gtk_image_set_icon_size(GTK_IMAGE(mLogoImage), GTK_ICON_SIZE_LARGE);
+  gtk_widget_set_size_request(mLogoImage, FOURCRYPT_IMG_WIDTH, FOURCRYPT_IMG_HEIGHT);
+  gtk_widget_set_hexpand(mLogoImage, TRUE);
+  gtk_widget_set_vexpand(mLogoImage, TRUE);
+  gtk_widget_set_tooltip_text(mLogoImage, "4crypt");
  }
 
 void
-Gui::init_crypt_buttons(void)
+Gui::initCryptButtons(void)
  {
-  encrypt_button = gtk_button_new_with_label("Encrypt");
-  g_signal_connect(encrypt_button, "clicked", G_CALLBACK(on_encrypt_button_clicked), this);
-  gtk_widget_set_tooltip_text(encrypt_button, "Encrypt a file using a password.");
+  mEncryptButton = gtk_button_new_with_label("Encrypt");
+  g_signal_connect(mEncryptButton, "clicked", G_CALLBACK(onEncryptButtonClicked), this);
+  gtk_widget_set_tooltip_text(mEncryptButton, "Encrypt a file using a password.");
 
-  decrypt_button = gtk_button_new_with_label("Decrypt");
-  g_signal_connect(decrypt_button, "clicked", G_CALLBACK(on_decrypt_button_clicked), this);
-  gtk_widget_set_tooltip_text(decrypt_button, "Decrypt a file using a password.");
+  mDecryptButton = gtk_button_new_with_label("Decrypt");
+  g_signal_connect(mDecryptButton, "clicked", G_CALLBACK(onDecryptButtonClicked), this);
+  gtk_widget_set_tooltip_text(mDecryptButton, "Decrypt a file using a password.");
  }
 
 void
-Gui::init_strength_box(void)
+Gui::initStrengthBox(void)
  {
-  strength_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
+  mStrengthBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
 
-  strength_fast_checkbutton = gtk_check_button_new();
-  gtk_check_button_set_label(GTK_CHECK_BUTTON(strength_fast_checkbutton), "Fast");
+  mStrengthFastCheckbutton = gtk_check_button_new();
+  gtk_check_button_set_label(GTK_CHECK_BUTTON(mStrengthFastCheckbutton), "Fast");
   gtk_widget_set_tooltip_text(
-   strength_fast_checkbutton,
+   mStrengthFastCheckbutton,
    "Choose Fast encryption parameters.");
-  g_signal_connect(strength_fast_checkbutton, "toggled", G_CALLBACK(on_strength_fast_checkbutton_toggled), this);
-  gtk_widget_set_visible(strength_fast_checkbutton, FALSE);
+  g_signal_connect(mStrengthFastCheckbutton, "toggled", G_CALLBACK(onStrengthFastCheckbuttonToggled), this);
+  gtk_widget_set_visible(mStrengthFastCheckbutton, FALSE);
 
-  strength_standard_checkbutton = gtk_check_button_new();
-  gtk_check_button_set_label(GTK_CHECK_BUTTON(strength_standard_checkbutton), "Standard");
+  mStrengthStandardCheckbutton = gtk_check_button_new();
+  gtk_check_button_set_label(GTK_CHECK_BUTTON(mStrengthStandardCheckbutton), "Standard");
   gtk_widget_set_tooltip_text(
-   strength_standard_checkbutton,
+   mStrengthStandardCheckbutton,
    "Choose Standard encryption parameters.");
-  g_signal_connect(strength_standard_checkbutton, "toggled", G_CALLBACK(on_strength_standard_checkbutton_toggled), this);
-  gtk_widget_set_visible(strength_standard_checkbutton, FALSE);
-  gtk_check_button_set_active(GTK_CHECK_BUTTON(strength_standard_checkbutton), TRUE);
+  g_signal_connect(mStrengthStandardCheckbutton, "toggled", G_CALLBACK(onStrengthStandardCheckbuttonToggled), this);
+  gtk_widget_set_visible(mStrengthStandardCheckbutton, FALSE);
+  gtk_check_button_set_active(GTK_CHECK_BUTTON(mStrengthStandardCheckbutton), TRUE);
 
-  strength_strong_checkbutton = gtk_check_button_new();
-  gtk_check_button_set_label(GTK_CHECK_BUTTON(strength_strong_checkbutton), "Strong");
+  mStrengthStrongCheckbutton = gtk_check_button_new();
+  gtk_check_button_set_label(GTK_CHECK_BUTTON(mStrengthStrongCheckbutton), "Strong");
   gtk_widget_set_tooltip_text(
-   strength_strong_checkbutton,
+   mStrengthStrongCheckbutton,
    "Choose Strong encryption parameters.");
-  g_signal_connect(strength_strong_checkbutton, "toggled", G_CALLBACK(on_strength_strong_checkbutton_toggled), this);
-  gtk_widget_set_visible(strength_strong_checkbutton, FALSE);
+  g_signal_connect(mStrengthStrongCheckbutton, "toggled", G_CALLBACK(onStrengthStrongCheckbuttonToggled), this);
+  gtk_widget_set_visible(mStrengthStrongCheckbutton, FALSE);
 
-  strength_expert_checkbutton = gtk_check_button_new();
-  gtk_check_button_set_label(GTK_CHECK_BUTTON(strength_expert_checkbutton), "Expert Mode");
+  mStrengthExpertCheckbutton = gtk_check_button_new();
+  gtk_check_button_set_label(GTK_CHECK_BUTTON(mStrengthExpertCheckbutton), "Expert Mode");
   gtk_widget_set_tooltip_text(
-   strength_expert_checkbutton,
+   mStrengthExpertCheckbutton,
    "Enables Expert Mode, where you may get specific with your selection of encryption/decryption parameters.");
-  g_signal_connect(strength_expert_checkbutton, "toggled", G_CALLBACK(on_strength_expert_checkbutton_toggled), this);
+  g_signal_connect(mStrengthExpertCheckbutton, "toggled", G_CALLBACK(onStrengthExpertCheckbuttonToggled), this);
 
-  gtk_box_append(GTK_BOX(strength_box), strength_fast_checkbutton);
-  gtk_box_append(GTK_BOX(strength_box), strength_standard_checkbutton);
-  gtk_box_append(GTK_BOX(strength_box), strength_strong_checkbutton);
-  gtk_box_append(GTK_BOX(strength_box), strength_expert_checkbutton);
+  gtk_box_append(GTK_BOX(mStrengthBox), mStrengthFastCheckbutton);
+  gtk_box_append(GTK_BOX(mStrengthBox), mStrengthStandardCheckbutton);
+  gtk_box_append(GTK_BOX(mStrengthBox), mStrengthStrongCheckbutton);
+  gtk_box_append(GTK_BOX(mStrengthBox), mStrengthExpertCheckbutton);
  }
 
 void
-Gui::on_strength_fast_checkbutton_toggled(GtkWidget* sfc, void* vgui)
+Gui::onStrengthFastCheckbuttonToggled(GtkWidget* sfc, void* vgui)
  {
   Gui*           gui       {static_cast<Gui*>(vgui)};
   const gboolean is_active {gtk_check_button_get_active(GTK_CHECK_BUTTON(sfc))};
 
   if constexpr(Debug)
    {
-    if (is_active and gui->mode != Mode::ENCRYPT)
+    if (is_active and gui->mMode != Mode::ENCRYPT)
       std::fprintf(stderr, "Error: strength_fast_checkbutton activated and it's not encrypt mode!");
    }
   if (is_active)
    {
-    gtk_check_button_set_active(GTK_CHECK_BUTTON(gui->strength_standard_checkbutton), FALSE);
-    gtk_check_button_set_active(GTK_CHECK_BUTTON(gui->strength_strong_checkbutton),   FALSE);
-    gtk_check_button_set_active(GTK_CHECK_BUTTON(gui->strength_expert_checkbutton),   FALSE);
-    gtk_widget_set_visible(gui->encrypt_param_box, FALSE);
+    gtk_check_button_set_active(GTK_CHECK_BUTTON(gui->mStrengthStandardCheckbutton), FALSE);
+    gtk_check_button_set_active(GTK_CHECK_BUTTON(gui->mStrengthStrongCheckbutton),   FALSE);
+    gtk_check_button_set_active(GTK_CHECK_BUTTON(gui->mStrengthExpertCheckbutton),   FALSE);
+    gtk_widget_set_visible(gui->mEncryptParamBox, FALSE);
    }
  }
 void
-Gui::on_strength_standard_checkbutton_toggled(GtkWidget* ssc, void* vgui)
+Gui::onStrengthStandardCheckbuttonToggled(GtkWidget* ssc, void* vgui)
  {
   Gui*           gui       {static_cast<Gui*>(vgui)};
   const gboolean is_active {gtk_check_button_get_active(GTK_CHECK_BUTTON(ssc))};
@@ -972,7 +972,7 @@ Gui::on_strength_standard_checkbutton_toggled(GtkWidget* ssc, void* vgui)
   if constexpr(Debug)
    {
     static int num {};
-    if (is_active and gui->mode != Mode::ENCRYPT)
+    if (is_active and gui->mMode != Mode::ENCRYPT)
      {
       ++num;
       if (num > 1)
@@ -984,362 +984,361 @@ Gui::on_strength_standard_checkbutton_toggled(GtkWidget* ssc, void* vgui)
 
   if (is_active)
    {
-    gtk_check_button_set_active(GTK_CHECK_BUTTON(gui->strength_fast_checkbutton)  , FALSE);
-    gtk_check_button_set_active(GTK_CHECK_BUTTON(gui->strength_strong_checkbutton), FALSE);
-    gtk_check_button_set_active(GTK_CHECK_BUTTON(gui->strength_expert_checkbutton), FALSE);
-    gtk_widget_set_visible(gui->encrypt_param_box, FALSE);
+    gtk_check_button_set_active(GTK_CHECK_BUTTON(gui->mStrengthFastCheckbutton)  , FALSE);
+    gtk_check_button_set_active(GTK_CHECK_BUTTON(gui->mStrengthStrongCheckbutton), FALSE);
+    gtk_check_button_set_active(GTK_CHECK_BUTTON(gui->mStrengthExpertCheckbutton), FALSE);
+    gtk_widget_set_visible(gui->mEncryptParamBox, FALSE);
    }
  }
 void
-Gui::on_strength_strong_checkbutton_toggled(GtkWidget* ssc, void* vgui)
+Gui::onStrengthStrongCheckbuttonToggled(GtkWidget* ssc, void* vgui)
  {
   Gui*           gui       {static_cast<Gui*>(vgui)};
   const gboolean is_active {gtk_check_button_get_active(GTK_CHECK_BUTTON(ssc))};
 
   if constexpr(Debug)
    {
-    if (is_active and gui->mode != Mode::ENCRYPT)
+    if (is_active and gui->mMode != Mode::ENCRYPT)
       std::fprintf(stderr, "Error: strength_strong_checkbutton activated and it's not encrypt mode!");
    }
   if (is_active)
    {
-    gtk_check_button_set_active(GTK_CHECK_BUTTON(gui->strength_fast_checkbutton)    , FALSE);
-    gtk_check_button_set_active(GTK_CHECK_BUTTON(gui->strength_standard_checkbutton), FALSE);
-    gtk_check_button_set_active(GTK_CHECK_BUTTON(gui->strength_expert_checkbutton)  , FALSE);
-    gtk_widget_set_visible(gui->encrypt_param_box, FALSE);
+    gtk_check_button_set_active(GTK_CHECK_BUTTON(gui->mStrengthFastCheckbutton)    , FALSE);
+    gtk_check_button_set_active(GTK_CHECK_BUTTON(gui->mStrengthStandardCheckbutton), FALSE);
+    gtk_check_button_set_active(GTK_CHECK_BUTTON(gui->mStrengthExpertCheckbutton)  , FALSE);
+    gtk_widget_set_visible(gui->mEncryptParamBox, FALSE);
    }
  }
 void
-Gui::on_strength_expert_checkbutton_toggled(GtkWidget* sec, void* vgui)
+Gui::onStrengthExpertCheckbuttonToggled(GtkWidget* sec, void* vgui)
  {
   Gui*           gui       {static_cast<Gui*>(vgui)};
   const gboolean is_active {gtk_check_button_get_active(GTK_CHECK_BUTTON(sec))};
 
   if (is_active)
    {
-    gtk_check_button_set_active(GTK_CHECK_BUTTON(gui->strength_fast_checkbutton)    , FALSE);
-    gtk_check_button_set_active(GTK_CHECK_BUTTON(gui->strength_standard_checkbutton), FALSE);
-    gtk_check_button_set_active(GTK_CHECK_BUTTON(gui->strength_strong_checkbutton)  , FALSE);
+    gtk_check_button_set_active(GTK_CHECK_BUTTON(gui->mStrengthFastCheckbutton)    , FALSE);
+    gtk_check_button_set_active(GTK_CHECK_BUTTON(gui->mStrengthStandardCheckbutton), FALSE);
+    gtk_check_button_set_active(GTK_CHECK_BUTTON(gui->mStrengthStrongCheckbutton)  , FALSE);
    }
-  switch (gui->mode)
+  switch (gui->mMode)
    {
     case Mode::ENCRYPT:
-      gtk_widget_set_visible(gui->encrypt_param_box, is_active);
-      gtk_widget_set_visible(gui->decrypt_param_box, FALSE);
+      gtk_widget_set_visible(gui->mEncryptParamBox, is_active);
+      gtk_widget_set_visible(gui->mDecryptParamBox, FALSE);
       break;
     case Mode::DECRYPT:
-      gtk_widget_set_visible(gui->encrypt_param_box, FALSE);
-      gtk_widget_set_visible(gui->decrypt_param_box, is_active);
+      gtk_widget_set_visible(gui->mEncryptParamBox, FALSE);
+      gtk_widget_set_visible(gui->mDecryptParamBox, is_active);
       break;
    }
  }
 
 void
-Gui::init_input_box(void)
+Gui::initInputBox(void)
  {
-  input_box    = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
-  input_label  = gtk_label_new(" Input:");
-  input_text   = gtk_text_new();
-  gtk_widget_add_css_class(input_text, "basic");
-  gtk_widget_set_tooltip_text(input_text, "Enter an input file path.");
-  input_button = gtk_button_new_with_label("Pick File");
-  gtk_widget_set_tooltip_text(input_button, "Choose an input file path from the filesystem.");
-  g_signal_connect(input_text  , "activate", G_CALLBACK(on_input_text_activate) , this);
-  g_signal_connect(input_button, "clicked" , G_CALLBACK(on_input_button_clicked), this);
+  mInputBox    = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
+  mInputLabel  = gtk_label_new(" Input:");
+  mInputText   = gtk_text_new();
+  gtk_widget_add_css_class(mInputText, "basic");
+  gtk_widget_set_tooltip_text(mInputText, "Enter an input file path.");
+  mInputButton = gtk_button_new_with_label("Pick File");
+  gtk_widget_set_tooltip_text(mInputButton, "Choose an input file path from the filesystem.");
+  g_signal_connect(mInputText  , "activate", G_CALLBACK(onInputTextActivate) , this);
+  g_signal_connect(mInputButton, "clicked" , G_CALLBACK(onInputButtonClicked), this);
   // Fill the box with a label and text.
-  gtk_box_append(GTK_BOX(input_box), input_label);
-  gtk_box_append(GTK_BOX(input_box), input_text);
-  gtk_box_append(GTK_BOX(input_box), input_button);
-  gtk_widget_set_size_request(input_box, -1, TEXT_HEIGHT);
-  gtk_widget_set_hexpand(input_text, TRUE);
+  gtk_box_append(GTK_BOX(mInputBox), mInputLabel);
+  gtk_box_append(GTK_BOX(mInputBox), mInputText);
+  gtk_box_append(GTK_BOX(mInputBox), mInputButton);
+  gtk_widget_set_size_request(mInputBox, -1, TEXT_HEIGHT);
+  gtk_widget_set_hexpand(mInputText, TRUE);
  }
 
 void
-Gui::init_output_box(void)
+Gui::initOutputBox(void)
  {
-  output_box    = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
-  output_label  = gtk_label_new("Output:");
-  output_text   = gtk_text_new();
-  gtk_widget_add_css_class(output_text, "basic");
-  gtk_widget_set_tooltip_text(output_text, "Enter an output file path.");
-  output_button = gtk_button_new_with_label("Pick File");
-  gtk_widget_set_tooltip_text(output_button, "Choose an output file path from the filesystem.");
-  g_signal_connect(output_text  , "activate", G_CALLBACK(on_output_text_activate) , this);
-  g_signal_connect(output_button, "clicked" , G_CALLBACK(on_output_button_clicked), this);
+  mOutputBox    = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
+  mOutputLabel  = gtk_label_new("Output:");
+  mOutputText   = gtk_text_new();
+  gtk_widget_add_css_class(mOutputText, "basic");
+  gtk_widget_set_tooltip_text(mOutputText, "Enter an output file path.");
+  mOutputButton = gtk_button_new_with_label("Pick File");
+  gtk_widget_set_tooltip_text(mOutputButton, "Choose an output file path from the filesystem.");
+  g_signal_connect(mOutputText  , "activate", G_CALLBACK(onOutputTextActivate) , this);
+  g_signal_connect(mOutputButton, "clicked" , G_CALLBACK(onOutputButtonClicked), this);
   // Fill the box with a label and text.
-  gtk_box_append(GTK_BOX(output_box), output_label);
-  gtk_box_append(GTK_BOX(output_box), output_text);
-  gtk_box_append(GTK_BOX(output_box), output_button);
-  gtk_widget_set_size_request(output_box, -1, TEXT_HEIGHT);
-  gtk_widget_set_hexpand(output_text, TRUE);
+  gtk_box_append(GTK_BOX(mOutputBox), mOutputLabel);
+  gtk_box_append(GTK_BOX(mOutputBox), mOutputText);
+  gtk_box_append(GTK_BOX(mOutputBox), mOutputButton);
+  gtk_widget_set_size_request(mOutputBox, -1, TEXT_HEIGHT);
+  gtk_widget_set_hexpand(mOutputText, TRUE);
  }
 
 void
-Gui::init_encrypt_param_box(void)
+Gui::initEncryptParamBox(void)
  {
-  encrypt_param_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 1);
-  encrypt_param_phi_checkbutton = gtk_check_button_new();
-  gtk_check_button_set_label(GTK_CHECK_BUTTON(encrypt_param_phi_checkbutton), "Enable Phi");
+  mEncryptParamBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 1);
+  mEncryptParamPhiCheckbutton = gtk_check_button_new();
+  gtk_check_button_set_label(GTK_CHECK_BUTTON(mEncryptParamPhiCheckbutton), "Enable Phi");
   gtk_widget_set_tooltip_text(
-   encrypt_param_phi_checkbutton,
+   mEncryptParamPhiCheckbutton,
    "WARNING: This enables the Phi function. "
    "Enabling the Phi function hardens 4crypt's Key Derivation Function, "
    "greatly increasing the work necessary to attack your password with "
    "brute force, but introduces the potential for cache-timing attacks. "
    "Do NOT use this feature unless you understand the security implications!");
-  encrypt_param_mem_dropdown = gtk_drop_down_new_from_strings(memory_usage_strings);
+  mEncryptParamMemoryDropdown = gtk_drop_down_new_from_strings(memoryUsageStrings);
   gtk_widget_set_tooltip_text(
-   encrypt_param_mem_dropdown,
+   mEncryptParamMemoryDropdown,
    "Choose how much RAM each thread of the Key Derivation Function should consume on Encrypt/Decrypt operations. "
    "Choosing more RAM will make the operation slower, but provide more security against brute force attacks.");
   // Iterations Box.
-  encrypt_param_iterations_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
-  encrypt_param_iterations_label = gtk_label_new("   Iterations:      ");
-  encrypt_param_iterations_text  = gtk_text_new();
-  gtk_widget_add_css_class(encrypt_param_iterations_text, "basic");
+  mEncryptParamIterationsBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
+  mEncryptParamIterationsLabel = gtk_label_new("   Iterations:      ");
+  mEncryptParamIterationsText = gtk_text_new();
+  gtk_widget_add_css_class(mEncryptParamIterationsText, "basic");
   gtk_widget_set_tooltip_text(
-   encrypt_param_iterations_text,
+   mEncryptParamIterationsText,
    "Choose how many times each thread of the Key Derivation Function will iterate. "
    "Increasing this value will linearly increase the amount of time and work necessary "
    "for each Key Derivation Function thread, linearly increasing the cost of a brute "
    "force attack.");
-  gtk_box_append(GTK_BOX(encrypt_param_iterations_box), encrypt_param_iterations_label);
-  gtk_box_append(GTK_BOX(encrypt_param_iterations_box), encrypt_param_iterations_text);
+  gtk_box_append(GTK_BOX(mEncryptParamIterationsBox), mEncryptParamIterationsLabel);
+  gtk_box_append(GTK_BOX(mEncryptParamIterationsBox), mEncryptParamIterationsText);
 
-  GtkEntryBuffer* entry {gtk_text_get_buffer(GTK_TEXT(encrypt_param_iterations_text))};
+  GtkEntryBuffer* entry {gtk_text_get_buffer(GTK_TEXT(mEncryptParamIterationsText))};
   gtk_entry_buffer_set_text(entry, "1", 1);
 
   // Threads Box.
-  encrypt_param_threads_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
-  encrypt_param_threads_label = gtk_label_new(" Thread Count:      ");
-  encrypt_param_threads_text  = gtk_text_new();
-  gtk_widget_add_css_class(encrypt_param_threads_text, "basic");
+  mEncryptParamThreadBox   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
+  mEncryptParamThreadLabel = gtk_label_new(" Thread Count:      ");
+  mEncryptParamThreadText  = gtk_text_new();
+  gtk_widget_add_css_class(mEncryptParamThreadText, "basic");
   gtk_widget_set_tooltip_text(
-   encrypt_param_threads_text,
+   mEncryptParamThreadText,
    "Choose how many parallel threads the Key Derivation Function will use. "
    "Increasing this value will multiply the amount of RAM used for key "
    "derivation. Be aware.");
-  gtk_box_append(GTK_BOX(encrypt_param_threads_box), encrypt_param_threads_label);
-  gtk_box_append(GTK_BOX(encrypt_param_threads_box), encrypt_param_threads_text);
+  gtk_box_append(GTK_BOX(mEncryptParamThreadBox), mEncryptParamThreadLabel);
+  gtk_box_append(GTK_BOX(mEncryptParamThreadBox), mEncryptParamThreadText);
 
-  entry = gtk_text_get_buffer(GTK_TEXT(encrypt_param_threads_text));
+  entry = gtk_text_get_buffer(GTK_TEXT(mEncryptParamThreadText));
   gtk_entry_buffer_set_text(entry, "1", 1);
 
   // Batch size.
-  encrypt_param_batch_size_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
-  encrypt_param_batch_size_label = gtk_label_new(" Thread Batch Size: ");
-  encrypt_param_batch_size_text  = gtk_text_new();
-  gtk_widget_add_css_class(encrypt_param_batch_size_text, "basic");
+  mEncryptParamBatchSizeBox   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
+  mEncryptParamBatchSizeLabel = gtk_label_new(" Thread Batch Size: ");
+  mEncryptParamBatchSizeText  = gtk_text_new();
+  gtk_widget_add_css_class(mEncryptParamBatchSizeText, "basic");
   gtk_widget_set_tooltip_text(
-   encrypt_param_batch_size_text,
+   mEncryptParamBatchSizeText,
    "Choose how many Key Derivation Function threads shall be executed in parallel."
    "If this number is less than the total number of KDF threads to execute, said "
    "threads shall be executed sequentially in batches.");
-  gtk_box_append(GTK_BOX(encrypt_param_batch_size_box), encrypt_param_batch_size_label);
-  gtk_box_append(GTK_BOX(encrypt_param_batch_size_box), encrypt_param_batch_size_text);
+  gtk_box_append(GTK_BOX(mEncryptParamBatchSizeBox), mEncryptParamBatchSizeLabel);
+  gtk_box_append(GTK_BOX(mEncryptParamBatchSizeBox), mEncryptParamBatchSizeText);
 
-  entry = gtk_text_get_buffer(GTK_TEXT(encrypt_param_batch_size_text));
+  entry = gtk_text_get_buffer(GTK_TEXT(mEncryptParamBatchSizeText));
   gtk_entry_buffer_set_text(entry, "1", 1);
 
   // Fill the box.
-  gtk_box_append(GTK_BOX(encrypt_param_box), encrypt_param_phi_checkbutton);
-  gtk_box_append(GTK_BOX(encrypt_param_box), encrypt_param_mem_dropdown);
-  gtk_box_append(GTK_BOX(encrypt_param_box), encrypt_param_iterations_box);
-  gtk_box_append(GTK_BOX(encrypt_param_box), encrypt_param_threads_box);
-  gtk_box_append(GTK_BOX(encrypt_param_box), encrypt_param_batch_size_box);
-  gtk_widget_set_visible(encrypt_param_box, FALSE);
+  gtk_box_append(GTK_BOX(mEncryptParamBox), mEncryptParamPhiCheckbutton);
+  gtk_box_append(GTK_BOX(mEncryptParamBox), mEncryptParamMemoryDropdown);
+  gtk_box_append(GTK_BOX(mEncryptParamBox), mEncryptParamIterationsBox);
+  gtk_box_append(GTK_BOX(mEncryptParamBox), mEncryptParamThreadBox);
+  gtk_box_append(GTK_BOX(mEncryptParamBox), mEncryptParamBatchSizeBox);
+  gtk_widget_set_visible(mEncryptParamBox, FALSE);
  }
 
 void
-Gui::init_decrypt_param_box(void)
+Gui::initDecryptParamBox(void)
  {
-  decrypt_param_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 1);
-  decrypt_param_batch_size_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
-  decrypt_param_batch_size_label = gtk_label_new(" TBS: ");
-  //decrypt_param_batch_size_label = gtk_label_new(" Thread Batch Size: ");
-  decrypt_param_batch_size_text  = gtk_text_new();
-  gtk_widget_add_css_class(decrypt_param_batch_size_text, "basic");
+  mDecryptParamBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 1);
+  mDecryptParamBatchSizeBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
+  mDecryptParamBatchSizeLabel = gtk_label_new(" TBS: ");
+  mDecryptParamBatchSizeText  = gtk_text_new();
+  gtk_widget_add_css_class(mDecryptParamBatchSizeText, "basic");
   gtk_widget_set_tooltip_text(
-   decrypt_param_batch_size_text,
+   mDecryptParamBatchSizeText,
    "Choose how many Key Derivation Function threads shall be executed in parallel."
    "If this number is less than the total number of KDF threads to execute, said "
    "threads shall be executed sequentially in batches.");
 
-  GtkEntryBuffer* eb {gtk_text_get_buffer(GTK_TEXT(decrypt_param_batch_size_text))};
+  GtkEntryBuffer* eb {gtk_text_get_buffer(GTK_TEXT(mDecryptParamBatchSizeText))};
   gtk_entry_buffer_set_text(eb, "1", 1);
 
-  gtk_box_append(GTK_BOX(decrypt_param_box),            decrypt_param_batch_size_box);
-  gtk_box_append(GTK_BOX(decrypt_param_batch_size_box), decrypt_param_batch_size_label);
-  gtk_box_append(GTK_BOX(decrypt_param_batch_size_box), decrypt_param_batch_size_text);
-  gtk_widget_set_visible(decrypt_param_box, FALSE);
+  gtk_box_append(GTK_BOX(mDecryptParamBox),          mDecryptParamBatchSizeBox);
+  gtk_box_append(GTK_BOX(mDecryptParamBatchSizeBox), mDecryptParamBatchSizeLabel);
+  gtk_box_append(GTK_BOX(mDecryptParamBatchSizeBox), mDecryptParamBatchSizeText);
+  gtk_widget_set_visible(mDecryptParamBox, FALSE);
  }
 
 void
-Gui::init_password_box(void)
+Gui::initPasswordBox(void)
  {
-  password_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
-  password_label = gtk_label_new("Password:");
-  password_entry = gtk_password_entry_new();
-  gtk_widget_set_tooltip_text(password_entry, "Enter the password here.");
-  g_signal_connect(password_entry, "activate", G_CALLBACK(on_password_entry_activate), this);
-  gtk_box_append(GTK_BOX(password_box), password_label);
-  gtk_box_append(GTK_BOX(password_box), password_entry);
-  gtk_widget_set_size_request(password_box, -1, TEXT_HEIGHT);
-  gtk_widget_set_hexpand(password_box,   TRUE);
-  gtk_widget_set_hexpand(password_entry, TRUE);
-  gtk_widget_set_visible(password_box,   FALSE);
-  gtk_editable_set_max_width_chars(GTK_EDITABLE(password_entry), Core::MAX_PW_BYTES);
+  mPasswordBox   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
+  mPasswordLabel = gtk_label_new("Password:");
+  mPasswordEntry = gtk_password_entry_new();
+  gtk_widget_set_tooltip_text(mPasswordEntry, "Enter the password here.");
+  g_signal_connect(mPasswordEntry, "activate", G_CALLBACK(onPasswordEntryActivate), this);
+  gtk_box_append(GTK_BOX(mPasswordBox), mPasswordLabel);
+  gtk_box_append(GTK_BOX(mPasswordBox), mPasswordEntry);
+  gtk_widget_set_size_request(mPasswordBox, -1, TEXT_HEIGHT);
+  gtk_widget_set_hexpand(mPasswordBox,   TRUE);
+  gtk_widget_set_hexpand(mPasswordEntry, TRUE);
+  gtk_widget_set_visible(mPasswordBox,   FALSE);
+  gtk_editable_set_max_width_chars(GTK_EDITABLE(mPasswordEntry), Core::MAX_PW_BYTES);
  }
 
 void
-Gui::init_reentry_box(void)
+Gui::initReentryBox(void)
  {
-  reentry_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
-  reentry_label = gtk_label_new("Re-Entry:");
-  reentry_entry = gtk_password_entry_new();
-  gtk_widget_set_tooltip_text(reentry_entry, "Re-enter the password here, to check for consistency.");
-  g_signal_connect(reentry_entry, "activate", G_CALLBACK(on_reentry_entry_activate), this);
-  gtk_box_append(GTK_BOX(reentry_box), reentry_label);
-  gtk_box_append(GTK_BOX(reentry_box), reentry_entry);
-  gtk_widget_set_size_request(reentry_box, -1, TEXT_HEIGHT);
-  gtk_widget_set_hexpand(reentry_box,   TRUE);
-  gtk_widget_set_hexpand(reentry_entry, TRUE);
-  gtk_widget_set_visible(reentry_box,   FALSE);
-  gtk_editable_set_max_width_chars(GTK_EDITABLE(reentry_entry), Core::MAX_PW_BYTES);
+  mReentryBox   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
+  mReentryLabel = gtk_label_new("Re-Entry:");
+  mReentryEntry = gtk_password_entry_new();
+  gtk_widget_set_tooltip_text(mReentryEntry, "Re-enter the password here, to check for consistency.");
+  g_signal_connect(mReentryEntry, "activate", G_CALLBACK(onReentryEntryActivate), this);
+  gtk_box_append(GTK_BOX(mReentryBox), mReentryLabel);
+  gtk_box_append(GTK_BOX(mReentryBox), mReentryEntry);
+  gtk_widget_set_size_request(mReentryBox, -1, TEXT_HEIGHT);
+  gtk_widget_set_hexpand(mReentryBox,   TRUE);
+  gtk_widget_set_hexpand(mReentryEntry, TRUE);
+  gtk_widget_set_visible(mReentryBox,   FALSE);
+  gtk_editable_set_max_width_chars(GTK_EDITABLE(mReentryEntry), Core::MAX_PW_BYTES);
  }
 
 void
-Gui::init_status_box(void)
+Gui::initStatusBox(void)
  {
-  status_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
-  status_label = gtk_label_new("Success!");
-  gtk_box_append(GTK_BOX(status_box), status_label);
-  gtk_widget_add_css_class(status_label, "success");
-  gtk_widget_set_hexpand(status_box, TRUE);
-  gtk_widget_set_hexpand(status_label, TRUE);
-  gtk_widget_set_valign(status_box, GTK_ALIGN_CENTER);
-  gtk_widget_set_halign(status_box, GTK_ALIGN_CENTER);
-  gtk_widget_set_visible(status_box, FALSE);
+  mStatusBox   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
+  mStatusLabel = gtk_label_new("Success!");
+  gtk_box_append(GTK_BOX(mStatusBox), mStatusLabel);
+  gtk_widget_add_css_class(mStatusLabel, "success");
+  gtk_widget_set_hexpand(mStatusBox, TRUE);
+  gtk_widget_set_hexpand(mStatusLabel, TRUE);
+  gtk_widget_set_valign(mStatusBox, GTK_ALIGN_CENTER);
+  gtk_widget_set_halign(mStatusBox, GTK_ALIGN_CENTER);
+  gtk_widget_set_visible(mStatusBox, FALSE);
  }
 
 void
-Gui::init_progress_box(void)
+Gui::initProgressBox(void)
  {
-  progress_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
-  progress_bar = gtk_progress_bar_new();
-  gtk_widget_set_hexpand(progress_bar, TRUE);
-  gtk_box_append(GTK_BOX(progress_box), progress_bar);
+  mProgressBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
+  mProgressBar = gtk_progress_bar_new();
+  gtk_widget_set_hexpand(mProgressBar, TRUE);
+  gtk_box_append(GTK_BOX(mProgressBox), mProgressBar);
   // Set the pulse of progress for each step of progress
-  gtk_progress_bar_set_pulse_step(GTK_PROGRESS_BAR(progress_bar), PROGRESS_PULSE_STEP);
-  gtk_widget_set_hexpand(progress_box, TRUE);
-  gtk_widget_set_vexpand(progress_box, TRUE);
-  gtk_widget_set_visible(progress_box, FALSE);
+  gtk_progress_bar_set_pulse_step(GTK_PROGRESS_BAR(mProgressBar), PROGRESS_PULSE_STEP);
+  gtk_widget_set_hexpand(mProgressBox, TRUE);
+  gtk_widget_set_vexpand(mProgressBox, TRUE);
+  gtk_widget_set_visible(mProgressBox, FALSE);
  }
 
 void
-Gui::attach_grid(void)
+Gui::attachGrid(void)
  {
-  int grid_y_idx {0};
+  int gridIdx_Y {0};
+  GtkGrid* grid {GTK_GRID(mGrid)};
 
-  GtkGrid* const my_grid {GTK_GRID(grid)};
   // Attach the widgets to the grid according to the following syntax:
-  gtk_grid_attach(my_grid, logo_image , 0, grid_y_idx, 4, 1);
-  ++grid_y_idx;
+  gtk_grid_attach(grid, mLogoImage, 0, gridIdx_Y, 4, 1);
+  ++gridIdx_Y;
 
-  gtk_grid_attach(my_grid, encrypt_button, 0, grid_y_idx, 2, 1);
-  gtk_grid_attach(my_grid, decrypt_button, 2, grid_y_idx, 2, 1);
-  ++grid_y_idx;
+  gtk_grid_attach(grid, mEncryptButton, 0, gridIdx_Y, 2, 1);
+  gtk_grid_attach(grid, mDecryptButton, 2, gridIdx_Y, 2, 1);
+  ++gridIdx_Y;
 
-  gtk_grid_attach(my_grid, strength_box, 0, grid_y_idx, 4, 1);
-  ++grid_y_idx;
+  gtk_grid_attach(grid, mStrengthBox, 0, gridIdx_Y, 4, 1);
+  ++gridIdx_Y;
 
-  gtk_grid_attach(my_grid, encrypt_param_box, 0, grid_y_idx, 4, 1);
-  ++grid_y_idx;
+  gtk_grid_attach(grid, mEncryptParamBox, 0, gridIdx_Y, 4, 1);
+  ++gridIdx_Y;
   
-  gtk_grid_attach(my_grid, decrypt_param_box, 0, grid_y_idx, 4, 1);
-  ++grid_y_idx;
+  gtk_grid_attach(grid, mDecryptParamBox, 0, gridIdx_Y, 4, 1);
+  ++gridIdx_Y;
 
-  gtk_grid_attach(my_grid, input_box  , 0, grid_y_idx, 4, 1);
-  ++grid_y_idx;
+  gtk_grid_attach(grid, mInputBox  , 0, gridIdx_Y, 4, 1);
+  ++gridIdx_Y;
 
-  gtk_grid_attach(my_grid, output_box  , 0, grid_y_idx, 4, 1);
-  ++grid_y_idx;
+  gtk_grid_attach(grid, mOutputBox  , 0, gridIdx_Y, 4, 1);
+  ++gridIdx_Y;
 
-  gtk_grid_attach(my_grid, password_box, 0, grid_y_idx, 4, 1);
-  ++grid_y_idx;
+  gtk_grid_attach(grid, mPasswordBox, 0, gridIdx_Y, 4, 1);
+  ++gridIdx_Y;
 
-  gtk_grid_attach(my_grid, reentry_box , 0, grid_y_idx, 4, 1);
-  ++grid_y_idx;
+  gtk_grid_attach(grid, mReentryBox, 0, gridIdx_Y, 4, 1);
+  ++gridIdx_Y;
 
-  gtk_grid_attach(my_grid, start_button, 0, grid_y_idx, 4, 1);
-  ++grid_y_idx;
+  gtk_grid_attach(grid, mStartButton, 0, gridIdx_Y, 4, 1);
+  ++gridIdx_Y;
 
-  gtk_grid_attach(my_grid, progress_box, 0, grid_y_idx, 4, 1);
-  ++grid_y_idx;
+  gtk_grid_attach(grid, mProgressBox, 0, gridIdx_Y, 4, 1);
+  ++gridIdx_Y;
 
-  gtk_grid_attach(my_grid, status_box, 0, grid_y_idx, 4, 1);
-  ++grid_y_idx;
+  gtk_grid_attach(grid, mStatusBox, 0, gridIdx_Y, 4, 1);
+  ++gridIdx_Y;
 
   // Set the grid as a child of the application window, then present the application window.
-  gtk_window_set_child(GTK_WINDOW(application_window), grid);
+  gtk_window_set_child(GTK_WINDOW(mApplicationWindow), mGrid);
  }
 
 void
-Gui::set_mode(Mode m)
+Gui::setMode(Mode m)
  {
   mStatusIsBlinkingMtx.lock();
   mStatusIsBlinking = false;
   mStatusIsBlinkingMtx.unlock();
-  if (gtk_widget_has_css_class(encrypt_button, "highlight"))
-    gtk_widget_remove_css_class(encrypt_button, "highlight");
-  if (gtk_widget_has_css_class(decrypt_button, "highlight"))
-    gtk_widget_remove_css_class(decrypt_button, "highlight");
-  mode = m;
-  const gboolean expert_mode {gtk_check_button_get_active(GTK_CHECK_BUTTON(strength_expert_checkbutton))};
-  switch (mode)
+  if (gtk_widget_has_css_class(mEncryptButton, "highlight"))
+    gtk_widget_remove_css_class(mEncryptButton, "highlight");
+  if (gtk_widget_has_css_class(mDecryptButton, "highlight"))
+    gtk_widget_remove_css_class(mDecryptButton, "highlight");
+  mMode = m;
+  const gboolean expert_mode {gtk_check_button_get_active(GTK_CHECK_BUTTON(mStrengthExpertCheckbutton))};
+  switch (mMode)
    {
     case Mode::ENCRYPT:
-      gtk_widget_add_css_class(encrypt_button, "highlight");
-      gtk_widget_set_visible(password_box,      TRUE);
-      gtk_widget_set_visible(reentry_box,       TRUE);
-      gtk_widget_set_visible(encrypt_param_box, expert_mode);
-      gtk_widget_set_visible(strength_strong_checkbutton  , TRUE);
-      gtk_widget_set_visible(strength_standard_checkbutton, TRUE);
-      gtk_widget_set_visible(strength_fast_checkbutton    , TRUE);
-      gtk_widget_set_visible(decrypt_param_box, FALSE);
+      gtk_widget_add_css_class(mEncryptButton, "highlight");
+      gtk_widget_set_visible(mPasswordBox,      TRUE);
+      gtk_widget_set_visible(mReentryBox,       TRUE);
+      gtk_widget_set_visible(mEncryptParamBox,  expert_mode);
+      gtk_widget_set_visible(mStrengthStrongCheckbutton,   TRUE);
+      gtk_widget_set_visible(mStrengthStandardCheckbutton, TRUE);
+      gtk_widget_set_visible(mStrengthFastCheckbutton, TRUE);
+      gtk_widget_set_visible(mDecryptParamBox, FALSE);
       break;
     case Mode::DECRYPT:
-      gtk_widget_add_css_class(decrypt_button, "highlight");
-      gtk_widget_set_visible(password_box,      TRUE);
-      gtk_widget_set_visible(reentry_box,       FALSE);
-      gtk_widget_set_visible(encrypt_param_box, FALSE);
-      gtk_widget_set_visible(strength_strong_checkbutton  , FALSE);
-      gtk_widget_set_visible(strength_standard_checkbutton, FALSE);
-      gtk_widget_set_visible(strength_fast_checkbutton    , FALSE);
-      gtk_widget_set_visible(decrypt_param_box, expert_mode);
+      gtk_widget_add_css_class(mDecryptButton, "highlight");
+      gtk_widget_set_visible(mPasswordBox,     TRUE);
+      gtk_widget_set_visible(mReentryBox,      FALSE);
+      gtk_widget_set_visible(mEncryptParamBox, FALSE);
+      gtk_widget_set_visible(mStrengthStrongCheckbutton,   FALSE);
+      gtk_widget_set_visible(mStrengthStandardCheckbutton, FALSE);
+      gtk_widget_set_visible(mStrengthFastCheckbutton, FALSE);
+      gtk_widget_set_visible(mDecryptParamBox, expert_mode);
       break;
     case Mode::NONE:
-      output_text_activated = false;
-      gtk_widget_set_visible(password_box,      FALSE);
-      gtk_widget_set_visible(reentry_box ,      FALSE);
-      gtk_widget_set_visible(encrypt_param_box, FALSE);
-      gtk_widget_set_visible(strength_strong_checkbutton  , FALSE);
-      gtk_widget_set_visible(strength_standard_checkbutton, FALSE);
-      gtk_widget_set_visible(strength_fast_checkbutton    , FALSE);
-      gtk_widget_set_visible(decrypt_param_box, FALSE);
+      mOutputTextActivated = false;
+      gtk_widget_set_visible(mPasswordBox,     FALSE);
+      gtk_widget_set_visible(mReentryBox,      FALSE);
+      gtk_widget_set_visible(mEncryptParamBox, FALSE);
+      gtk_widget_set_visible(mStrengthStrongCheckbutton, FALSE);
+      gtk_widget_set_visible(mStrengthStandardCheckbutton, FALSE);
+      gtk_widget_set_visible(mStrengthFastCheckbutton, FALSE);
+      gtk_widget_set_visible(mDecryptParamBox, FALSE);
 
-      GtkEntryBuffer* eb {gtk_text_get_buffer(GTK_TEXT(input_text))};
+      GtkEntryBuffer* eb {gtk_text_get_buffer(GTK_TEXT(mInputText))};
       gtk_entry_buffer_delete_text(eb, 0, -1); // Delete all text.
-      eb = gtk_text_get_buffer(GTK_TEXT(output_text));
+      eb = gtk_text_get_buffer(GTK_TEXT(mOutputText));
       gtk_entry_buffer_delete_text(eb, 0, -1); // Delete all text.
 
-      GtkEditable* editable {GTK_EDITABLE(password_entry)};
+      GtkEditable* editable {GTK_EDITABLE(mPasswordEntry)};
       gtk_editable_delete_text(editable, 0, -1); // Delete all text.
-      editable = GTK_EDITABLE(reentry_entry);
+      editable = GTK_EDITABLE(mReentryEntry);
       gtk_editable_delete_text(editable, 0, -1); // Delete all text.
 
-      gtk_widget_set_visible(GTK_WIDGET(password_box), FALSE);
-      gtk_widget_set_visible(GTK_WIDGET(reentry_box),  FALSE);
+      gtk_widget_set_visible(GTK_WIDGET(mPasswordBox), FALSE);
+      gtk_widget_set_visible(GTK_WIDGET(mReentryBox),  FALSE);
       break;
    }
  }

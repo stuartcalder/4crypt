@@ -729,7 +729,7 @@ SSC_CodeError_t Core::describe(
     *errtype = ErrType::CORE;
     return err;
   }
-  if (!Core::verifyBasicMetadata(mypod, InOutDir::INPUT)) {
+  if (not Core::verifyBasicMetadata(mypod, InOutDir::INPUT)) {
     *errdir = InOutDir::INPUT;
     *errtype = ErrType::CORE;
     return ERROR_METADATA_VALIDATION_FAILED;
