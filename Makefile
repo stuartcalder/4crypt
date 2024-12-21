@@ -1,6 +1,6 @@
 Includes := -I.
 Objects  := Obj/CommandLineArg.o Obj/Core.o Obj/Util.o
-LinkLibs := -lSSC -lPPQ
+LinkLibs := -lSSC -lPPQ -lTSC
 CppStd   := -std=c++20
 Lto      := -flto
 Optimize := -O3

@@ -3,8 +3,11 @@
 // SSC
 #include <SSC/Terminal.h>
 #include <SSC/Print.h>
-// PPQ
+// PPQ TODO: Remove me!
 #include <PPQ/Skein512.h>
+// TSC
+#include <TSC/Skein512.h>
+#include <TSC/Catena512.h>
 // C++ STL
 #include <limits>
 #include <thread>
@@ -46,14 +49,14 @@ std::string Core::entropy_prompt{
 static void kdf(
  uint8_t*       R_ output,
  PlainOldData*  R_ pod,
- PPQ_Catena512* R_ catena,
+ TSC_Catena512* R_ catena,
  SSC_Error_t*   R_ err,
  uint64_t          thread_idx)
 {
   uint8_t input    [sizeof(pod->catena_salt) + sizeof(thread_idx)];
-  uint8_t new_salt [PPQ_CATENA512_SALT_BYTES];
+  uint8_t new_salt [TSC_CATENA512_SALT_BYTES];
 
-  PPQ_Catena512_init(catena);
+  TSC_Catena512_init(catena, pod->memory_low);
   memcpy(input, pod->catena_salt, sizeof(pod->catena_salt));
   {
     uint64_t ti;
@@ -65,42 +68,32 @@ static void kdf(
   }
 
   // Hash the inputs into a unique salt.
-  PPQ_Skein512_hash(
-   &catena->ubi512,
-   new_salt,
-   input,
-   sizeof(input),
-   sizeof(new_salt));
+  TSC_Skein512_hash(
+    &catena->skein512,
+    new_salt,
+    sizeof(new_salt),
+    input,
+    sizeof(input));
   // Copy that new salt into Catena.
   static_assert(sizeof(catena->salt) == sizeof(new_salt));
   memcpy(catena->salt, new_salt, sizeof(new_salt));
 
   // Run the requested Catena KDF.
-  if (pod->flags & Core::ENABLE_PHI)
-    *err = PPQ_Catena512_usePhi(
-     catena,
-     output,
-     pod->password_buffer,
-     pod->password_size,
-     pod->memory_low,
-     pod->memory_high,
-     pod->iterations);
-  else
-    *err = PPQ_Catena512_noPhi(
-     catena,
-     output,
-     pod->password_buffer,
-     pod->password_size,
-     pod->memory_low,
-     pod->memory_high,
-     pod->iterations);
+  *err = TSC_Catena512_get(
+    catena,
+    output,
+    pod->password_buffer,
+    pod->password_size,
+    pod->memory_low,
+    pod->iterations,
+    pod->flags & Core::ENABLE_PHI);
 }
 
 Core::Core()
 {
   this->pod = new PlainOldData;
   PlainOldData::init(*this->getPod());
-  PPQ_CSPRNG_init(&this->getPod()->rng);
+  TSC_CSPRNG_init(&this->getPod()->rng);
 }
 
 Core::~Core()
@@ -113,9 +106,9 @@ consteval uint64_t Core::getHeaderSize()
 {
   uint64_t size = 0;
   static_assert(sizeof(Core::magic) == 4);
-  static_assert(PPQ_THREEFISH512_TWEAK_BYTES == 16);
-  static_assert(PPQ_CATENA512_SALT_BYTES == 32);
-  static_assert(PPQ_THREEFISH512COUNTERMODE_IV_BYTES == 32);
+  static_assert(TSC_THREEFISH512_TWEAK_BYTES == 16);
+  static_assert(TSC_CATENA512_SALT_BYTES == 32);
+  static_assert(TSC_THREEFISH512CTR_IV_BYTES == 32);
   size +=  4; // 4crypt magic bytes.
   size +=  4; // Mem Low, High, Iter count, Phi usage.
   size +=  8; // Size of the file, little-endian encoded.
@@ -143,8 +136,8 @@ static_assert(Core::getMinimumOutputSize() % Core::PAD_FACTOR == 0);
 
 void Core::PlainOldData::init(PlainOldData& pod)
 {
-  pod.tf_ctr    = PPQ_THREEFISH512COUNTERMODE_NULL_LITERAL;
-  pod.rng       = PPQ_CSPRNG_NULL_LITERAL;
+  pod.tf_ctr    = TSC_THREEFISH512CTR_NULL_LITERAL;
+  pod.rng       = TSC_CSPRNG_NULL_LITERAL;
   memset(pod.hash_buffer    , 0, sizeof(pod.hash_buffer));
   memset(pod.tf_sec_key     , 0, sizeof(pod.tf_sec_key));
   memset(pod.tf_tweak       , 0, sizeof(pod.tf_tweak));
@@ -158,7 +151,7 @@ void Core::PlainOldData::init(PlainOldData& pod)
   pod.output_map = SSC_MEMMAP_NULL_LITERAL;
   pod.input_filename  = nullptr;
   pod.output_filename = nullptr;
-  pod.ubi512 = &pod.rng.ubi512;
+  pod.ubi512 = &pod.rng.skein512;
   pod.tf_ctr_idx = 0;
   pod.input_filename_size  = 0;
   pod.output_filename_size = 0;
@@ -350,27 +343,25 @@ SSC_Error_t Core::normalizePadding(const uint64_t input_filesize)
 void Core::genRandomElements()
 {
   PlainOldData* mypod = this->getPod();
-  PPQ_CSPRNG*   myrng = &mypod->rng;
+  TSC_CSPRNG*   myrng = &mypod->rng;
 
   // Threefish512 Tweak.
-  PPQ_CSPRNG_get(
+  TSC_CSPRNG_getBytes(
    myrng,
    mypod->tf_tweak,
-   PPQ_THREEFISH512_TWEAK_BYTES);
+   TSC_THREEFISH512_TWEAK_BYTES);
   // Catena salt.
-  PPQ_CSPRNG_get(
+  TSC_CSPRNG_getBytes(
    myrng,
    mypod->catena_salt,
    sizeof(mypod->catena_salt));
   // Threefish512 CTR IV.
-  PPQ_CSPRNG_get(
+  TSC_CSPRNG_getBytes(
    myrng,
    mypod->tf_ctr_iv,
    sizeof(mypod->tf_ctr_iv));
   // Destroy the RNG after we're finished.
   SSC_secureZero(myrng, sizeof(*myrng));
-  // Initialize UBI512 again since it's pointing to the one inside mypod->rng.
-  PPQ_UBI512_init(mypod->ubi512);
 }
 
 SSC_Error_t Core::runKDF()
@@ -378,8 +369,8 @@ SSC_Error_t Core::runKDF()
   PlainOldData*  mypod         {this->getPod()};
   const uint64_t num_threads   {mypod->thread_count};
   const uint64_t batch_size    {mypod->thread_batch_size};
-  const uint64_t output_bytes  {num_threads * PPQ_THREEFISH512_BLOCK_BYTES};
-  PPQ_Catena512* const catenas {new PPQ_Catena512[num_threads]};
+  const uint64_t output_bytes  {num_threads * TSC_THREEFISH512_BLOCK_BYTES};
+  TSC_Catena512* const catenas {new TSC_Catena512[num_threads]};
   SSC_Error_t* const   errors  {new SSC_Error_t[num_threads]};
   uint8_t* const       outputs {new uint8_t[output_bytes]};
   {
@@ -396,7 +387,7 @@ SSC_Error_t Core::runKDF()
         std::construct_at(
          threads + offset,
          kdf,
-         outputs + (offset * PPQ_THREEFISH512_BLOCK_BYTES),
+         outputs + (offset * TSC_THREEFISH512_BLOCK_BYTES),
          mypod,
          catenas + offset,
          errors  + offset,
@@ -410,34 +401,31 @@ SSC_Error_t Core::runKDF()
     }
     delete[] threads;
   }
-  SSC_secureZero(catenas, sizeof(PPQ_Catena512) * num_threads);
+  SSC_secureZero(catenas, sizeof(TSC_Catena512) * num_threads);
   delete[] catenas;
   SSC_secureZero(mypod->password_buffer, sizeof(mypod->password_buffer));
 
   // Combine all the outputs into one.
   for (uint64_t i {1}; i < num_threads; ++i)
-    SSC_xor64(outputs, outputs + (i * PPQ_THREEFISH512_BLOCK_BYTES));
+    SSC_xor64(outputs, outputs + (i * TSC_THREEFISH512_BLOCK_BYTES));
   // Hash into 128 bytes of output.
-  PPQ_Skein512_hash(
+  TSC_Skein512_hash(
    mypod->ubi512,
    mypod->hash_buffer,
+   sizeof(mypod->hash_buffer),
    outputs,
-   PPQ_THREEFISH512_BLOCK_BYTES,
-   sizeof(mypod->hash_buffer));
+   TSC_THREEFISH512_BLOCK_BYTES);
   SSC_secureZero(outputs, output_bytes);
   delete[] outputs;
   // The first 64 become the secret encryption key; the latter 64 become the authentication key.
-  memcpy(mypod->tf_sec_key, mypod->hash_buffer, PPQ_THREEFISH512_BLOCK_BYTES);
-  memcpy(mypod->mac_key   , mypod->hash_buffer + PPQ_THREEFISH512_BLOCK_BYTES, PPQ_THREEFISH512_BLOCK_BYTES);
+  memcpy(mypod->tf_sec_key, mypod->hash_buffer, TSC_THREEFISH512_BLOCK_BYTES);
+  memcpy(mypod->mac_key   , mypod->hash_buffer + TSC_THREEFISH512_BLOCK_BYTES, TSC_THREEFISH512_BLOCK_BYTES);
   SSC_secureZero(mypod->hash_buffer, sizeof(mypod->hash_buffer));
-  // Initialize the PPQ_Threefish512Static inside @mypod->tf_ctr.
-  PPQ_Threefish512Static_init(
-   &mypod->tf_ctr.threefish512,
-   mypod->tf_sec_key,
-   mypod->tf_tweak);
-  // Initialize @mypod->tf_ctr itself.
-  PPQ_Threefish512CounterMode_init(
+  // Initialize TSC_Threefish512Ctr.
+  TSC_Threefish512Ctr_init(
    &mypod->tf_ctr,
+   mypod->tf_sec_key,
+   mypod->tf_tweak,
    mypod->tf_ctr_iv);
 
   for (uint64_t i {0}; i < num_threads; ++i) {
@@ -454,13 +442,13 @@ SSC_Error_t Core::verifyMAC(const uint8_t* R_ mac, const uint8_t* R_ begin, cons
 {
   alignas(uint64_t) uint8_t tmp_mac [MAC_SIZE];
   PlainOldData* mypod {this->getPod()};
-  PPQ_Skein512_mac(
+  TSC_Skein512_mac(
    mypod->ubi512,
    tmp_mac,
+   sizeof(tmp_mac),
    begin,
-   mypod->mac_key,
    size,
-   sizeof(tmp_mac));
+   mypod->mac_key);
   if (SSC_constTimeMemDiff(tmp_mac, mac, MAC_SIZE))
     return -1;
   return 0;
@@ -640,8 +628,8 @@ const uint8_t* Core::readHeaderPlaintext(
     }
   }
   // Threefish512 Tweak.
-  memcpy(mypod->tf_tweak, from, PPQ_THREEFISH512_TWEAK_BYTES);
-  from += PPQ_THREEFISH512_TWEAK_BYTES;
+  memcpy(mypod->tf_tweak, from, TSC_THREEFISH512_TWEAK_BYTES);
+  from += TSC_THREEFISH512_TWEAK_BYTES;
   // CATENA Salt.
   memcpy(mypod->catena_salt, from, sizeof(mypod->catena_salt));
   from += sizeof(mypod->catena_salt);
@@ -673,12 +661,12 @@ const uint8_t* Core::readHeaderCiphertext(const uint8_t* R_ from, SSC_CodeError_
   // 8 Ciphered padding size bytes; 8 ciphered reserve bytes.
   {
     uint64_t tmp[2];
-    PPQ_Threefish512CounterMode_xorKeystream(
-     &mypod->tf_ctr,
-     tmp,
-     from,
-     sizeof(tmp),
-     mypod->tf_ctr_idx);
+    TSC_Threefish512Ctr_xor_2(
+      &mypod->tf_ctr,
+      reinterpret_cast<uint8_t*>(tmp),
+      from,
+      sizeof(tmp),
+      mypod->tf_ctr_idx);
     mypod->tf_ctr_idx += sizeof(tmp);
     from += sizeof(tmp);
     if constexpr(Core::is_little_endian)
@@ -735,7 +723,7 @@ SSC_CodeError_t Core::describe(
     return ERROR_METADATA_VALIDATION_FAILED;
   }
 
-  alignas(uint64_t) uint8_t mac [PPQ_THREEFISH512_BLOCK_BYTES];
+  alignas(uint64_t) uint8_t mac [TSC_THREEFISH512_BLOCK_BYTES];
   memcpy(mac, mypod->input_map.ptr + num_in - sizeof(mac), sizeof(mac));
 
   // Print plaintext header information from beginning to end.
@@ -757,7 +745,7 @@ SSC_CodeError_t Core::describe(
   printf("Each KDF thread iterates........%" PRIu8 " time(s).\n", mypod->iterations);
 
   printf("The Threefish512 Tweak is.......0x");
-  SSC_printBytes(mypod->tf_tweak, PPQ_THREEFISH512_TWEAK_BYTES);
+  SSC_printBytes(mypod->tf_tweak, TSC_THREEFISH512_TWEAK_BYTES);
 
   printf("\nThe Catena512 Salt is...........0x");
   SSC_printBytes(mypod->catena_salt, sizeof(mypod->catena_salt));
@@ -842,15 +830,15 @@ void Core::getPassword(bool enter_twice, bool entropy)
      PW_BUFFER_BYTES));
     SSC_Terminal_end();
     if (entropy) {
-      PPQ_Skein512_hashNative(
-       mypod->ubi512,
-       mypod->hash_buffer,
-       mypod->entropy_buffer,
-       mypod->entropy_size);
+      TSC_Skein512_hashNative(
+        mypod->ubi512,
+        mypod->hash_buffer,
+        mypod->entropy_buffer,
+        mypod->entropy_size);
       SSC_secureZero(mypod->entropy_buffer, sizeof(mypod->entropy_buffer));
       mypod->entropy_size = 0;
-      PPQ_CSPRNG_reseed(&mypod->rng, mypod->hash_buffer);
-      SSC_secureZero(mypod->hash_buffer, PPQ_THREEFISH512_BLOCK_BYTES);
+      TSC_CSPRNG_reseedFromBytes(&mypod->rng, mypod->hash_buffer);
+      SSC_secureZero(mypod->hash_buffer, TSC_THREEFISH512_BLOCK_BYTES);
     }
   }
 }
@@ -880,8 +868,8 @@ uint8_t* Core::writeHeader(uint8_t* to)
     to += sizeof(size);
   }
   // Threefish512 Tweak.
-  memcpy(to, mypod->tf_tweak, PPQ_THREEFISH512_TWEAK_BYTES);
-  to += PPQ_THREEFISH512_TWEAK_BYTES;
+  memcpy(to, mypod->tf_tweak, TSC_THREEFISH512_TWEAK_BYTES);
+  to += TSC_THREEFISH512_TWEAK_BYTES;
   // CATENA Salt.
   memcpy(to, mypod->catena_salt, sizeof(mypod->catena_salt));
   to += sizeof(mypod->catena_salt);
@@ -909,12 +897,12 @@ uint8_t* Core::writeHeader(uint8_t* to)
     else
       tmp[0] = SSC_swap64(mypod->padding_size);
     tmp[1] = 0;
-    PPQ_Threefish512CounterMode_xorKeystream(
-     &mypod->tf_ctr,
-     to,
-     tmp,
-     sizeof(tmp),
-     mypod->tf_ctr_idx);
+    TSC_Threefish512Ctr_xor_2(
+      &mypod->tf_ctr,
+      to,
+      reinterpret_cast<uint8_t*>(tmp),
+      sizeof(tmp),
+      mypod->tf_ctr_idx);
     mypod->tf_ctr_idx += sizeof(tmp);
     to += sizeof(tmp);
   }
@@ -926,22 +914,21 @@ uint8_t* Core::writeCiphertext(uint8_t* R_ to, const uint8_t* R_ from, const siz
   PlainOldData* mypod {this->getPod()};
   // Encipher padding bytes, if applicable.
   if (mypod->padding_size) {
-    PPQ_Threefish512CounterMode_xorKeystream(
-     &mypod->tf_ctr,
-     to,
-     to,
-     mypod->padding_size,
-     mypod->tf_ctr_idx);
+    TSC_Threefish512Ctr_xor_1(
+      &mypod->tf_ctr,
+      to,
+      mypod->padding_size,
+      mypod->tf_ctr_idx);
     to                += mypod->padding_size;
     mypod->tf_ctr_idx += mypod->padding_size;
   }
   // Encipher the plaintext.
-  PPQ_Threefish512CounterMode_xorKeystream(
-   &mypod->tf_ctr,
-   to,
-   from,
-   num,
-   mypod->tf_ctr_idx);
+  TSC_Threefish512Ctr_xor_2(
+    &mypod->tf_ctr,
+    to,
+    from,
+    num,
+    mypod->tf_ctr_idx);
   to                += num;
   mypod->tf_ctr_idx += num;
   return to;
@@ -950,26 +937,26 @@ uint8_t* Core::writeCiphertext(uint8_t* R_ to, const uint8_t* R_ from, const siz
 void Core::writePlaintext(uint8_t* R_ to, const uint8_t* R_ from, const size_t num)
 {
   PlainOldData* mypod {this->getPod()};
-  PPQ_Threefish512CounterMode_xorKeystream(
-   &mypod->tf_ctr,
-   to,
-   from,
-   num,
-   mypod->tf_ctr_idx);
-  to                += num;
+  TSC_Threefish512Ctr_xor_2(
+    &mypod->tf_ctr,
+    to,
+    from,
+    num,
+    mypod->tf_ctr_idx);
+  to += num;
   mypod->tf_ctr_idx += num;
 }
 
 void Core::writeMAC(uint8_t* R_ to, const uint8_t* R_ from, const size_t num)
 {
   PlainOldData* mypod {this->getPod()};
-  PPQ_Skein512_mac(
-   mypod->ubi512,
-   to,
-   from,
-   mypod->mac_key,
-   num,
-   sizeof(mypod->mac_key));
+  TSC_Skein512_mac(
+    mypod->ubi512,
+    to,
+    sizeof(mypod->mac_key),
+    from,
+    num,
+    mypod->mac_key);
 }
 
 bool Core::verifyBasicMetadata(

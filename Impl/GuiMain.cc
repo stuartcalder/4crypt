@@ -416,7 +416,7 @@ Gui::encryptThread(
      }
     Pod_t::del(*pod);
     Pod_t::init(*pod);
-    PPQ_CSPRNG_init(&pod->rng);
+    TSC_CSPRNG_init(&pod->rng);
 
     std::thread th {&statusThread, gui};
     th.detach();
@@ -462,7 +462,7 @@ Gui::decryptThread(
      gui);
     Pod_t::del(*pod);
     Pod_t::init(*pod);
-    PPQ_CSPRNG_init(&pod->rng);
+    TSC_CSPRNG_init(&pod->rng);
     if (gui->mOperationData.code_error == 0)
      {
       g_idle_add([](void* vgui) -> gboolean
@@ -526,7 +526,7 @@ Gui::onStartButtonClicked(GtkWidget* button, void* self)
    {
     Pod_t::del(*pod);
     Pod_t::init(*pod);
-    PPQ_CSPRNG_init(&pod->rng);
+    TSC_CSPRNG_init(&pod->rng);
    }
 
   if (not gui->getPassword())
