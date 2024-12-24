@@ -77,6 +77,11 @@ static void kdf(
   // Copy that new salt into Catena.
   static_assert(sizeof(catena->salt) == sizeof(new_salt));
   memcpy(catena->salt, new_salt, sizeof(new_salt));
+  printf("The input in kdf() was 0x");
+  SSC_printBytes(input, sizeof(input));
+  printf("\nThe new_salt in kdf() was 0x");
+  SSC_printBytes(new_salt, sizeof(new_salt));
+  puts("");
 
   // Run the requested Catena KDF.
   *err = TSC_Catena512_get(
