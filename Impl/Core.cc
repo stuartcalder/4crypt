@@ -56,7 +56,7 @@ static void kdf(
   uint8_t input    [sizeof(pod->catena_salt) + sizeof(thread_idx)];
   uint8_t new_salt [TSC_CATENA512_SALT_BYTES];
 
-  TSC_Catena512_init(catena, pod->memory_low);
+  TSC_Catena512_init(catena, pod->memory_high);
   memcpy(input, pod->catena_salt, sizeof(pod->catena_salt));
   {
     uint64_t ti;
@@ -92,6 +92,9 @@ static void kdf(
     pod->memory_low,
     pod->iterations,
     pod->flags & Core::ENABLE_PHI);
+  printf("kdf(): 0x");
+  SSC_printBytes(output, TSC_THREEFISH512_BLOCK_BYTES);
+  puts("");
 }
 
 Core::Core()
