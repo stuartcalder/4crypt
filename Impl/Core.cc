@@ -81,7 +81,14 @@ static void kdf(
   SSC_printBytes(input, sizeof(input));
   printf("\nThe new_salt in kdf() was 0x");
   SSC_printBytes(new_salt, sizeof(new_salt));
-  puts("");
+  putchar('\n');
+
+  printf("The Catena512 salt in 4crypt is: 0x");
+  SSC_printBytes(catena->salt, sizeof(catena->salt));
+  putchar('\n');
+
+  //FIXME: Fill the X buffer, so I can print it from the Rust side and check its alignment.
+  memset(catena->x, 0xff, sizeof(catena->x));
 
   // Run the requested Catena KDF.
   *err = TSC_Catena512_get(
@@ -94,7 +101,7 @@ static void kdf(
     pod->flags & Core::ENABLE_PHI);
   printf("kdf(): 0x");
   SSC_printBytes(output, TSC_THREEFISH512_BLOCK_BYTES);
-  puts("");
+  putchar('\n');
 }
 
 Core::Core()
