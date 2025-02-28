@@ -7,10 +7,6 @@
 #include <SSC/Typedef.h>
 #include <SSC/Memory.h>
 #include <SSC/MemMap.h>
-// PPQ TODO: Remove me!
-#include <PPQ/CSPRNG.h>
-#include <PPQ/Catena512.h>
-#include <PPQ/Threefish512.h>
 // TSC
 #include <TSC/CSPRNG.h>
 #include <TSC/Catena512.h>
@@ -41,6 +37,7 @@ namespace fourcrypt
     static constexpr const SSC_BitFlag8_t ENTER_PASS_ONCE    = 0b00000100; // Don't re-enter password during encrypt.
   
     // 4crypt Code Errors.
+    static constexpr const SSC_CodeError_t ERROR_NONE                       =   0;
     static constexpr const SSC_CodeError_t ERROR_NO_INPUT_FILENAME          =  -1;
     static constexpr const SSC_CodeError_t ERROR_NO_OUTPUT_FILENAME         =  -2;
     static constexpr const SSC_CodeError_t ERROR_INPUT_MEMMAP_FAILED        =  -3;

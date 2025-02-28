@@ -35,7 +35,7 @@ input_argproc_processor(SSC_ArgParser* R_ ap, void* R_ dt)
   pod->input_filename = new char[ap->size + 1];
   pod->input_filename_size = ap->size;
   memcpy(pod->input_filename, ap->to_read, ap->size + 1);
-  return 0;
+  return SSC_OK;
 }
 
 static void
@@ -239,7 +239,7 @@ ArgProc::high_mem(const int argc, char** R_ argv, const int offset, void* R_ dat
      pod->memory_high = parse_memory(ap->to_read, ap->size);
      if (pod->memory_low > pod->memory_high)
        pod->memory_low = pod->memory_high;
-     return 0;
+     return SSC_OK;
    });
 }
 
@@ -258,7 +258,7 @@ ArgProc::iterations(const int argc, char** R_ argv, const int offset, void* R_ d
      PlainOldData* pod = static_cast<PlainOldData*>(dt);
      pod->iterations = parse_iterations(ap->to_read, ap->size);
      SSC_assertMsg(pod->iterations > 0, "Error: Invalid iteration count %d!\n", static_cast<int>(pod->iterations));
-     return 0;
+     return SSC_OK;
    });
 }
 
@@ -278,7 +278,7 @@ ArgProc::low_mem(const int argc, char** R_ argv, const int offset, void* R_ data
      pod->memory_low = parse_memory(ap->to_read, ap->size);
      if (pod->memory_high < pod->memory_low)
        pod->memory_high = pod->memory_low;
-     return 0;
+     return SSC_OK;
    });
 }
 
@@ -298,7 +298,7 @@ ArgProc::output(const int argc, char** R_ argv, const int offset, void* R_ data)
      pod->output_filename = new char[ap->size + 1];
      pod->output_filename_size = ap->size;
      memcpy(pod->output_filename, ap->to_read, ap->size + 1);
-     return 0;
+     return SSC_OK;
    });
 }
 
@@ -324,7 +324,7 @@ ArgProc::pad_by(const int argc, char** R_ argv, const int offset, void* R_ data)
    [](SSC_ArgParser* R_ ap, void* R_ dt) -> SSC_Error_t {
      PlainOldData* pod = static_cast<PlainOldData*>(dt);
      pod->padding_size = parse_padding(ap->to_read, ap->size);
-     return 0;
+     return SSC_OK;
    });
 }
 
@@ -350,7 +350,7 @@ ArgProc::threads(const int argc, char** R_ argv, const int offset, void* R_ data
    [](SSC_ArgParser* R_ ap, void* R_ dt) -> SSC_Error_t {
      PlainOldData* pod = static_cast<PlainOldData*>(dt);
      pod->thread_count = parse_threads(ap->to_read, ap->size);
-     return 0;
+     return SSC_OK;
    });
 }
 
@@ -370,7 +370,7 @@ ArgProc::use_mem(const int argc, char** R_ argv, const int offset, void* R_ data
      uint8_t mem = parse_memory(ap->to_read, ap->size);
      pod->memory_high = mem;
      pod->memory_low = mem;
-     return 0;
+     return SSC_OK;
    });
 }
 
@@ -396,6 +396,6 @@ ArgProc::batch_size(const int argc, char** R_ argv, const int offset, void* R_ d
    [](SSC_ArgParser* R_ ap, void* R_ dt) -> SSC_Error_t {
      PlainOldData* pod = static_cast<PlainOldData*>(dt);
      pod->thread_batch_size = parse_batch(ap->to_read, ap->size);
-     return 0;
+     return SSC_OK;
    });
 }

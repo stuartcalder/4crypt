@@ -3,8 +3,6 @@
 // SSC
 #include <SSC/Terminal.h>
 #include <SSC/Print.h>
-// PPQ TODO: Remove me!
-#include <PPQ/Skein512.h>
 // TSC
 #include <TSC/Skein512.h>
 #include <TSC/Catena512.h>
@@ -77,19 +75,6 @@ static void kdf(
   // Copy that new salt into Catena.
   static_assert(sizeof(catena->salt) == sizeof(new_salt));
   memcpy(catena->salt, new_salt, sizeof(new_salt));
-  printf("The input in kdf() was 0x");
-  SSC_printBytes(input, sizeof(input));
-  printf("\nThe new_salt in kdf() was 0x");
-  SSC_printBytes(new_salt, sizeof(new_salt));
-  putchar('\n');
-
-  printf("The Catena512 salt in 4crypt is: 0x");
-  SSC_printBytes(catena->salt, sizeof(catena->salt));
-  putchar('\n');
-
-  //FIXME: Fill the X buffer, so I can print it from the Rust side and check its alignment.
-  memset(catena->x, 0xff, sizeof(catena->x));
-
   // Run the requested Catena KDF.
   *err = TSC_Catena512_get(
     catena,
@@ -99,9 +84,6 @@ static void kdf(
     pod->memory_low,
     pod->iterations,
     pod->flags & Core::ENABLE_PHI);
-  printf("kdf(): 0x");
-  SSC_printBytes(output, TSC_THREEFISH512_BLOCK_BYTES);
-  putchar('\n');
 }
 
 Core::Core()
@@ -338,21 +320,21 @@ SSC_Error_t Core::normalizePadding(const uint64_t input_filesize)
     // Goal: Output file is an exact, specific size specified in @pad.
     case PadMode::TARGET:
       if (pad < (size + Core::getMetadataSize()))
-        return -1;
+        return SSC_ERR;
       mypod->padding_size = pad - (size + Core::getMetadataSize());
       mypod->padding_mode = PadMode::ADD;
       return this->normalizePadding(size);
     // Add padding as if @size were @pad.
     case PadMode::AS_IF:
       if (pad < size)
-        return -1;
+        return SSC_ERR;
       mypod->padding_size = pad - size;
       mypod->padding_mode = PadMode::ADD;
       return this->normalizePadding(size);
     default:
-      return -1;
+      return SSC_ERR;
   }
-  return 0;
+  return SSC_OK;
 }
 
 void Core::genRandomElements()
@@ -444,13 +426,13 @@ SSC_Error_t Core::runKDF()
    mypod->tf_ctr_iv);
 
   for (uint64_t i {0}; i < num_threads; ++i) {
-    if (errors[i]) {
+    if (errors[i] != SSC_OK) {
       delete[] errors;
-      return -1;
+      return SSC_ERR;
     }
   }
   delete[] errors;
-  return 0;
+  return SSC_OK;
 }
 
 SSC_Error_t Core::verifyMAC(const uint8_t* R_ mac, const uint8_t* R_ begin, const uint64_t size)
@@ -465,8 +447,8 @@ SSC_Error_t Core::verifyMAC(const uint8_t* R_ mac, const uint8_t* R_ begin, cons
    size,
    mypod->mac_key);
   if (SSC_constTimeMemDiff(tmp_mac, mac, MAC_SIZE))
-    return -1;
-  return 0;
+    return SSC_ERR;
+  return SSC_OK;
 }
 
 SSC_CodeError_t Core::decrypt(
@@ -514,12 +496,14 @@ SSC_CodeError_t Core::decrypt(
   {
     if (status_callback != nullptr)
       status_callback(status_callback_data);
-    SSC_Error_t err {this->mapFiles(
-     nullptr,
-     input_filesize,
-     0,
-     InOutDir::INPUT)};
-    if (err) {
+    SSC_CodeError_t err {
+     this->mapFiles(
+      nullptr,
+      input_filesize,
+      0,
+      InOutDir::INPUT)
+    };
+    if (err != ERROR_NONE) {
       *err_io_dir = InOutDir::INPUT;
       return ERROR_INPUT_MEMMAP_FAILED;
     }
@@ -565,12 +549,14 @@ SSC_CodeError_t Core::decrypt(
   {
     if (status_callback != nullptr)
       status_callback(status_callback_data);
-    SSC_Error_t err {this->mapFiles(
-     nullptr,
-     0,
-     num_out,
-     InOutDir::OUTPUT)};
-    if (err) {
+    SSC_CodeError_t err {
+     this->mapFiles(
+      nullptr,
+      0,
+      num_out,
+      InOutDir::OUTPUT)
+    };
+    if (err != ERROR_NONE) {
       *err_io_dir = InOutDir::OUTPUT;
       return ERROR_OUTPUT_MEMMAP_FAILED;
     }
@@ -584,7 +570,7 @@ SSC_CodeError_t Core::decrypt(
     status_callback(status_callback_data);
   this->syncMaps();
   this->unmapFiles();
-  return 0;
+  return SSC_OK;
 }
 
 SSC_Error_t Core::syncMaps()
@@ -592,13 +578,13 @@ SSC_Error_t Core::syncMaps()
   PlainOldData* mypod {this->getPod()};
   if (mypod->input_map.ptr) {
     if (SSC_MemMap_sync(&mypod->input_map))
-      return -1;
+      return SSC_ERR;
   }
   if (mypod->output_map.ptr) {
     if (SSC_MemMap_sync(&mypod->output_map))
-      return -1;
+      return SSC_ERR;
   }
-  return 0;
+  return SSC_OK;
 }
 
 void Core::unmapFiles()

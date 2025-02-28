@@ -337,7 +337,7 @@ Gui::encryptThread(
   Core*  core {gui->mCore};
   Pod_t* pod  {gui->mPod};
   {
-    std::lock_guard {gui->mOperationMtx};
+    std::lock_guard lg {gui->mOperationMtx};
 
     // Expert mode parameter selection.
     if (gtk_check_button_get_active(GTK_CHECK_BUTTON(gui->mStrengthExpertCheckbutton)))
@@ -454,7 +454,7 @@ Gui::decryptThread(
   Core*  core {gui->mCore};
   Pod_t* pod  {gui->mPod};
   {
-    std::lock_guard {gui->mOperationMtx};
+    std::lock_guard lg {gui->mOperationMtx};
     gui->mOperationData.code_error = core->decrypt(
      &gui->mOperationData.error_type,
      &gui->mOperationData.in_out_dir,
