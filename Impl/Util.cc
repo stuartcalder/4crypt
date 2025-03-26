@@ -80,7 +80,7 @@ have_multiplier:
   }
   SSC_assertMsg(num_digits > 0 and num_digits < num_digit_limit, "Specified memory parameter digits (%" PRIu64 ")\n", num_digits);
   requested_bytes = static_cast<uint64_t>(std::strtoumax(temp, nullptr, 10));
-  delete temp;
+  delete[] temp;
   requested_bytes *= multiplier;
   SSC_assertMsg(requested_bytes, "Zero memory requested!\n");
   uint64_t mask = UINT64_C(0x80'00'00'00'00'00'00'00);
@@ -99,11 +99,11 @@ fourcrypt::parse_iterations(const char* R_ str, const size_t len)
   std::memcpy(temp, str, len + 1);
   uint64_t num_digits = static_cast<uint64_t>(SSC_Cstr_shiftDigitsToFront(temp, len));
   if (num_digits < 1 or num_digits > 3) {
-    delete temp;
+    delete[] temp;
     return 0;
   }
   int it = std::atoi(temp);
-  delete temp;
+  delete[] temp;
   if (it < 1 or it > 255)
     return 0;
   return static_cast<uint8_t>(it);
@@ -116,6 +116,6 @@ fourcrypt::parse_integer(const char* R_ cstr, const size_t len)
   std::memcpy(temp, cstr, len + 1);
   SSC_Cstr_shiftDigitsToFront(temp, len);
   uint64_t integer = static_cast<uint64_t>(std::strtoumax(temp, nullptr, 10));
-  delete temp;
+  delete[] temp;
   return integer;
 }

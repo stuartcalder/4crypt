@@ -137,7 +137,7 @@ Gui::getExecutableDirPath(void)
    str.end());
   // Consider the possibility that the executable dir is somehow a root directory.
   if (str.size() == 0)
-    str += FOURCRYPT_SLASH_CHAR_OS
+    str += FOURCRYPT_SLASH_CHAR_OS;
   return str;
  }
 #endif

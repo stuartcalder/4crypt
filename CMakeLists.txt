@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 project(
         4crypt
+        LANGUAGES CXX
         VERSION 1.0.0
         DESCRIPTION "Strong symmetric encryption tool."
         HOMEPAGE_URL "https://github.com/stuartcalder/4crypt"
