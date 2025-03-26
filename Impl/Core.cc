@@ -60,7 +60,7 @@ std::string Core::entropy_prompt{
   "Please input up to " MAX_PW_BYTES_STR " random characters." NEWLINE_
 };
 
-static void kdf(
+void Core::kdf(
  uint8_t*       R_ output,
  PlainOldData*  R_ pod,
  TSC_Catena512* R_ catena,
@@ -102,6 +102,10 @@ static void kdf(
     pod->flags & Core::ENABLE_PHI);
 }
 
+/* Allocate a PlainOldData object on the heap, initialize its variables
+ * and explicitly initialize its contained Cryptographically Secure
+ * PseudoRandom Number Generator.
+ */
 Core::Core()
 {
   this->pod = new PlainOldData;
@@ -109,6 +113,7 @@ Core::Core()
   TSC_CSPRNG_init(&this->getPod()->rng);
 }
 
+/* Destroy the PlainOldData object and deallocate the memory. */
 Core::~Core()
 {
   PlainOldData::del(*this->getPod());
@@ -145,8 +150,12 @@ consteval uint64_t Core::getMinimumOutputSize()
 {
   return Core::getMetadataSize() + PAD_FACTOR;
 }
+static_assert(Core::PAD_FACTOR == 64);
 static_assert(Core::getMinimumOutputSize() % Core::PAD_FACTOR == 0);
 
+/* The initial state of most of the data in a PlainOldData consists of zero bytes, but there
+ * are a few exceptions.
+ */
 void Core::PlainOldData::init(PlainOldData& pod)
 {
   pod.tf_ctr    = TSC_THREEFISH512CTR_NULL_LITERAL;
@@ -164,7 +173,7 @@ void Core::PlainOldData::init(PlainOldData& pod)
   pod.output_map = SSC_MEMMAP_NULL_LITERAL;
   pod.input_filename  = nullptr;
   pod.output_filename = nullptr;
-  pod.ubi512 = &pod.rng.skein512;
+  pod.skein512 = &pod.rng.skein512;
   pod.tf_ctr_idx = 0;
   pod.input_filename_size  = 0;
   pod.output_filename_size = 0;
@@ -181,6 +190,7 @@ void Core::PlainOldData::init(PlainOldData& pod)
   pod.flags      = 0;
 }
 
+/* Destroy and deallocate the data owned by a PlainOldData object. */
 void Core::PlainOldData::del(PlainOldData& pod)
 {
   delete[] pod.input_filename;
@@ -188,24 +198,34 @@ void Core::PlainOldData::del(PlainOldData& pod)
   SSC_secureZero(&pod, sizeof(pod));
 }
 
+/* Ensure that the thread batch size does not exceed the total specified thread count, as that
+ * would be a contradiction.
+ */
 void Core::PlainOldData::touchup(PlainOldData& pod)
 {
   if (pod.thread_batch_size == 0 || pod.thread_batch_size > pod.thread_count)
     pod.thread_batch_size = pod.thread_count;
 }
 
+/* Tune for lesser memory usage, and therefore faster execution. */
 void Core::PlainOldData::set_fast(PlainOldData& pod)
 {
   pod.memory_low  = MEM_FAST;
   pod.memory_high = MEM_FAST;
 }
 
+/* Tune for a middling amount of memory, providing more security without being too slow to execute. */
 void Core::PlainOldData::set_normal(PlainOldData& pod)
 {
   pod.memory_low  = MEM_NORMAL;
   pod.memory_high = MEM_NORMAL;
 }
 
+/* On systems that define SSC_HAS_GETAVAILABLESYSTEMMEMORY...
+ *   Determine the amount of memory available for use TODO
+ * On all other systems...
+ *   TODO
+ */
 void Core::PlainOldData::set_strong(PlainOldData& pod)
 {
   #ifdef SSC_HAS_GETAVAILABLESYSTEMMEMORY
@@ -233,6 +253,7 @@ void Core::PlainOldData::set_strong(PlainOldData& pod)
   pod.flags |= ENABLE_PHI;
 }
 
+/* Return a raw pointer to a PlainOldData object. */
 PlainOldData* Core::getPod()
 {
   return this->pod;
@@ -258,8 +279,8 @@ SSC_CodeError_t Core::encrypt(
      mypod->input_filename_size);
     memcpy(
      mypod->output_filename + mypod->input_filename_size,
-     ".4c",
-     sizeof(".4c"));
+     extension,
+     sizeof(extension));
   }
 
   // Get the size of the input file.
@@ -290,9 +311,10 @@ SSC_CodeError_t Core::encrypt(
   if (mypod->password_size == 0) {
     // Get the encryption password.
     this->getPassword(not (mypod->flags & Core::ENTER_PASS_ONCE), false);
-    if (mypod->flags & Core::SUPPLEMENT_ENTROPY)
+    if (mypod->flags & Core::SUPPLEMENT_ENTROPY) {
       // Get the entropy password and hash it into the RNG.
       this->getPassword(false, true);
+    }
   }
   if (status_callback != nullptr)
     status_callback(status_callback_data);
@@ -307,20 +329,25 @@ SSC_CodeError_t Core::encrypt(
   size_t         n_in {mypod->input_map.size};
   if (status_callback != nullptr)
     status_callback(status_callback_data);
-  out = this->writeHeader(out); // Write the header of the ciphertext file.
-  out = this->writeCiphertext(out, in, n_in); // Encrypt the input stream into the ciphertext file.
+  // Write the header of the ciphertext file.
+  out = this->writeHeader(out);
+  // Encrypt the input stream into the ciphertext file.
+  out = this->writeCiphertext(out, in, n_in);
   if (status_callback != nullptr)
     status_callback(status_callback_data);
+  // Write the Message Authentication Code to the end of the file.
   this->writeMAC(out, mypod->output_map.ptr, mypod->output_map.size - MAC_SIZE);
   if (status_callback != nullptr)
     status_callback(status_callback_data);
+  // Synchronize the SSC_MemMap's.
   this->syncMaps();
+  // Unmap the input and output SSC_MemMap's.
   this->unmapFiles();
   if (status_callback != nullptr)
     status_callback(status_callback_data);
+  // Success.
   return 0;
 }
-
 
 SSC_Error_t Core::normalizePadding(const uint64_t input_filesize)
 {
@@ -377,6 +404,10 @@ void Core::genRandomElements()
   SSC_secureZero(myrng, sizeof(*myrng));
 }
 
+/* Run the key derivation function, kdf(), utilizing as many threads
+ * as were specified by the user. This necessitates a lot of dynamic
+ * allocation.
+ */
 SSC_Error_t Core::runKDF()
 {
   PlainOldData*  mypod         {this->getPod()};
@@ -399,7 +430,7 @@ SSC_Error_t Core::runKDF()
         const uint64_t offset {i + j};
         std::construct_at(
          threads + offset,
-         kdf,
+         Core::kdf,
          outputs + (offset * TSC_THREEFISH512_BLOCK_BYTES),
          mypod,
          catenas + offset,
@@ -421,9 +452,10 @@ SSC_Error_t Core::runKDF()
   // Combine all the outputs into one.
   for (uint64_t i {1}; i < num_threads; ++i)
     SSC_xor64(outputs, outputs + (i * TSC_THREEFISH512_BLOCK_BYTES));
+  static_assert(sizeof(mypod->hash_buffer) == 128);
   // Hash into 128 bytes of output.
   TSC_Skein512_hash(
-   mypod->ubi512,
+   mypod->skein512,
    mypod->hash_buffer,
    sizeof(mypod->hash_buffer),
    outputs,
@@ -441,6 +473,7 @@ SSC_Error_t Core::runKDF()
    mypod->tf_tweak,
    mypod->tf_ctr_iv);
 
+  // Ensure that every thread succeeded. If not it's a global failure.
   for (uint64_t i {0}; i < num_threads; ++i) {
     if (errors[i] != SSC_OK) {
       delete[] errors;
@@ -451,12 +484,15 @@ SSC_Error_t Core::runKDF()
   return SSC_OK;
 }
 
+/* Verify that the @size bytes starting at @begin produce the same Message Authentication
+ * Code as that stored at @mac.
+ */
 SSC_Error_t Core::verifyMAC(const uint8_t* R_ mac, const uint8_t* R_ begin, const uint64_t size)
 {
   alignas(uint64_t) uint8_t tmp_mac [MAC_SIZE];
   PlainOldData* mypod {this->getPod()};
   TSC_Skein512_mac(
-   mypod->ubi512,
+   mypod->skein512,
    tmp_mac,
    sizeof(tmp_mac),
    begin,
@@ -481,8 +517,8 @@ SSC_CodeError_t Core::decrypt(
   }
   if (mypod->output_filename == nullptr) {
     uint64_t size = mypod->input_filename_size;
-    if (size >= 4 && memcmp(mypod->input_filename + (size - 3), ".4c", 3) == 0) {
-      mypod->output_filename_size = size - 3;
+    if (size > extension_length && memcmp(mypod->input_filename + (size - extension_length), extension, extension_length) == 0) {
+      mypod->output_filename_size = size - extension_length;
       mypod->output_filename = new char[mypod->output_filename_size + 1];
       memcpy(mypod->output_filename, mypod->input_filename, mypod->output_filename_size);
       mypod->output_filename[mypod->output_filename_size] = '\0';
@@ -584,6 +620,7 @@ SSC_CodeError_t Core::decrypt(
   
   if (status_callback != nullptr)
     status_callback(status_callback_data);
+  // Synchronize and unmap the SSC_MemMap's. Success.
   this->syncMaps();
   this->unmapFiles();
   return SSC_OK;
@@ -675,21 +712,26 @@ const uint8_t* Core::readHeaderPlaintext(
 const uint8_t* Core::readHeaderCiphertext(const uint8_t* R_ from, SSC_CodeError_t* R_ err)
 {
   PlainOldData* mypod {this->getPod()};
-  // 8 Ciphered padding size bytes; 8 ciphered reserve bytes.
   {
+    // 8 Ciphered padding size bytes; 8 ciphered reserve bytes.
     uint64_t tmp[2];
+    // Decipher ciphertext bytes at @from and store them in @tmp.
     TSC_Threefish512Ctr_xor_2(
       &mypod->tf_ctr,
       reinterpret_cast<uint8_t*>(tmp),
       from,
       sizeof(tmp),
       mypod->tf_ctr_idx);
+    // Increment the Counter Mode index past the ciphertext portion of the 4crypt header.
     mypod->tf_ctr_idx += sizeof(tmp);
     from += sizeof(tmp);
+    // The first 8 bytes is a little-endian encoded uint64_t noting the count of subsequent
+    // padding bytes in the file.
     if constexpr(Core::is_little_endian)
       mypod->padding_size = tmp[0];
     else
       mypod->padding_size = SSC_swap64(tmp[0]);
+    // The second 8 bytes are all zero, and are reserved for future specification.
     if (tmp[1] != 0) {
       *err = ERROR_RESERVED_BYTES_USED;
       return from;
@@ -702,6 +744,14 @@ const uint8_t* Core::readHeaderCiphertext(const uint8_t* R_ from, SSC_CodeError_
   return from;
 }
 
+/* Describe the metadata of a 4crypt-encrypted file.
+ * If an error occurs, return the SSC_CodeError_t and specify the
+ * ErrType as well as the InOutDir (whether the error occured specifically
+ * with input or output).
+ *
+ * When @status_callback is non-nullptr it gets called at several arbitrary intervals to allow
+ * external code to roughly track the status of execution.
+ */
 SSC_CodeError_t Core::describe(
  ErrType*          errtype,
  InOutDir*         errdir,
@@ -773,11 +823,15 @@ SSC_CodeError_t Core::describe(
   return 0;
 }
 
+/* Memory-map the Input and/or Output files.
+ * If there's an error return the code and write the direction (input or output) to @map_err_idx.
+ */
 SSC_CodeError_t Core::mapFiles(InOutDir* map_err_idx, size_t input_size, size_t output_size, InOutDir only_map)
 {
-  constexpr const SSC_BitFlag_t input_flag {
-   SSC_MEMMAP_INIT_READONLY | SSC_MEMMAP_INIT_FORCE_EXIST | SSC_MEMMAP_INIT_FORCE_EXIST_YES};
-  constexpr const SSC_BitFlag_t output_flag {SSC_MEMMAP_INIT_FORCE_EXIST};
+  // If there is an input file, it is readonly and it must already exist.
+  constexpr SSC_BitFlag_t input_flag  {SSC_MEMMAP_INIT_READONLY | SSC_MEMMAP_INIT_FORCE_EXIST | SSC_MEMMAP_INIT_FORCE_EXIST_YES};
+  // If there is an output file, it is readwrite.
+  constexpr SSC_BitFlag_t output_flag {SSC_MEMMAP_INIT_FORCE_EXIST};
 
   PlainOldData*   mypod {this->getPod()};
   SSC_CodeError_t err   {0};
@@ -809,19 +863,26 @@ SSC_CodeError_t Core::mapFiles(InOutDir* map_err_idx, size_t input_size, size_t 
   return 0;
 }
 
+/* Prompt the user for a password to be entered at a command-line terminal. 
+ * If @enter_twice is true the user will be prompted a second time to confirm that
+ * they entered the password correctly.
+ * If @entropy is true the password will be written to a unique entropy password buffer, that
+ * will later get hashed into the Cryptographically Secure PseudoRandom Number Generator.
+ */
 void Core::getPassword(bool enter_twice, bool entropy)
 {
   PlainOldData* mypod {this->getPod()};
   SSC_Terminal_init();
   if (enter_twice && !entropy) {
-    mypod->password_size = static_cast<uint64_t>(SSC_Terminal_getPasswordChecked(
-     mypod->password_buffer,
-     mypod->verify_buffer,
-     Core::password_prompt.c_str(),
-     Core::reentry_prompt.c_str(),
-     1,
-     MAX_PW_BYTES,
-     PW_BUFFER_BYTES));
+    mypod->password_size = static_cast<uint64_t>(
+     SSC_Terminal_getPasswordChecked(
+      mypod->password_buffer,
+      mypod->verify_buffer,
+      Core::password_prompt.c_str(),
+      Core::reentry_prompt.c_str(),
+      1,
+      MAX_PW_BYTES,
+      PW_BUFFER_BYTES));
     SSC_secureZero(mypod->verify_buffer, sizeof(mypod->verify_buffer));
     SSC_Terminal_end();
   }
@@ -848,7 +909,7 @@ void Core::getPassword(bool enter_twice, bool entropy)
     SSC_Terminal_end();
     if (entropy) {
       TSC_Skein512_hashNative(
-        mypod->ubi512,
+        mypod->skein512,
         mypod->hash_buffer,
         mypod->entropy_buffer,
         mypod->entropy_size);
@@ -930,7 +991,7 @@ uint8_t* Core::writeCiphertext(uint8_t* R_ to, const uint8_t* R_ from, const siz
 {
   PlainOldData* mypod {this->getPod()};
   // Encipher padding bytes, if applicable.
-  if (mypod->padding_size) {
+  if (mypod->padding_size != 0) {
     TSC_Threefish512Ctr_xor_1(
       &mypod->tf_ctr,
       to,
@@ -968,7 +1029,7 @@ void Core::writeMAC(uint8_t* R_ to, const uint8_t* R_ from, const size_t num)
 {
   PlainOldData* mypod {this->getPod()};
   TSC_Skein512_mac(
-    mypod->ubi512,
+    mypod->skein512,
     to,
     sizeof(mypod->mac_key),
     from,
@@ -1008,17 +1069,19 @@ bool Core::verifyBasicMetadata(
   return true;
 }
 
+/* Return a std::string representation of the bitshift interpreted as a number of bytes. */
 std::string Core::makeMemoryStringBitShift(const uint8_t mem_bitshift)
 {
   return Core::makeMemoryString(static_cast<uint64_t>(1) << (mem_bitshift + 6));
 }
 
+/* Return a std::string representation of the uint64_t interpreted as a number of bytes. */
 std::string Core::makeMemoryString(const uint64_t value)
 {
-  constexpr const uint64_t kibibyte {1024};
-  constexpr const uint64_t mebibyte {kibibyte * kibibyte};
-  constexpr const uint64_t gibibyte {mebibyte * kibibyte};
-  constexpr const uint64_t tebibyte {gibibyte * kibibyte};
+  constexpr uint64_t kibibyte {1024};
+  constexpr uint64_t mebibyte {kibibyte * kibibyte};
+  constexpr uint64_t gibibyte {mebibyte * kibibyte};
+  constexpr uint64_t tebibyte {gibibyte * kibibyte};
   enum class Size {
     None = 0, Kibi = 1, Mebi = 2, Gibi = 3, Tebi = 4
   };

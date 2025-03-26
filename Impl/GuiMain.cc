@@ -682,7 +682,7 @@ Gui::onInputFilepathUpdated(void)
        // Do not make an assumption if the user has specified an output filepath.
        if (not mOutputTextActivated)
         {
-         if (str_ends_with(mInputFilepath, ".4c"))
+         if (str_ends_with(mInputFilepath, Core::extension))
            setMode(Mode::DECRYPT);
          else
            setMode(Mode::ENCRYPT);
@@ -693,7 +693,7 @@ Gui::onInputFilepathUpdated(void)
       {
        // The input filepath was set during encrypt mode. Assume that the output filepath
        // will be the same as the input filepath, but with ".4c" appended.
-       std::string ofp {mInputFilepath + ".4c"};
+       std::string ofp {mInputFilepath + Core::extension};
        if (not SSC_FilePath_exists(ofp.c_str()))
         {
          mOutputFilepath = std::move(ofp);
@@ -704,7 +704,7 @@ Gui::onInputFilepathUpdated(void)
       {
        //TODO: The input filepath was set during decrypt mode. Assume that the output filepath
        // will be the same as the input filepath, but with ".4c" removed. (Assuming it ended in ".4c").
-       if (str_ends_with(mInputFilepath, ".4c"))
+       if (str_ends_with(mInputFilepath, Core::extension))
         {
          std::string ofp {mInputFilepath};
          ofp.erase(ofp.end() - 3, ofp.end());
