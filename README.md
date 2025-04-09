@@ -40,25 +40,23 @@ padding bytes always evenly divides by 64 bytes.
 
 
 ## Command-Line Options
--h, --help:  Print help output.
--e, --encrypt=\<filepath\>    Encrypt the file at the filepath.
--d, --ldecrypt=\<filepath\>    Decrypt the file at the filepath.
--D, --describe=\<filepath\>   Describe the header of encrypted file at the filepath.
--o, --output=\<filepath\>     Specify an output filepath.
--E, --entropy               Provide addition entropy to the RNG from stdin.
--H, --high-mem=\<mem[K|M|G]\> Provide an upper memory bound for key derivation.
--L, --low-mem=\<mem[K|M|G]\>  Provide a lower memory bound for key derivation.
--M, --use-mem=\<mem[K|M|G]\>  Set the lower and upper memory bounds to the same value.
--I, --iterations=\<num\>      Set the number of times to iterate the KDF.
--T, --threads=\<num\>         Set the degree of parallelism for the KDF.
--B, --batch-size=\<num\>      Set the number of KDF threads to execute concurrently.
--1, --enter-password-once   Disable password-reentry for correctness verification during encryption.
--P, --use-phi               Enable the Phi function for each KDF thread.
---pad-as-if=\<size\>          Pad the output ciphertext as if it were an unpadded encrypted file of this size.
---pad-by=\<size\>             Pad the output ciphertext by this many bytes, rounded up such that the produced
-                              ciphertext is evenly divisible by 64.
---pad-to=\<size\>             Pad the output ciphertext to the target size, rounded up such that the produced
-                              ciphertext is evenly divisible by 64.
+* -h, --help:  Print help output.
+* -e, --encrypt=\<filepath\>    Encrypt the file at the filepath.
+* -d, --ldecrypt=\<filepath\>    Decrypt the file at the filepath.
+* -D, --describe=\<filepath\>   Describe the header of encrypted file at the filepath.
+* -o, --output=\<filepath\>     Specify an output filepath.
+* -E, --entropy               Provide addition entropy to the RNG from stdin.
+* -H, --high-mem=\<mem[K|M|G]\> Provide an upper memory bound for key derivation.
+* -L, --low-mem=\<mem[K|M|G]\>  Provide a lower memory bound for key derivation.
+* -M, --use-mem=\<mem[K|M|G]\>  Set the lower and upper memory bounds to the same value.
+* -I, --iterations=\<num\>      Set the number of times to iterate the KDF.
+* -T, --threads=\<num\>         Set the degree of parallelism for the KDF.
+* -B, --batch-size=\<num\>      Set the number of KDF threads to execute concurrently.
+* -1, --enter-password-once   Disable password-reentry for correctness verification during encryption.
+* -P, --use-phi               Enable the Phi function for each KDF thread.
+* --pad-as-if=\<size\>          Pad the output ciphertext as if it were an unpadded encrypted file of this size.
+* --pad-by=\<size\>             Pad the output ciphertext by this many bytes, rounded up such that the produced ciphertext is evenly divisible by 64.
+* --pad-to=\<size\>             Pad the output ciphertext to the target size, rounded up such that the produced ciphertext is evenly divisible by 64.
 
 WARNING: The phi function hardens the key-derivation function against
 parallel adversaries, greatly increasing the work necessary to brute-force
