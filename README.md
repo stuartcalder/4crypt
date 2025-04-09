@@ -40,6 +40,7 @@ padding bytes always evenly divides by 64 bytes.
 
 
 ## Command-Line Options
+`
 -h, --help:  Print help output.
 -e, --encrypt=<filepath>    Encrypt the file at the filepath.
 -d, --decrypt=<filepath>    Decrypt the file at the filepath.
@@ -64,6 +65,7 @@ WARNING: The phi function hardens the key-derivation function against
 parallel adversaries, greatly increasing the work necessary to brute-force
 your password, but introduces the potential for cache-timing attacks.
 Do NOT use this feature unless you understand the security implications!
+`
 ## Buildtime Dependencies
 ### (Required on all supported systems)
 -   [SSC](https://github.com/stuartcalder/SSC) header and library files.
