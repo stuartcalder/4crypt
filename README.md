@@ -6,6 +6,9 @@ Symmetric file encryption tool, targeting 512 bits of security with memory-hard 
 This software aims to provide strong symmetric cryptographic security for protecting important data.
 Both CLI and GUI interfaces are provided.
 
+![Alt text](../screenshots/gui.png)
+![Alt text](../screenshots/cli.png)
+
 The three most significant algorithms implemented and utilized in this project include:
 1. The [Threefish512](https://en.wikipedia.org/wiki/Threefish) block cipher.
 2. The [Skein512](https://en.wikipedia.org/wiki/Skein_(hash_function)) cryptographic hash function.
