@@ -830,7 +830,7 @@ SSC_CodeError_t Core::mapFiles(InOutDir* map_err_idx, size_t input_size, size_t 
 {
   // If there is an input file, it is readonly and it must already exist.
   constexpr SSC_BitFlag_t input_flag  {SSC_MEMMAP_INIT_READONLY | SSC_MEMMAP_INIT_FORCE_EXIST | SSC_MEMMAP_INIT_FORCE_EXIST_YES};
-  // If there is an output file, it is readwrite.
+  // If there is an output file, it is readwrite and it must NOT exist.
   constexpr SSC_BitFlag_t output_flag {SSC_MEMMAP_INIT_FORCE_EXIST};
 
   PlainOldData*   mypod {this->getPod()};
