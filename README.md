@@ -1,7 +1,7 @@
 # 4crypt
 ![Alt text](/share/title.png "4crypt")
 ![Alt text](/share/logo.png  "Dragon")
-![Alt text](/../screenshots/dragon.png?raw=true "4crypt")
+
 Symmetric file encryption tool, targeting 512 bits of security with memory-hard password hashing.
 
 
