@@ -121,7 +121,7 @@ have_multiplier:
   num_digits = SSC_Cstr_shiftDigitsToFront(temp, len);
   SSC_assertMsg(num_digits > 0, "Asked for 0 padding?");
   uint64_t padding = static_cast<uint64_t>(strtoumax(temp, nullptr, 10));
-  delete temp;
+  delete[] temp;
   SSC_assertMsg((padding * multiplier) >= padding, "padding < padding * multiplier... Overflow?\n");
   return padding * multiplier;
 }
