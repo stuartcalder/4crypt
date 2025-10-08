@@ -138,7 +138,7 @@ print_help()
    "-d, --decrypt=<filepath>    Decrypt the file at the filepath.\n"
    "-D, --describe=<filepath>   Describe the header of encrypted file at the filepath.\n"
    "-o, --output=<filepath>     Specify an output filepath.\n"
-   "-E, --entropy               Provide addition entropy to the RNG from stdin.\n"
+   "-E, --entropy               Provide additional entropy to the RNG from stdin.\n"
    "-H, --high-mem=<mem[K|M|G]> Provide an upper memory bound for key derivation.\n"
    "-L, --low-mem=<mem[K|M|G]>  Provide a lower memory bound for key derivation.\n"
    "-M, --use-mem=<mem[K|M|G]>  Set the lower and upper memory bounds to the same value.\n"
