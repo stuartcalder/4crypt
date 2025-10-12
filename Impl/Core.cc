@@ -61,50 +61,6 @@ std::string Core::entropy_prompt{
   "Please input up to " MAX_PW_BYTES_STR " random characters." NEWLINE_
 };
 
-#if 0
-void Core::kdf(
- uint8_t*       R_ output,
- PlainOldData*  R_ pod,
- TSC_Catena512* R_ catena,
- SSC_Error_t*   R_ err,
- uint64_t          thread_idx)
-{
-  uint8_t input    [sizeof(pod->catena_salt) + sizeof(thread_idx)];
-  uint8_t new_salt [TSC_CATENA512_SALT_BYTES];
-
-  TSC_Catena512_init(catena, pod->memory_high);
-  memcpy(input, pod->catena_salt, sizeof(pod->catena_salt));
-  {
-    uint64_t ti;
-    if constexpr(Core::is_little_endian)
-      ti = thread_idx;
-    else
-      ti = SSC_swap64(thread_idx);
-    memcpy(input + sizeof(pod->catena_salt), &ti, sizeof(ti));
-  }
-
-  // Hash the inputs into a unique salt.
-  TSC_Skein512_hash(
-    &catena->skein512,
-    new_salt,
-    sizeof(new_salt),
-    input,
-    sizeof(input));
-  // Copy that new salt into Catena.
-  static_assert(sizeof(catena->salt) == sizeof(new_salt));
-  memcpy(catena->salt, new_salt, sizeof(new_salt));
-  // Run the requested Catena KDF.
-  *err = TSC_Catena512_get(
-    catena,
-    output,
-    pod->password_buffer,
-    pod->password_size,
-    pod->memory_low,
-    pod->iterations,
-    pod->flags & Core::ENABLE_PHI);
-}
-#endif
-
 /* Allocate a PlainOldData object on the heap, initialize its variables
  * and explicitly initialize its contained Cryptographically Secure
  * PseudoRandom Number Generator.
@@ -416,7 +372,6 @@ SSC_Error_t Core::runKDF()
   static_assert(TSC_KDF_OUTPUT_BYTES == TSC_THREEFISH512_BLOCK_BYTES);
   PlainOldData*  mypod         {this->getPod()};
   uint8_t        kdf_out[TSC_KDF_OUTPUT_BYTES] {0};
-  #if 1
   SSC_Error_t result {TSC_kdf(
     kdf_out,
     mypod->catena_salt,
@@ -431,51 +386,6 @@ SSC_Error_t Core::runKDF()
   )};
   if (result == SSC_ERR)
     return SSC_ERR;
-  //TODO
-  #else
-  const uint64_t num_threads   {mypod->thread_count};
-  const uint64_t batch_size    {mypod->thread_batch_size};
-  const uint64_t output_bytes  {num_threads * TSC_THREEFISH512_BLOCK_BYTES};
-  TSC_Catena512* const catenas {new TSC_Catena512[num_threads]};
-  SSC_Error_t* const   errors  {new SSC_Error_t[num_threads]};
-  uint8_t* const       outputs {new uint8_t[output_bytes]};
-  {
-    std::thread* threads {new std::thread[num_threads]};
-    uint64_t j_stop;
-
-    for (uint64_t i {0}; i < num_threads; i += j_stop) {
-      if (i + batch_size < num_threads)
-        j_stop = batch_size;
-      else
-        j_stop = num_threads - i;
-      for (uint64_t j {0}; j < j_stop; ++j) {
-        const uint64_t offset {i + j};
-        std::construct_at(
-         threads + offset,
-         Core::kdf,
-         outputs + (offset * TSC_THREEFISH512_BLOCK_BYTES),
-         mypod,
-         catenas + offset,
-         errors  + offset,
-         offset);
-      }
-      for (uint64_t j {0}; j < j_stop; ++j) {
-        const uint64_t offset {i + j};
-        threads[offset].join();
-        std::destroy_at(threads + offset);
-      }
-    }
-    delete[] threads;
-  }
-  SSC_secureZero(catenas, sizeof(TSC_Catena512) * num_threads);
-  delete[] catenas;
-  SSC_secureZero(mypod->password_buffer, sizeof(mypod->password_buffer));
-
-  // Combine all the outputs into one.
-  for (uint64_t i {1}; i < num_threads; ++i)
-    SSC_xor64(outputs, outputs + (i * TSC_THREEFISH512_BLOCK_BYTES));
-  static_assert(sizeof(mypod->hash_buffer) == 128);
-  #endif
   // Hash into 128 bytes of output.
   TSC_Skein512_hash(
    mypod->skein512,
@@ -484,9 +394,6 @@ SSC_Error_t Core::runKDF()
    kdf_out,
    sizeof(kdf_out));
   SSC_secureZero(kdf_out, sizeof(kdf_out));
-  #if 0
-  delete[] outputs;
-  #endif
   // The first 64 become the secret encryption key; the latter 64 become the authentication key.
   memcpy(mypod->tf_sec_key, mypod->hash_buffer, TSC_THREEFISH512_BLOCK_BYTES);
   memcpy(mypod->mac_key   , mypod->hash_buffer + TSC_THREEFISH512_BLOCK_BYTES, TSC_THREEFISH512_BLOCK_BYTES);
@@ -498,16 +405,6 @@ SSC_Error_t Core::runKDF()
    mypod->tf_tweak,
    mypod->tf_ctr_iv);
 
-  #if 0
-  // Ensure that every thread succeeded. If not it's a global failure.
-  for (uint64_t i {0}; i < num_threads; ++i) {
-    if (errors[i] != SSC_OK) {
-      delete[] errors;
-      return SSC_ERR;
-    }
-  }
-  delete[] errors;
-  #endif
   return SSC_OK;
 }
 

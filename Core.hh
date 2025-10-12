@@ -198,15 +198,6 @@ namespace fourcrypt
     static std::string entropy_prompt;
   //// Static procedures.
 
-    #if 0
-    /* The kdf function shall be used to instance threads of CATENA512
-     * key derivation functions, which are then XORd together to form a 512 bit secret.
-     * The 512 bit secret is hashed to produce a 1024 bit secret; the first 512 bits of this
-     * newly created 1024 bits is used as the secret key of Threefish512 in Counter Mode. The latter
-     * 512 bits is used as the secret key of Threefish512-MAC for authentication.
-     */
-    static void kdf(uint8_t* R_ output, PlainOldData* R_ pod, TSC_Catena512* R_ catena, SSC_Error_t* R_ err, uint64_t thread_idx);
-    #endif
     /* Perform basic validity checks of the metadata of the (input or output)
      * file. Return true when the metadata is valid and false otherwise.
      */

@@ -73,19 +73,6 @@ constexpr uint64_t KIBIBYTE = 1024;
 constexpr uint64_t MEBIBYTE = KIBIBYTE * KIBIBYTE;
 constexpr uint64_t GIBIBYTE = MEBIBYTE * KIBIBYTE;
 
-#if 0
-static uint64_t
-parse_integer(const char* R_ str, const size_t len)
-{
-  char* const temp = new char[len + 1];
-  memcpy(temp, str, len + 1);
-  SSC_Cstr_shiftDigitsToFront(temp, len);
-  uint64_t integer = static_cast<uint64_t>(strtoumax(temp, nullptr, 10));
-  delete temp;
-  return integer;
-}
-#endif
-
 SSC_INLINE uint64_t
 parse_threads(const char* R_ str, const size_t len)
 {
