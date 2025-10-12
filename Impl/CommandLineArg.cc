@@ -16,6 +16,7 @@
 */
 #include "CommandLineArg.hh"
 #include "Util.hh"
+#include <SSC/String.h>
 // C++ C Lib
 #include <cinttypes>
 #define R_ SSC_RESTRICT
