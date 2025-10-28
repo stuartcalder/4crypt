@@ -33,7 +33,9 @@ else()
 endif()
 
 # TODO: Make this optional.
-list(APPEND LANG_FLAGS "${_D}FOURCRYPT_IS_PORTABLE")
+if (WIN32)
+  list(APPEND LANG_FLAGS "${_D}FOURCRYPT_IS_PORTABLE")
+endif()
 
 find_package(PkgConfig REQUIRED)
 # Ask pkg-config for gtk4 (on MSYS2 the module is provided as gtk4)
@@ -96,6 +98,10 @@ target_include_directories(4crypt  PRIVATE "${PROJECT_SOURCE_DIR}")
 target_include_directories(g4crypt PRIVATE "${PROJECT_SOURCE_DIR}")
 target_compile_options(4crypt PRIVATE  "${LANG_FLAGS}")
 target_compile_options(g4crypt PRIVATE "${LANG_FLAGS}")
+
+if (WIN32)
+  set_target_properties(g4crypt PROPERTIES WIN32_EXECUTABLE TRUE)
+endif()
 
 # Link your other libraries (SSC, TSC) privately
 target_link_libraries(4crypt  PRIVATE ${LIB_DEPS})
