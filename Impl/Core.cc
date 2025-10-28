@@ -965,31 +965,54 @@ bool Core::verifyBasicMetadata(
  PlainOldData* mypod,
  InOutDir      dir)
 {
+  const char* dirstr;
   const char* fpath;
   SSC_MemMap* map;
   switch (dir) {
     case InOutDir::INPUT:
-      fpath = mypod->input_filename;
-      map   = &mypod->input_map;
+      dirstr = "input";
+      fpath  = mypod->input_filename;
+      map    = &mypod->input_map;
       break;
     case InOutDir::OUTPUT:
-      fpath = mypod->output_filename;
-      map   = &mypod->output_map;
+      dirstr = "output";
+      fpath  = mypod->output_filename;
+      map    = &mypod->output_map;
       break;
     default:
       return false;
   }
-  if (map->size < Core::getMinimumOutputSize())
+  if (map->size < Core::getMinimumOutputSize()) {
+    std::fprintf(
+      stderr,
+      "Error: %s memorymap is size %zu and the minimum is %zu!\n",
+      dirstr,
+      map->size,
+      Core::getMinimumOutputSize()
+    );
     return false;
-  if (memcmp(map->ptr, Core::magic, sizeof(Core::magic)) != 0)
+  }
+  if (memcmp(map->ptr, Core::magic, sizeof(Core::magic)) != 0) {
+    std::fprintf(
+      stderr,
+      "Error: %s memorymap does not begin with 4crypt's magic bytes!\n",
+      dirstr
+    );
     return false;
+  }
   size_t fp_sz;
-  if (SSC_FilePath_getSize(fpath, &fp_sz))
+  if (SSC_FilePath_getSize(fpath, &fp_sz)) {
+    std::fprintf(stderr, "Error: Failed to get the size of the filepath %s!\n", fpath);
     return false;
-  if (map->size != fp_sz)
+  }
+  if (map->size != fp_sz) {
+    std::fprintf(stderr, "Error: %s map size did not equal the filepath %s's size!\n", dirstr, fpath);
     return false;
-  if (map->size % PAD_FACTOR)
+  }
+  if (map->size % PAD_FACTOR) {
+    std::fprintf(stderr, "Error: %s map was not padded by the correct PAD_FACTOR, %zu\n", dirstr, PAD_FACTOR);
     return false;
+  }
   return true;
 }
 
