@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 string(TOLOWER "${CMAKE_SYSTEM_NAME}" OS_LOWER)
 set(SUFFIXES_OG ${CMAKE_FIND_LIBRARY_SUFFIXES})
+set(LANG_FLAGS "")
 
 if    (APPLE)
   set(SUFFIXES_STATIC  .a)
@@ -24,6 +25,15 @@ if(NOT MSVC)
 else()
   add_compile_options(/O2)
 endif()
+
+if (WIN32 AND MSVC)
+    set(_D "/D")
+else()
+    set(_D "-D")
+endif()
+
+# TODO: Make this optional.
+list(APPEND LANG_FLAGS "${_D}FOURCRYPT_IS_PORTABLE")
 
 find_package(PkgConfig REQUIRED)
 # Ask pkg-config for gtk4 (on MSYS2 the module is provided as gtk4)
@@ -57,6 +67,7 @@ set(LIB_DEPS "")
 
 # Find static/dynamic dependencies.
 if (STATIC_SSC)
+  list(APPEND LANG_FLAGS "${_D}SSC_EXTERN_STATIC_LIB")
   if (UNIX)
     find_library(NCURSES_LIB ncurses)
     list(APPEND LIB_DEPS ${NCURSES_LIB})
@@ -83,6 +94,8 @@ set(CMAKE_FIND_LIBRARY_SUFFIXES ${SUFFIXES_OG})
 
 target_include_directories(4crypt  PRIVATE "${PROJECT_SOURCE_DIR}")
 target_include_directories(g4crypt PRIVATE "${PROJECT_SOURCE_DIR}")
+target_compile_options(4crypt PRIVATE  "${LANG_FLAGS}")
+target_compile_options(g4crypt PRIVATE "${LANG_FLAGS}")
 
 # Link your other libraries (SSC, TSC) privately
 target_link_libraries(4crypt  PRIVATE ${LIB_DEPS})
