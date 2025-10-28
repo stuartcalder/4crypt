@@ -146,7 +146,7 @@ std::string
 Gui::getResourcePath(void)
  {
  #if   defined(FOURCRYPT_IS_PORTABLE)
-  return getExecutableDirPath();
+  return getExecutableDirPath() + "/share";
  #elif defined(__gnu_linux__)
   return std::string{"/usr/share/4crypt"};
  #else
