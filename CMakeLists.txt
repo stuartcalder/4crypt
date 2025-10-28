@@ -4,6 +4,20 @@ project(4crypt LANGUAGES CXX VERSION 1.0.0 DESCRIPTION "Strong symmetric encrypt
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+string(TOLOWER "${CMAKE_SYSTEM_NAME}" OS_LOWER)
+set(SUFFIXES_OG ${CMAKE_FIND_LIBRARY_SUFFIXES})
+
+if    (APPLE)
+  set(SUFFIXES_STATIC  .a)
+  set(SUFFIXES_DYNAMIC .dylib;.so)
+elseif(WIN32)
+  set(SUFFIXES_STATIC  .lib)
+  set(SUFFIXES_DYNAMIC .dll)
+elseif(UNIX)
+  set(SUFFIXES_STATIC  .a)
+  set(SUFFIXES_DYNAMIC .so)
+endif()
+
 if(NOT MSVC)
   add_compile_options(-O3 -flto)
   add_link_options(-flto)
@@ -36,12 +50,43 @@ add_executable(g4crypt
   Gui.hh
 )
 
+option(STATIC_SSC "Statically link SSC" OFF)
+option(STATIC_TSC "Statically link TSC" OFF)
+
+set(LIB_DEPS "")
+
+# Find static/dynamic dependencies.
+if (STATIC_SSC)
+  if (UNIX)
+    find_library(NCURSES_LIB ncurses)
+    list(APPEND LIB_DEPS ${NCURSES_LIB})
+    if (LINUX)
+      find_library(TINFO_LIB tinfo)
+      list(APPEND LIB_DEPS ${TINFO_LIB})
+    endif()
+  endif()
+  set(CMAKE_FIND_LIBRARY_SUFFIXES ${SUFFIXES_STATIC})
+else()
+  set(CMAKE_FIND_LIBRARY_SUFFIXES ${SUFFIXES_DYNAMIC})
+endif()
+find_library(SSC_LIB SSC)
+list(APPEND LIB_DEPS ${SSC_LIB})
+if (STATIC_TSC)
+  set(CMAKE_FIND_LIBRARY_SUFFIXES ${SUFFIXES_STATIC})
+else()
+  set(CMAKE_FIND_LIBRARY_SUFFIXES ${SUFFIXES_DYNAMIC})
+endif()
+find_library(TSC_LIB TSC)
+list(APPEND LIB_DEPS ${TSC_LIB})
+
+set(CMAKE_FIND_LIBRARY_SUFFIXES ${SUFFIXES_OG})
+
 target_include_directories(4crypt  PRIVATE "${PROJECT_SOURCE_DIR}")
 target_include_directories(g4crypt PRIVATE "${PROJECT_SOURCE_DIR}")
 
 # Link your other libraries (SSC, TSC) privately
-target_link_libraries(4crypt  PRIVATE SSC TSC)
-target_link_libraries(g4crypt PRIVATE SSC TSC)
+target_link_libraries(4crypt  PRIVATE ${LIB_DEPS})
+target_link_libraries(g4crypt PRIVATE ${LIB_DEPS})
 
 # GTK4 for g4crypt
 if(TARGET PkgConfig::gtk4)

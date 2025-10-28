@@ -22,7 +22,7 @@
 #include <cctype>
 
 #include <SSC/Error.h>
-#include <SSC/String.h>
+#include <SSC/SSC_String.h>
 #define R_ SSC_RESTRICT
 
 using namespace fourcrypt;
