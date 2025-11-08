@@ -117,7 +117,7 @@ static_assert(Core::getMinimumOutputSize() % Core::PAD_FACTOR == 0);
  */
 void Core::PlainOldData::init(PlainOldData& pod)
 {
-  pod.tf_ctr    = TSC_THREEFISH512CTR_NULL_LITERAL;
+  pod.tf_ctr    = TSC_THREEFISH512CTRSTATIC_NULL_LITERAL;
   pod.rng       = TSC_CSPRNG_NULL_LITERAL;
   memset(pod.hash_buffer    , 0, sizeof(pod.hash_buffer));
   memset(pod.tf_sec_key     , 0, sizeof(pod.tf_sec_key));
@@ -398,8 +398,8 @@ SSC_Error_t Core::runKDF()
   memcpy(mypod->tf_sec_key, mypod->hash_buffer, TSC_THREEFISH512_BLOCK_BYTES);
   memcpy(mypod->mac_key   , mypod->hash_buffer + TSC_THREEFISH512_BLOCK_BYTES, TSC_THREEFISH512_BLOCK_BYTES);
   SSC_secureZero(mypod->hash_buffer, sizeof(mypod->hash_buffer));
-  // Initialize TSC_Threefish512Ctr.
-  TSC_Threefish512Ctr_init(
+  // Initialize TSC_Threefish512CtrStatic.
+  TSC_Threefish512CtrStatic_init(
    &mypod->tf_ctr,
    mypod->tf_sec_key,
    mypod->tf_tweak,
@@ -640,7 +640,7 @@ const uint8_t* Core::readHeaderCiphertext(const uint8_t* R_ from, SSC_CodeError_
     // 8 Ciphered padding size bytes; 8 ciphered reserve bytes.
     uint64_t tmp[2];
     // Decipher ciphertext bytes at @from and store them in @tmp.
-    TSC_Threefish512Ctr_xor_2(
+    TSC_Threefish512CtrStatic_xor_2(
       &mypod->tf_ctr,
       reinterpret_cast<uint8_t*>(tmp),
       from,
@@ -899,7 +899,7 @@ uint8_t* Core::writeHeader(uint8_t* to)
     else
       tmp[0] = SSC_swap64(mypod->padding_size);
     tmp[1] = 0;
-    TSC_Threefish512Ctr_xor_2(
+    TSC_Threefish512CtrStatic_xor_2(
       &mypod->tf_ctr,
       to,
       reinterpret_cast<uint8_t*>(tmp),
@@ -916,7 +916,7 @@ uint8_t* Core::writeCiphertext(uint8_t* R_ to, const uint8_t* R_ from, const siz
   PlainOldData* mypod {this->getPod()};
   // Encipher padding bytes, if applicable.
   if (mypod->padding_size != 0) {
-    TSC_Threefish512Ctr_xor_1(
+    TSC_Threefish512CtrStatic_xor_1(
       &mypod->tf_ctr,
       to,
       mypod->padding_size,
@@ -925,7 +925,7 @@ uint8_t* Core::writeCiphertext(uint8_t* R_ to, const uint8_t* R_ from, const siz
     mypod->tf_ctr_idx += mypod->padding_size;
   }
   // Encipher the plaintext.
-  TSC_Threefish512Ctr_xor_2(
+  TSC_Threefish512CtrStatic_xor_2(
     &mypod->tf_ctr,
     to,
     from,
@@ -939,7 +939,7 @@ uint8_t* Core::writeCiphertext(uint8_t* R_ to, const uint8_t* R_ from, const siz
 void Core::writePlaintext(uint8_t* R_ to, const uint8_t* R_ from, const size_t num)
 {
   PlainOldData* mypod {this->getPod()};
-  TSC_Threefish512Ctr_xor_2(
+  TSC_Threefish512CtrStatic_xor_2(
     &mypod->tf_ctr,
     to,
     from,

@@ -106,7 +106,7 @@ namespace fourcrypt
     static constexpr SSC_CodeError_t ERROR_METADATA_VALIDATION_FAILED {-13};
     struct PlainOldData
      {
-      TSC_Threefish512Ctr         tf_ctr; // Threefish512 Cipher in Counter Mode.
+      TSC_Threefish512CtrStatic   tf_ctr; // Threefish512 Cipher in Counter Mode.
       TSC_CSPRNG                  rng;    // Skein512-based Cryptographically Secure Pseudorandom Number Generator.
       alignas(uint64_t) uint8_t   hash_buffer     [TSC_THREEFISH512_BLOCK_BYTES * 2]; // Enough room for two distinct 64 byte hashes in 1 buffer.
       uint64_t                    tf_sec_key      [TSC_THREEFISH512_KEY_WORDS_WITH_PARITY];   // Secret encryption key.
