@@ -244,7 +244,7 @@ SSC_CodeError_t Core::encrypt(
 
   // Get the size of the input file.
   size_t input_filesize;
-  if (SSC_FilePath_getSize(mypod->input_filename, &input_filesize))
+  if (SSC_FilePath_getSize(mypod->input_filename, &input_filesize) != SSC_OK)
     return ERROR_GETTING_INPUT_FILESIZE;
 
   // Normalize the padding.
@@ -259,7 +259,8 @@ SSC_CodeError_t Core::encrypt(
     &err_io_dir,
     input_filesize,
     input_filesize + mypod->padding_size + Core::getMetadataSize(),
-    InOutDir::NONE)};
+    InOutDir::NONE)
+  };
   if (err) {
     *err_typ = ErrType::MEMMAP;
     *err_dir = err_io_dir;
@@ -282,7 +283,12 @@ SSC_CodeError_t Core::encrypt(
   // Run the key derivation function and get our secret values.
   if (status_callback != nullptr)
     status_callback(status_callback_data);
-  this->runKDF();
+  // Handle the return code of runKDF()
+  if (this->runKDF() == SSC_ERR) {
+    *err_typ = ErrType::CORE;
+    *err_dir = InOutDir::NONE;
+    return ERROR_KDF_FAILED;
+  }
   const uint8_t* in   {mypod->input_map.ptr};
   uint8_t*       out  {mypod->output_map.ptr};
   size_t         n_in {mypod->input_map.size};
@@ -310,9 +316,9 @@ SSC_CodeError_t Core::encrypt(
 
 SSC_Error_t Core::normalizePadding(const uint64_t input_filesize)
 {
-  PlainOldData* mypod = this->getPod();
-  const uint64_t size = input_filesize;
-  uint64_t pad  = mypod->padding_size;
+  PlainOldData*  mypod {this->getPod()};
+  const uint64_t size  {input_filesize};
+  const uint64_t pad   {mypod->padding_size};
   switch (mypod->padding_mode) {
     // Add @pad to @size, then round up to be evenly divisible by PAD_FACTOR.
     case PadMode::ADD:
@@ -454,7 +460,7 @@ SSC_CodeError_t Core::decrypt(
   }
   // Get the size of the input file.
   size_t input_filesize;
-  if (SSC_FilePath_getSize(mypod->input_filename, &input_filesize)) {
+  if (SSC_FilePath_getSize(mypod->input_filename, &input_filesize) != SSC_OK) {
     *err_io_dir = InOutDir::INPUT;
     return ERROR_GETTING_INPUT_FILESIZE;
   }
@@ -502,7 +508,12 @@ SSC_CodeError_t Core::decrypt(
   // Run the KDF to generate secret values.
   if (status_callback != nullptr)
     status_callback(status_callback_data);
-  this->runKDF();
+
+  if (this->runKDF() == SSC_ERR) {
+    *err_io_dir = InOutDir::NONE;
+    return ERROR_KDF_FAILED;
+  }
+    
   // Check the MAC for integrity and authentication.
   if (status_callback != nullptr)
     status_callback(status_callback_data);
@@ -554,11 +565,11 @@ SSC_Error_t Core::syncMaps()
 {
   PlainOldData* mypod {this->getPod()};
   if (mypod->input_map.ptr) {
-    if (SSC_MemMap_sync(&mypod->input_map))
+    if (SSC_MemMap_sync(&mypod->input_map) != SSC_OK)
       return SSC_ERR;
   }
   if (mypod->output_map.ptr) {
-    if (SSC_MemMap_sync(&mypod->output_map))
+    if (SSC_MemMap_sync(&mypod->output_map) != SSC_OK)
       return SSC_ERR;
   }
   return SSC_OK;
@@ -733,17 +744,17 @@ SSC_CodeError_t Core::describe(
     printf("The KDF Upper Memory Bound is...%s\n", Core::makeMemoryStringBitShift(mypod->memory_high).c_str());
   }
   printf("The KDF Thread Count is.........%" PRIu64 " thread(s).\n", mypod->thread_count);
-  printf("Each KDF thread iterates........%" PRIu8 " time(s).\n", mypod->iterations);
+  printf("Each KDF thread iterates........%" PRIu8  " time(s).\n", mypod->iterations);
+  static constexpr uint8_t print_mode {SSC_PRINT_HEX | SSC_PRINT_PREFIX | SSC_PRINT_NEWLINE};
 
-  printf("The Threefish512 Tweak is.......0x");
-  SSC_printBytes(mypod->tf_tweak, TSC_THREEFISH512_TWEAK_BYTES);
+  printf("The Threefish512 Tweak is.......");
+  SSC_printBytesMode(mypod->tf_tweak, TSC_THREEFISH512_TWEAK_BYTES, print_mode);
 
-  printf("\nThe Catena512 Salt is...........0x");
-  SSC_printBytes(mypod->catena_salt, sizeof(mypod->catena_salt));
+  printf("The Catena512 Salt is...........");
+  SSC_printBytesMode(mypod->catena_salt, sizeof(mypod->catena_salt), print_mode);
 
-  printf("\nThreefish512 CTR-Mode's IV is...0x");
-  SSC_printBytes(mypod->tf_ctr_iv, sizeof(mypod->tf_ctr_iv));
-  putchar('\n');
+  printf("Threefish512 CTR-Mode's IV is...");
+  SSC_printBytesMode(mypod->tf_ctr_iv, sizeof(mypod->tf_ctr_iv), print_mode);
   return 0;
 }
 
@@ -1001,7 +1012,7 @@ bool Core::verifyBasicMetadata(
     return false;
   }
   size_t fp_sz;
-  if (SSC_FilePath_getSize(fpath, &fp_sz)) {
+  if (SSC_FilePath_getSize(fpath, &fp_sz) != SSC_OK) {
     std::fprintf(stderr, "Error: Failed to get the size of the filepath %s!\n", fpath);
     return false;
   }
@@ -1087,6 +1098,8 @@ Core::getDefaultMemoryUsageBitShift(void)
 {
 #ifdef SSC_HAS_GETAVAILABLESYSTEMMEMORY
   const uint64_t available {static_cast<uint64_t>(SSC_getAvailableSystemMemory())};
+  if (available == 0)
+    return MEM_NORMAL;
 
   // Scan through all the bits until the highest bit is detected. Determine the equivalent bit shift from 0.
   {

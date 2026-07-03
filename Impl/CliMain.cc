@@ -108,6 +108,9 @@ static void handle_core_errors(PlainOldData* pod, SSC_CodeError_t err, InOutDir 
     case (Core::ERROR_MAC_VALIDATION_FAILED):
       SSC_errx("Failed to validate the MAC!\n");
       break;
+    case (Core::ERROR_KDF_FAILED):
+      SSC_errx("Failed to execute the KDF!\n");
+      break;
     default:
       SSC_errx("Unaccounted for code_error code in pod, %d.\n", err);
   }
@@ -169,8 +172,8 @@ static void handle_memmap_errors(PlainOldData* pod, SSC_CodeError_t err, InOutDi
 
 int main(int argc, char* argv[])
 {
-  Core core{};
-  PlainOldData* pod = core.getPod();
+  Core core {};
+  PlainOldData* pod {core.getPod()};
   SSC_assertMsg(argc >= 2, "Invalid number of command-line arguments.\n");
   SSC_processCommandLineArgs(
    argc - 1,
@@ -181,9 +184,9 @@ int main(int argc, char* argv[])
    longs.data(),
    pod,
    nullptr);
-  SSC_CodeError_t code_error  = 0;
-  ErrType         code_type   = ErrType::CORE;
-  InOutDir        code_io_dir = InOutDir::NONE;
+  SSC_CodeError_t code_error  {0};
+  ErrType         code_type   {ErrType::CORE};
+  InOutDir        code_io_dir {InOutDir::NONE};
   
   switch (pod->execute_mode) {
     case ExeMode::ENCRYPT:
