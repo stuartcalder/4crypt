@@ -51,7 +51,7 @@ namespace fourcrypt
     static constexpr size_t KEY_BYTES        {TSC_FILECRYPT_KEY_BYTES};     // (64)
     static constexpr size_t KEY_HEX_CHARS    {TSC_FILECRYPT_KEY_HEX_CHARS}; // (128)
     static constexpr size_t KEY_BUFFER_BYTES {KEY_HEX_CHARS + 2};
-    // The key mode of a 4crypt-encrypted file, stored in the header's key-mode field.
+    // The key mode of a 4crypt-encrypted file: bit 1 of the header's flags byte (offset 7).
     static constexpr uint8_t KEY_MODE_PASSWORD {TSC_FILECRYPT_KEY_MODE_PASSWORD}; // The secret keys were derived from a password.
     static constexpr uint8_t KEY_MODE_RAW      {TSC_FILECRYPT_KEY_MODE_RAW};      // The secret keys were expanded from a raw symmetric key.
     static constexpr char    extension[4] { '.', '4', 'c', '\0' };
@@ -115,7 +115,6 @@ namespace fourcrypt
     static constexpr SSC_CodeError_t ERROR_METADATA_VALIDATION_FAILED {TSC_FILECRYPT_ERROR_METADATA_VALIDATION_FAILED};
     static constexpr SSC_CodeError_t ERROR_KEY_MODE_MISMATCH          {TSC_FILECRYPT_ERROR_KEY_MODE_MISMATCH};
     static constexpr SSC_CodeError_t ERROR_KEY_MALFORMED              {TSC_FILECRYPT_ERROR_KEY_MALFORMED};
-    static constexpr SSC_CodeError_t ERROR_KEY_MODE_UNSUPPORTED       {TSC_FILECRYPT_ERROR_KEY_MODE_UNSUPPORTED};
     static constexpr SSC_CodeError_t ERROR_PASSWORD_TOO_LARGE         {TSC_FILECRYPT_ERROR_PASSWORD_TOO_LARGE};
     static constexpr SSC_CodeError_t ERROR_ENTROPY_TOO_LARGE          {TSC_FILECRYPT_ERROR_ENTROPY_TOO_LARGE};
     static constexpr SSC_CodeError_t ERROR_SIZE_OVERFLOW              {TSC_FILECRYPT_ERROR_SIZE_OVERFLOW};

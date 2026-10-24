@@ -30,10 +30,10 @@ Mirroring the password pathway, the 64-byte key is hashed into 1024 bits with Sk
 512 bits are used as the secret key for Threefish512 in Counter Mode for confidentiality, and the
 latter 512 bits are used as the secret key for Skein512's native Message Authentication Code.
 
-Files encrypted with a raw symmetric key store the value 1 in the header's key-mode field, with
-all Key Derivation Function parameter fields set to zero. **Files encrypted with a raw symmetric
-key cannot be decrypted by versions of 4crypt prior to 0.3.0.** Password-encrypted files remain
-fully compatible in both directions.
+Files encrypted with a raw symmetric key set bit 1 of the header's flags byte (offset 7), with
+all Key Derivation Function parameter fields set to zero. Password-encrypted files remain fully
+compatible with 4crypt 0.3.0 in both directions; raw-key files do not, because 0.3.0 stored the
+key mode in its own header field, which is reserved (all zero) in the current format.
 
 ## Buildtime Dependencies
 -   [SSC](https://github.com/stuartcalder/SSC) header and library files.
@@ -75,14 +75,14 @@ The beginning of every 4crypt-encrypted file is a header, consisting of:
     1. The Lower Memory Bound of the Key Derivation Function, CATENA.
     2. The Upper Memory Bound of the Key Derivation Function, CATENA.
     3. The Iteration Count    of the Key Derivation Function, CATENA.
-    4. A boolean encoding whether to enable "Phi" and Sequential Memory Hardness (Discussed later).
+    4. A flags byte: bit 0 selects "Phi" and Sequential Memory Hardness (discussed later), bit 1
+       selects raw-key mode, and the remaining bits are reserved (currently always zero).
 3. 64 bit, little endian encoded unsigned integer describing the total size of the file.
 4. 128 pseudorandom bits utilized as a Threefish512 tweak for Threefish in Counter Mode.
 5. 256 pseudorandom bits utilized as a cryptographic salt for CATENA.
 6. 256 pseudorandom bits utilized as an initialization vector for Threefish in Counter Mode.
 7. 64 bit, little endian encoded unsigned integer describing the thread count for CATENA.
-8. 8 bits encoding the key mode of the file (0 = password-derived via CATENA, 1 = raw symmetric
-   key), followed by 56 reserved bits, currently always all zero.
+8. 64 reserved bits (formerly the key-mode field), currently always all zero.
 9. 64 bit, Threefish512-CTR enciphered, little endian encoded unsigned integer describing the total number of padding bytes.
 10. 64 Threefish512-CTR enciphered reserved bits. Currently the plaintext is always all zero.
 

@@ -83,7 +83,6 @@ static const std::map<SSC_CodeError_t, const char*> error_msg {
   {Core::ERROR_METADATA_VALIDATION_FAILED, "Failed to validate the input file's metadata!"},
   {Core::ERROR_KEY_MODE_MISMATCH    , "The provided password or raw key does not match the file's key mode!"},
   {Core::ERROR_KEY_MALFORMED        , "The raw key contains invalid hexadecimal characters!"},
-  {Core::ERROR_KEY_MODE_UNSUPPORTED , "The file's key mode is unsupported by this version of 4crypt!"},
   {Core::ERROR_PASSWORD_TOO_LARGE   , "The password exceeds the maximum length!"},
   {Core::ERROR_ENTROPY_TOO_LARGE    , "The entropy exceeds the maximum length!"},
   {Core::ERROR_SIZE_OVERFLOW        , "The requested file sizes are too large!"},

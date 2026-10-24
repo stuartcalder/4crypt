@@ -121,9 +121,6 @@ static void handle_core_errors(PlainOldData* pod, SSC_CodeError_t err, InOutDir 
     case (Core::ERROR_KEY_MALFORMED):
       SSC_errx("The raw key contains invalid hexadecimal characters!\n");
       break;
-    case (Core::ERROR_KEY_MODE_UNSUPPORTED):
-      SSC_errx("The file's key mode is unsupported by this version of 4crypt!\n");
-      break;
     case (Core::ERROR_PASSWORD_TOO_LARGE):
       SSC_errx("The password exceeds the maximum length!\n");
       break;
