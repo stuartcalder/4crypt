@@ -9,6 +9,16 @@ Both CLI and GUI interfaces are provided.
 ![Alt text](../screenshots/gui.png)
 ![Alt text](../screenshots/cli.png)
 
+## Version 0.2.0 Breaking Change
+Version 0.2.0 of 4crypt is synchronized with version 0.2.0 of [tsc](https://github.com/stuartcalder/tsc), whose
+multi-block Skein512 output generation has changed. As a result, the on-disk file format has changed: the magic
+bytes leading every 4crypt-encrypted file are now [0x2F, 0x25, 0xC9, 0x4A] (previously [0xE2, 0x2A, 0x1E, 0x9B]),
+and the key derivation and pseudorandom byte streams differ from all earlier releases.
+
+**Files encrypted with any earlier version of 4crypt cannot be decrypted with version 0.2.0 or later, and will be
+rejected.** If you have important data encrypted with an earlier version, decrypt it with the old version and
+re-encrypt it with version 0.2.0 before upgrading.
+
 ## Buildtime Dependencies
 -   [SSC](https://github.com/stuartcalder/SSC) header and library files.
 -   [tsc_c](https://github.com/stuartcalder/tsc_c) header and library files.
@@ -35,7 +45,7 @@ as the secret key for Skein512's native Message Authentication Code, which is ap
 of encrypted files for authentication and integrity verification.
 
 The beginning of every 4crypt-encrypted file is a header, consisting of:
-1. The magic bytes [0xE2, 0x2A, 0x1E, 0x9B] to uniquely identify 4crypt-encrypted files.
+1. The magic bytes [0x2F, 0x25, 0xC9, 0x4A] to uniquely identify 4crypt-encrypted files.
 2. 4 bytes encoding:
     1. The Lower Memory Bound of the Key Derivation Function, CATENA.
     2. The Upper Memory Bound of the Key Derivation Function, CATENA.

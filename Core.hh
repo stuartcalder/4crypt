@@ -47,7 +47,7 @@ namespace fourcrypt
     static constexpr size_t PW_BUFFER_BYTES {MAX_PW_BYTES + 1};
     static_assert(SSC_ENDIAN == SSC_ENDIAN_LITTLE || SSC_ENDIAN == SSC_ENDIAN_BIG, "Only big and little endian supported!");
     static constexpr bool is_little_endian = []() -> bool { return (SSC_ENDIAN == SSC_ENDIAN_LITTLE); }();
-    static constexpr uint8_t magic[4]     { 0xe2, 0x2a, 0x1e, 0x9b };
+    static constexpr uint8_t magic[4]     { 0x2f, 0x25, 0xc9, 0x4a };
     static constexpr char    extension[4] { '.', '4', 'c', '\0' };
     static constexpr size_t  extension_length {3}; // Only consider '.', '4', and 'c'.
   
