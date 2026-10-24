@@ -20,6 +20,7 @@
 // SSC
 #include <SSC/Macro.h>
 #include <SSC/CommandLineArg.h>
+#include <SSC/File.h>
 // C++ STL
 #include <array>
 using namespace fourcrypt;
@@ -123,49 +124,31 @@ static void handle_core_errors(PlainOldData* pod, SSC_CodeError_t err, InOutDir 
     case (Core::ERROR_KEY_MODE_UNSUPPORTED):
       SSC_errx("The file's key mode is unsupported by this version of 4crypt!\n");
       break;
+    case (Core::ERROR_PASSWORD_TOO_LARGE):
+      SSC_errx("The password exceeds the maximum length!\n");
+      break;
+    case (Core::ERROR_ENTROPY_TOO_LARGE):
+      SSC_errx("The entropy exceeds the maximum length!\n");
+      break;
+    case (Core::ERROR_SIZE_OVERFLOW):
+      SSC_errx("The requested file sizes are too large!\n");
+      break;
+    case (Core::ERROR_INVALID_PADDING):
+      SSC_errx("Invalid padding request!\n");
+      break;
     default:
       SSC_errx("Unaccounted for code_error code in pod, %d.\n", err);
   }
 }
+/* libTSC performs 4crypt's memory-map operations, and it reports their
+ * failures generically: an ErrType of MEMMAP, a code of
+ * ERROR_INPUT_MEMMAP_FAILED or ERROR_OUTPUT_MEMMAP_FAILED, and the
+ * concerning file's direction.
+ */
 static void handle_memmap_errors(PlainOldData* pod, SSC_CodeError_t err, InOutDir err_io_dir)
 {
-  const char* err_str;
   const char* err_map;
   const char* err_path;
-  switch (err) {
-    case SSC_MEMMAP_INIT_CODE_ERR_FEXIST_NO:
-      err_str = "Attempted to map %s filepath at %s, but it already existed!\n";
-      break;
-    case SSC_MEMMAP_INIT_CODE_ERR_FEXIST_YES:
-      err_str = "Attempted to create and map %s filepath at %s, but it didn't exist!\n";
-      break;
-    case SSC_MEMMAP_INIT_CODE_ERR_READONLY:
-      err_str = "Attempted to map %s filepath at %s, but failed due to readonly!\n";
-      break;
-    case SSC_MEMMAP_INIT_CODE_ERR_SHRINK:
-      err_str = "Attemped to map %s filepath at %s, but failed because shrinking is disallowed!\n";
-      break;
-    case SSC_MEMMAP_INIT_CODE_ERR_NOSIZE:
-      err_str = "Attempted to map %s filepath at %s, but failed because no size was provided!\n";
-      break;
-    case SSC_MEMMAP_INIT_CODE_ERR_OPEN_FILEPATH:
-      err_str = "Attempted to map %s filepath at %s, but failed to open the filepath!\n";
-      break;
-    case SSC_MEMMAP_INIT_CODE_ERR_CREATE_FILEPATH:
-      err_str = "Attempted to create and map %s filepath at %s, but failed to create the filepath!\n";
-      break;
-    case SSC_MEMMAP_INIT_CODE_ERR_GET_FILE_SIZE:
-      err_str = "Attempted to map %s filepath at %s, but failed to obtain the file size!\n";
-      break;
-    case SSC_MEMMAP_INIT_CODE_ERR_SET_FILE_SIZE:
-      err_str = "Attempted to map %s filepath at %s, but failed to set the file size!\n";
-      break;
-    case SSC_MEMMAP_INIT_CODE_ERR_MAP:
-      err_str = "Attempted to map %s filepath at %s, but failed the memory-map operation!\n";
-      break;
-    default:
-      err_str = "Invalid memory-map error code while trying to map %s map at filepath %s!\n";
-  }
   switch(err_io_dir) {
     case InOutDir::INPUT:
       err_map = "input";
@@ -174,12 +157,15 @@ static void handle_memmap_errors(PlainOldData* pod, SSC_CodeError_t err, InOutDi
     case InOutDir::OUTPUT:
       err_map = "output";
       err_path = pod->output_filename;
+      break;
     default:
       SSC_errx("Invalid err_io_dir %d in handle_memmap_errors!\n", err_io_dir);
+      return;
   }
+  /* Remove an output file that was created but not fully mapped. */
   if (err_io_dir == InOutDir::OUTPUT && SSC_FilePath_exists(err_path))
     remove(err_path);
-  SSC_errx(err_str, err_map, err_path);
+  SSC_errx("Failed to map the %s filepath at %s! (code %d)\n", err_map, err_path, static_cast<int>(err));
 }
 
 int main(int argc, char* argv[])

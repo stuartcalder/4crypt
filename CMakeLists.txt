@@ -41,6 +41,15 @@ find_package(PkgConfig REQUIRED)
 # Ask pkg-config for gtk4 (on MSYS2 the module is provided as gtk4)
 pkg_check_modules(GTK4 REQUIRED gtk4)
 
+# 4crypt's file operations are implemented inside libTSC's filecrypt module,
+# which requires a recent tsc_c that provides TSC/Filecrypt.h.
+find_path(TSC_FILECRYPT_HEADER TSC/Filecrypt.h)
+if(NOT TSC_FILECRYPT_HEADER)
+  message(FATAL_ERROR
+   "TSC/Filecrypt.h was not found! Build and install a recent tsc_c "
+   "(https://github.com/stuartcalder/tsc_c), which provides it.")
+endif()
+
 add_executable(4crypt
   Impl/CliMain.cc
   Impl/CommandLineArg.cc
@@ -96,6 +105,10 @@ set(CMAKE_FIND_LIBRARY_SUFFIXES ${SUFFIXES_OG})
 
 target_include_directories(4crypt  PRIVATE "${PROJECT_SOURCE_DIR}")
 target_include_directories(g4crypt PRIVATE "${PROJECT_SOURCE_DIR}")
+# Ensure the TSC headers (including TSC/Filecrypt.h) are found even when
+# libTSC is installed somewhere non-standard.
+target_include_directories(4crypt  PRIVATE "${TSC_FILECRYPT_HEADER}")
+target_include_directories(g4crypt PRIVATE "${TSC_FILECRYPT_HEADER}")
 target_compile_options(4crypt PRIVATE  "${LANG_FLAGS}")
 target_compile_options(g4crypt PRIVATE "${LANG_FLAGS}")
 

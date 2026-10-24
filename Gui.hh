@@ -183,10 +183,12 @@ class Gui
 
   // Update progress bar percentage until it's full.
   static void updateProgressCallback(void* cb_data);
-  // Encryption happens in a separate thread, and we pass in a progress bar update function and a Gui* as its callback data.
-  static void encryptThread(Core::StatusCallback_f* status_callback, void* status_callback_data);
-  // Decryption happens in a separate thread, and we pass in a progress bar update function and a Gui* as its callback data.
-  static void decryptThread(Core::StatusCallback_f* status_callback, void* status_callback_data);
+  // Pulse the progress bar at a fixed interval until @mOperationIsOngoing falsifies.
+  static void progressThread(void* vgui);
+  // Encryption happens in a separate thread; libTSC performs the operation while this thread waits.
+  static void encryptThread(void* vgui);
+  // Decryption happens in a separate thread; libTSC performs the operation while this thread waits.
+  static void decryptThread(void* vgui);
   // Update the status text and blink it on-screen until dismissed by falsifying @mStatusIsBlinking.
   static void statusThread(void* vgui);
 

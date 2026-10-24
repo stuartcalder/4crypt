@@ -37,7 +37,10 @@ fully compatible in both directions.
 
 ## Buildtime Dependencies
 -   [SSC](https://github.com/stuartcalder/SSC) header and library files.
--   [tsc_c](https://github.com/stuartcalder/tsc_c) header and library files.
+-   [tsc_c](https://github.com/stuartcalder/tsc_c) header and library files. The file
+    encryption format itself is implemented inside libTSC's `filecrypt` module, so tsc_c
+    must be a recent version that provides `TSC/Filecrypt.h` and the `TSC_Filecrypt_*`
+    procedures.
 ### (Required on OpenBSD, FreeBSD, MacOS, and GNU/Linux)
 -   __ncurses__ header and library files.
 ### (Required on Microsoft Windows only)
@@ -50,10 +53,16 @@ fully compatible in both directions.
 4. cd ${BUILD_DIR}
 5. make -j${NPROC}
 ## Implementation Detail
-The three most significant algorithms implemented and utilized in this project include:
+The three most significant algorithms utilized in this project include:
 1. The [Threefish512](https://en.wikipedia.org/wiki/Threefish) block cipher.
 2. The [Skein512](https://en.wikipedia.org/wiki/Skein_(hash_function)) cryptographic hash function.
 3. A customized implementation of the CATENA password scrambling framework.
+
+All three, along with the entire on-disk file format (header layout, Counter Mode
+encipherment, padding, and Message Authentication Code), are implemented inside 4crypt's
+dependency [tsc](https://github.com/stuartcalder/tsc) and exposed to this program through
+libTSC's `TSC_Filecrypt_*` C API. 4crypt gathers the user's credentials and parameters,
+and delegates the file operations themselves to libTSC.
 
 User supplied passwords are scrambled using CATENA and then hashed into two 512 bit keys; the first
 is used as the secret key for Threefish512 in Counter Mode for confidentiality; the second is used

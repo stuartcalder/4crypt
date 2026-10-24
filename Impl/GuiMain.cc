@@ -31,6 +31,7 @@
 #include <cstdio>
 // SSC
 #include <SSC/Process.h>
+#include <SSC/File.h>
 #ifdef FOURCRYPT_IS_PORTABLE
  #ifndef SSC_HAS_GETEXECUTABLEPATH
   #warning "Trying to build a portable 4crypt while SSC does not support SSC_getExecutablePath()!"
@@ -82,7 +83,11 @@ static const std::map<SSC_CodeError_t, const char*> error_msg {
   {Core::ERROR_METADATA_VALIDATION_FAILED, "Failed to validate the input file's metadata!"},
   {Core::ERROR_KEY_MODE_MISMATCH    , "The provided password or raw key does not match the file's key mode!"},
   {Core::ERROR_KEY_MALFORMED        , "The raw key contains invalid hexadecimal characters!"},
-  {Core::ERROR_KEY_MODE_UNSUPPORTED , "The file's key mode is unsupported by this version of 4crypt!"}
+  {Core::ERROR_KEY_MODE_UNSUPPORTED , "The file's key mode is unsupported by this version of 4crypt!"},
+  {Core::ERROR_PASSWORD_TOO_LARGE   , "The password exceeds the maximum length!"},
+  {Core::ERROR_ENTROPY_TOO_LARGE    , "The entropy exceeds the maximum length!"},
+  {Core::ERROR_SIZE_OVERFLOW        , "The requested file sizes are too large!"},
+  {Core::ERROR_INVALID_PADDING      , "Invalid padding request!"}
 };
 
 static bool
@@ -348,11 +353,25 @@ Gui::statusThread(void* vgui)
  }
 
 void
-Gui::encryptThread(
- Core::StatusCallback_f* status_callback,
- void*                   status_callback_data)
+Gui::progressThread(void* vgui)
  {
-  Gui*   gui  {static_cast<Gui*>(status_callback_data)};
+  Gui* gui {static_cast<Gui*>(vgui)};
+  for (;;)
+   {
+    gui->mOperationIsOngoingMtx.lock();
+    const bool ongoing {gui->mOperationIsOngoing};
+    gui->mOperationIsOngoingMtx.unlock();
+    if (not ongoing)
+      return;
+    updateProgressCallback(gui);
+    std::this_thread::sleep_for(std::chrono::milliseconds(250));
+   }
+ }
+
+void
+Gui::encryptThread(void* vgui)
+ {
+  Gui*   gui  {static_cast<Gui*>(vgui)};
   Core*  core {gui->mCore};
   Pod_t* pod  {gui->mPod};
   {
@@ -409,9 +428,7 @@ Gui::encryptThread(
 
     gui->mOperationData.code_error = core->encrypt(
      &gui->mOperationData.error_type,
-     &gui->mOperationData.in_out_dir,
-     status_callback,
-     gui);
+     &gui->mOperationData.in_out_dir);
     if (gui->mOperationData.code_error == 0)
      {
       g_idle_add([](void* vgui) -> gboolean
@@ -435,7 +452,6 @@ Gui::encryptThread(
      }
     Pod_t::del(*pod);
     Pod_t::init(*pod);
-    TSC_CSPRNG_init(&pod->rng);
 
     std::thread th {&statusThread, gui};
     th.detach();
@@ -457,7 +473,9 @@ Gui::encrypt(void)
     Pod_t::touchup(*mPod);
     gtk_widget_set_visible(mProgressBox, TRUE);
 
-    std::thread th {&encryptThread, &updateProgressCallback, this};
+    std::thread pth {&progressThread, this};
+    pth.detach();
+    std::thread th {&encryptThread, this};
     th.detach();
    }
   else
@@ -465,23 +483,18 @@ Gui::encrypt(void)
  }
 
 void
-Gui::decryptThread(
- Core::StatusCallback_f* status_callback,
- void*                   status_callback_data)
+Gui::decryptThread(void* vgui)
  {
-  Gui*   gui  {static_cast<Gui*>(status_callback_data)};
+  Gui*   gui  {static_cast<Gui*>(vgui)};
   Core*  core {gui->mCore};
   Pod_t* pod  {gui->mPod};
   {
     std::lock_guard lg {gui->mOperationMtx};
     gui->mOperationData.code_error = core->decrypt(
      &gui->mOperationData.error_type,
-     &gui->mOperationData.in_out_dir,
-     status_callback,
-     gui);
+     &gui->mOperationData.in_out_dir);
     Pod_t::del(*pod);
     Pod_t::init(*pod);
-    TSC_CSPRNG_init(&pod->rng);
     if (gui->mOperationData.code_error == 0)
      {
       g_idle_add([](void* vgui) -> gboolean
@@ -523,7 +536,9 @@ Gui::decrypt(void)
     mPod->execute_mode = ExeMode::DECRYPT;
     gtk_widget_set_visible(mProgressBox, TRUE);
 
-    std::thread th {&decryptThread, &updateProgressCallback, this};
+    std::thread pth {&progressThread, this};
+    pth.detach();
+    std::thread th {&decryptThread, this};
     th.detach();
    }
   else
@@ -545,7 +560,6 @@ Gui::onStartButtonClicked(GtkWidget* button, void* self)
    {
     Pod_t::del(*pod);
     Pod_t::init(*pod);
-    TSC_CSPRNG_init(&pod->rng);
    }
 
   if (not gui->getPassword())
