@@ -79,7 +79,10 @@ static const std::map<SSC_CodeError_t, const char*> error_msg {
   {Core::ERROR_OUTPUT_FILE_EXISTS        , "The output file already exists!"},
   {Core::ERROR_MAC_VALIDATION_FAILED     , "Failed to validate the Message Authentication Code. The input file may be corrupted or may have been maliciously modified!"},
   {Core::ERROR_KDF_FAILED                , "Failed to compute cryptographic keys! For encryption try a lesser mode; for decryption lower the thread batch size!"},
-  {Core::ERROR_METADATA_VALIDATION_FAILED, "Failed to validate the input file's metadata!"}
+  {Core::ERROR_METADATA_VALIDATION_FAILED, "Failed to validate the input file's metadata!"},
+  {Core::ERROR_KEY_MODE_MISMATCH    , "The provided password or raw key does not match the file's key mode!"},
+  {Core::ERROR_KEY_MALFORMED        , "The raw key contains invalid hexadecimal characters!"},
+  {Core::ERROR_KEY_MODE_UNSUPPORTED , "The file's key mode is unsupported by this version of 4crypt!"}
 };
 
 static bool

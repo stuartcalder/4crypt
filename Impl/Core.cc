@@ -35,6 +35,9 @@ using namespace fourcrypt;
 
 static_assert(Core::MAX_PW_BYTES == 125, "MAX_PW_BYTES changed!");
 #define MAX_PW_BYTES_STR "125"
+static_assert(Core::KEY_HEX_CHARS == 128, "KEY_HEX_CHARS changed!");
+#define KEY_HEX_CHARS_STR "128"
+static_assert(Core::KEY_BYTES == 64, "KEY_BYTES changed!");
 
 #if   defined(SSC_OS_UNIXLIKE)
  #define NEWLINE_ "\n"
@@ -59,6 +62,12 @@ std::string Core::reentry_prompt{
 };
 std::string Core::entropy_prompt{
   "Please input up to " MAX_PW_BYTES_STR " random characters." NEWLINE_
+};
+std::string Core::key_prompt{
+  "Please input your raw key as " KEY_HEX_CHARS_STR " hexadecimal characters." NEWLINE_
+};
+std::string Core::key_reentry_prompt{
+  "Please input the same key again." NEWLINE_
 };
 
 /* Allocate a PlainOldData object on the heap, initialize its variables
@@ -128,6 +137,9 @@ void Core::PlainOldData::init(PlainOldData& pod)
   memset(pod.password_buffer, 0, sizeof(pod.password_buffer));
   memset(pod.verify_buffer  , 0, sizeof(pod.verify_buffer));
   memset(pod.entropy_buffer , 0, sizeof(pod.entropy_buffer));
+  memset(pod.key_input_buffer , 0, sizeof(pod.key_input_buffer));
+  memset(pod.key_verify_buffer, 0, sizeof(pod.key_verify_buffer));
+  memset(pod.user_key         , 0, sizeof(pod.user_key));
   pod.input_map  = SSC_MEMMAP_NULL_LITERAL;
   pod.output_map = SSC_MEMMAP_NULL_LITERAL;
   pod.input_filename  = nullptr;
@@ -137,6 +149,8 @@ void Core::PlainOldData::init(PlainOldData& pod)
   pod.input_filename_size  = 0;
   pod.output_filename_size = 0;
   pod.password_size = 0;
+  pod.key_size = 0;
+  pod.file_uses_raw_key = 0;
   pod.entropy_size  = 0;
   pod.padding_size  = 0;
   pod.thread_count  = 1;
@@ -267,8 +281,24 @@ SSC_CodeError_t Core::encrypt(
     return err;
   }
 
+  // If a raw symmetric key has not already been initialized, then initialize it.
+  if (mypod->flags & Core::USE_KEY) {
+    if (mypod->key_size == 0) {
+      // Get the raw symmetric key.
+      const SSC_CodeError_t key_err {this->getKey(not (mypod->flags & Core::ENTER_PASS_ONCE))};
+      if (key_err) {
+        *err_typ = ErrType::CORE;
+        *err_dir = InOutDir::NONE;
+        return key_err;
+      }
+    }
+    if (mypod->flags & Core::SUPPLEMENT_ENTROPY) {
+      // Get the entropy password and hash it into the RNG.
+      this->getPassword(false, true);
+    }
+  }
   // If the password has not already been initialized, then initialize it.
-  if (mypod->password_size == 0) {
+  else if (mypod->password_size == 0) {
     // Get the encryption password.
     this->getPassword(not (mypod->flags & Core::ENTER_PASS_ONCE), false);
     if (mypod->flags & Core::SUPPLEMENT_ENTROPY) {
@@ -280,11 +310,13 @@ SSC_CodeError_t Core::encrypt(
     status_callback(status_callback_data);
   // Generate pseudorandom values.
   this->genRandomElements();
-  // Run the key derivation function and get our secret values.
+  // Derive our secret values from the password or the raw symmetric key.
   if (status_callback != nullptr)
     status_callback(status_callback_data);
+  if (mypod->flags & Core::USE_KEY)
+    this->expandRawKey();
   // Handle the return code of runKDF()
-  if (this->runKDF() == SSC_ERR) {
+  else if (this->runKDF() == SSC_ERR) {
     *err_typ = ErrType::CORE;
     *err_dir = InOutDir::NONE;
     return ERROR_KDF_FAILED;
@@ -414,6 +446,35 @@ SSC_Error_t Core::runKDF()
   return SSC_OK;
 }
 
+/* Expand the raw symmetric key into the secret Threefish512 encryption key and the
+ * secret Skein512 authentication key. Mirroring the password pathway, the KEY_BYTES
+ * byte raw key is hashed into 1024 bits with Skein512; the first 512 bits become the
+ * secret encryption key, and the latter 512 bits become the authentication key.
+ */
+void Core::expandRawKey()
+{
+  static_assert(Core::KEY_WORDS == TSC_THREEFISH512_BLOCK_WORDS);
+  static_assert(Core::KEY_BYTES  == TSC_THREEFISH512_BLOCK_BYTES);
+  PlainOldData* mypod {this->getPod()};
+  // Hash the raw symmetric key into 1024 bits of output.
+  TSC_Skein512_hash(
+   mypod->skein512,
+   mypod->hash_buffer,
+   sizeof(mypod->hash_buffer),
+   reinterpret_cast<const uint8_t*>(mypod->user_key),
+   Core::KEY_BYTES);
+  // The first 64 become the secret encryption key; the latter 64 become the authentication key.
+  memcpy(mypod->tf_sec_key, mypod->hash_buffer, TSC_THREEFISH512_BLOCK_BYTES);
+  memcpy(mypod->mac_key   , mypod->hash_buffer + TSC_THREEFISH512_BLOCK_BYTES, TSC_THREEFISH512_BLOCK_BYTES);
+  SSC_secureZero(mypod->hash_buffer, sizeof(mypod->hash_buffer));
+  // Initialize TSC_Threefish512CtrStatic.
+  TSC_Threefish512CtrStatic_init(
+   &mypod->tf_ctr,
+   mypod->tf_sec_key,
+   mypod->tf_tweak,
+   mypod->tf_ctr_iv);
+}
+
 /* Verify that the @size bytes starting at @begin produce the same Message Authentication
  * Code as that stored at @mac.
  */
@@ -494,8 +555,19 @@ SSC_CodeError_t Core::decrypt(
     *err_io_dir = InOutDir::INPUT;
     return ERROR_INVALID_4CRYPT_FILE;
   }
+  // If the decryption credentials have not already been initialized, then initialize them.
+  if (mypod->flags & Core::USE_KEY) {
+    if (mypod->key_size == 0) {
+      // Get the raw symmetric key.
+      const SSC_CodeError_t key_err {this->getKey(false)};
+      if (key_err) {
+        *err_io_dir = InOutDir::NONE;
+        return key_err;
+      }
+    }
+  }
   // If the decryption password has not already been initialized, then initialize it.
-  if (mypod->password_size == 0)
+  else if (mypod->password_size == 0)
     this->getPassword(false, false);
   const uint8_t* in     {mypod->input_map.ptr};
   const size_t   num_in {mypod->input_map.size};
@@ -504,12 +576,25 @@ SSC_CodeError_t Core::decrypt(
   in = this->readHeaderPlaintext(in, &err);
   if (err)
     return err;
+  // Ensure the provided credentials match the key mode of the input file.
+  if (mypod->file_uses_raw_key) {
+    if (not (mypod->flags & Core::USE_KEY)) {
+      *err_io_dir = InOutDir::NONE;
+      return ERROR_KEY_MODE_MISMATCH;
+    }
+  }
+  else if (mypod->flags & Core::USE_KEY) {
+    *err_io_dir = InOutDir::NONE;
+    return ERROR_KEY_MODE_MISMATCH;
+  }
   PlainOldData::touchup(*mypod);
-  // Run the KDF to generate secret values.
+  // Derive our secret values from the password or the raw symmetric key.
   if (status_callback != nullptr)
     status_callback(status_callback_data);
 
-  if (this->runKDF() == SSC_ERR) {
+  if (mypod->flags & Core::USE_KEY)
+    this->expandRawKey();
+  else if (this->runKDF() == SSC_ERR) {
     *err_io_dir = InOutDir::NONE;
     return ERROR_KDF_FAILED;
   }
@@ -635,10 +720,18 @@ const uint8_t* Core::readHeaderPlaintext(
     else
       mypod->thread_count = SSC_swap64(tcount);
   }
-  // 8 bytes reserved.
-  if (!SSC_isZero(from, 8)) {
-    *err = ERROR_RESERVED_BYTES_USED;
-    return from;
+  // 8 bytes reserved. The first byte specifies the key mode of the file.
+  {
+    const uint8_t key_mode {*from};
+    if (key_mode > Core::KEY_MODE_RAW) {
+      *err = ERROR_KEY_MODE_UNSUPPORTED;
+      return from;
+    }
+    if (!SSC_isZero(from + 1, 7)) {
+      *err = ERROR_RESERVED_BYTES_USED;
+      return from;
+    }
+    mypod->file_uses_raw_key = (key_mode == Core::KEY_MODE_RAW);
   }
   from += 8;
   return from;
@@ -729,22 +822,26 @@ SSC_CodeError_t Core::describe(
   memcpy(mac, mypod->input_map.ptr + num_in - sizeof(mac), sizeof(mac));
 
   // Print plaintext header information from beginning to end.
-  if (mypod->flags & Core::ENABLE_PHI)
+  if (mypod->file_uses_raw_key)
+    puts("The file is encrypted with a raw symmetric key.");
+  else if (mypod->flags & Core::ENABLE_PHI)
     puts("The Phi function IS USED! Beware cache-timing attacks!");
   printf(
    "The file size is................%s.\n",
    Core::makeMemoryString(mypod->input_map.size).c_str());
-  if (mypod->memory_low == mypod->memory_high) {
-    printf(
-     "The KDF Memory Bound is.........%s\n",
-     Core::makeMemoryStringBitShift(mypod->memory_low).c_str());
+  if (not mypod->file_uses_raw_key) {
+    if (mypod->memory_low == mypod->memory_high) {
+      printf(
+       "The KDF Memory Bound is.........%s\n",
+       Core::makeMemoryStringBitShift(mypod->memory_low).c_str());
+    }
+    else {
+      printf("The KDF Lower Memory Bound is...%s\n", Core::makeMemoryStringBitShift(mypod->memory_low).c_str());
+      printf("The KDF Upper Memory Bound is...%s\n", Core::makeMemoryStringBitShift(mypod->memory_high).c_str());
+    }
+    printf("The KDF Thread Count is.........%" PRIu64 " thread(s).\n", mypod->thread_count);
+    printf("Each KDF thread iterates........%" PRIu8  " time(s).\n", mypod->iterations);
   }
-  else {
-    printf("The KDF Lower Memory Bound is...%s\n", Core::makeMemoryStringBitShift(mypod->memory_low).c_str());
-    printf("The KDF Upper Memory Bound is...%s\n", Core::makeMemoryStringBitShift(mypod->memory_high).c_str());
-  }
-  printf("The KDF Thread Count is.........%" PRIu64 " thread(s).\n", mypod->thread_count);
-  printf("Each KDF thread iterates........%" PRIu8  " time(s).\n", mypod->iterations);
   static constexpr uint8_t print_mode {SSC_PRINT_HEX | SSC_PRINT_PREFIX | SSC_PRINT_NEWLINE};
 
   printf("The Threefish512 Tweak is.......");
@@ -856,6 +953,52 @@ void Core::getPassword(bool enter_twice, bool entropy)
   }
 }
 
+/* Prompt the user for a raw symmetric key to be entered at a command-line terminal
+ * as KEY_HEX_CHARS hexadecimal characters.
+ * If @enter_twice is true the user will be prompted a second time to confirm that
+ * they entered the key correctly.
+ * On failure to decode the hexadecimal characters, return ERROR_KEY_MALFORMED.
+ */
+SSC_CodeError_t Core::getKey(bool enter_twice)
+{
+  PlainOldData* mypod {this->getPod()};
+  SSC_Terminal_init();
+  uint64_t hex_size;
+  if (enter_twice) {
+    hex_size = static_cast<uint64_t>(
+     SSC_Terminal_getPasswordChecked(
+      mypod->key_input_buffer,
+      mypod->key_verify_buffer,
+      Core::key_prompt.c_str(),
+      Core::key_reentry_prompt.c_str(),
+      static_cast<int>(Core::KEY_HEX_CHARS),
+      static_cast<int>(Core::KEY_HEX_CHARS),
+      static_cast<int>(Core::KEY_BUFFER_BYTES)));
+    SSC_secureZero(mypod->key_verify_buffer, sizeof(mypod->key_verify_buffer));
+  }
+  else {
+    hex_size = static_cast<uint64_t>(
+     SSC_Terminal_getPassword(
+      mypod->key_input_buffer,
+      Core::key_prompt.c_str(),
+      static_cast<int>(Core::KEY_HEX_CHARS),
+      static_cast<int>(Core::KEY_HEX_CHARS),
+      static_cast<int>(Core::KEY_BUFFER_BYTES)));
+  }
+  SSC_Terminal_end();
+  // Decode the hexadecimal characters into the raw symmetric key.
+  const SSC_Error_t decode_err {parse_hex_key(
+   reinterpret_cast<const char*>(mypod->key_input_buffer),
+   hex_size,
+   Core::KEY_HEX_CHARS,
+   reinterpret_cast<uint8_t*>(mypod->user_key))};
+  SSC_secureZero(mypod->key_input_buffer, sizeof(mypod->key_input_buffer));
+  if (decode_err != SSC_OK)
+    return ERROR_KEY_MALFORMED;
+  mypod->key_size = Core::KEY_BYTES;
+  return ERROR_NONE;
+}
+
 uint8_t* Core::writeHeader(uint8_t* to)
 {
   PlainOldData* mypod {this->getPod()};
@@ -863,13 +1006,22 @@ uint8_t* Core::writeHeader(uint8_t* to)
   memcpy(to, Core::magic, sizeof(Core::magic));
   to += sizeof(Core::magic);
   // Mem Low, High, Iteration Count, Phi usage.
-  (*to++) = mypod->memory_low;
-  (*to++) = mypod->memory_high;
-  (*to++) = mypod->iterations;
-  if (mypod->flags & Core::ENABLE_PHI)
-    (*to++) = 0x01;
-  else
-    (*to++) = 0x00;
+  if (mypod->flags & Core::USE_KEY) {
+    // The KDF parameters are unused when encrypting with a raw symmetric key.
+    (*to++) = 0;
+    (*to++) = 0;
+    (*to++) = 0;
+    (*to++) = 0;
+  }
+  else {
+    (*to++) = mypod->memory_low;
+    (*to++) = mypod->memory_high;
+    (*to++) = mypod->iterations;
+    if (mypod->flags & Core::ENABLE_PHI)
+      (*to++) = 0x01;
+    else
+      (*to++) = 0x00;
+  }
   // Size of the file, little-endian encoded.
   {
     uint64_t size;
@@ -892,16 +1044,19 @@ uint8_t* Core::writeHeader(uint8_t* to)
   // Thread count, little-endian encoded.
   {
     uint64_t tcount;
-    if constexpr(Core::is_little_endian)
+    if (mypod->flags & Core::USE_KEY)
+      tcount = 0; // The KDF thread count is unused when encrypting with a raw symmetric key.
+    else if constexpr(Core::is_little_endian)
       tcount = mypod->thread_count;
     else
       tcount = SSC_swap64(mypod->thread_count);
     memcpy(to, &tcount, sizeof(tcount));
     to += sizeof(tcount);
   }
-  // 8 bytes reserved.
-  memset(to, 0, 8);
-  to += 8;
+  // 8 bytes reserved. The first byte specifies the key mode of the file.
+  (*to++) = (mypod->flags & Core::USE_KEY) ? Core::KEY_MODE_RAW : Core::KEY_MODE_PASSWORD;
+  memset(to, 0, 7);
+  to += 7;
   // 8 Ciphered padding size bytes; 8 ciphered reserve bytes.
   {
     uint64_t tmp[2];

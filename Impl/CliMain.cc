@@ -31,13 +31,14 @@ using InOutDir = Core::InOutDir;
 using ExeMode  = Core::ExeMode;
 using PadMode  = Core::PadMode;
 
-const std::array<SSC_ArgShort, 14> shorts = {{
+const std::array<SSC_ArgShort, 15> shorts = {{
   SSC_ARGSHORT_LITERAL(ArgProc::enter_password_once, '1'),
   SSC_ARGSHORT_LITERAL(ArgProc::batch_size,          'B'),
   SSC_ARGSHORT_LITERAL(ArgProc::describe,            'D'),
   SSC_ARGSHORT_LITERAL(ArgProc::entropy,             'E'),
   SSC_ARGSHORT_LITERAL(ArgProc::high_mem,            'H'),
   SSC_ARGSHORT_LITERAL(ArgProc::iterations,          'I'),
+  SSC_ARGSHORT_LITERAL(ArgProc::use_key,             'K'),
   SSC_ARGSHORT_LITERAL(ArgProc::low_mem,             'L'),
   SSC_ARGSHORT_LITERAL(ArgProc::use_mem,             'M'),
   SSC_ARGSHORT_LITERAL(ArgProc::use_phi,             'P'),
@@ -48,7 +49,7 @@ const std::array<SSC_ArgShort, 14> shorts = {{
   SSC_ARGSHORT_LITERAL(ArgProc::output,              'o'),
 }};
 
-const std::array<SSC_ArgLong, 21> longs = {{
+const std::array<SSC_ArgLong, 23> longs = {{
   SSC_ARGLONG_LITERAL(ArgProc::batch_size,          "batch-size"),
   SSC_ARGLONG_LITERAL(ArgProc::decrypt,             "decrypt"),
   SSC_ARGLONG_LITERAL(ArgProc::describe,            "describe"),
@@ -60,6 +61,7 @@ const std::array<SSC_ArgLong, 21> longs = {{
   SSC_ARGLONG_LITERAL(ArgProc::high_mem,            "high-mem"),
   SSC_ARGLONG_LITERAL(ArgProc::high_mem,            "high-memory"),
   SSC_ARGLONG_LITERAL(ArgProc::iterations,          "iterations"),
+  SSC_ARGLONG_LITERAL(ArgProc::key_file,            "key-file"),
   SSC_ARGLONG_LITERAL(ArgProc::low_mem,             "low-mem"),
   SSC_ARGLONG_LITERAL(ArgProc::low_mem,             "low-memory"),
   SSC_ARGLONG_LITERAL(ArgProc::output,              "output"),
@@ -69,6 +71,7 @@ const std::array<SSC_ArgLong, 21> longs = {{
   SSC_ARGLONG_LITERAL(ArgProc::threads,             "threads"),
   SSC_ARGLONG_LITERAL(ArgProc::use_mem,             "use-mem"),
   SSC_ARGLONG_LITERAL(ArgProc::use_mem,             "use-memory"),
+  SSC_ARGLONG_LITERAL(ArgProc::use_key,             "use-key"),
   SSC_ARGLONG_LITERAL(ArgProc::use_phi,             "use-phi"),
 }};
 
@@ -110,6 +113,15 @@ static void handle_core_errors(PlainOldData* pod, SSC_CodeError_t err, InOutDir 
       break;
     case (Core::ERROR_KDF_FAILED):
       SSC_errx("Failed to execute the KDF!\n");
+      break;
+    case (Core::ERROR_KEY_MODE_MISMATCH):
+      SSC_errx("The provided password or raw key does not match the file's key mode!\n");
+      break;
+    case (Core::ERROR_KEY_MALFORMED):
+      SSC_errx("The raw key contains invalid hexadecimal characters!\n");
+      break;
+    case (Core::ERROR_KEY_MODE_UNSUPPORTED):
+      SSC_errx("The file's key mode is unsupported by this version of 4crypt!\n");
       break;
     default:
       SSC_errx("Unaccounted for code_error code in pod, %d.\n", err);

@@ -134,6 +134,10 @@ print_help()
    "-T, --threads=<num>         Set the degree of parallelism for the KDF.\n"
    "-B, --batch-size=<num>      Set the number of KDF threads to execute concurrently.\n"
    "-1, --enter-password-once   Disable password-reentry for correctness verification during encryption.\n"
+   "-K, --use-key               Encrypt or decrypt with a raw 64-byte symmetric key, entered interactively\n"
+   "                              as 128 hexadecimal characters.\n"
+   "    --key-file=<filepath>   Read the raw 64-byte symmetric key from the file at the filepath. The file\n"
+   "                              must contain the key as 128 hexadecimal characters.\n"
    "-P, --use-phi               Enable the Phi function for each KDF thread.\n"
    "--pad-as-if=<size>          Pad the output ciphertext as if it were an unpadded encrypted file of this size.\n"
    "--pad-by=<size>             Pad the output ciphertext by this many bytes, rounded up such that the produced\n"
@@ -267,6 +271,34 @@ ArgProc::iterations(const int argc, char** R_ argv, const int offset, void* R_ d
 }
 
 int
+ArgProc::key_file(const int argc, char** R_ argv, const int offset, void* R_ data)
+{
+  PlainOldData* pod = static_cast<PlainOldData*>(data);
+  SSC_assertMsg(
+   not (pod->flags & Core::USE_KEY),
+   "Cannot use both -K/--use-key and --key-file!\n");
+  SSC_ArgParser parser;
+  return SSC_ArgParser_process(
+   &parser,
+   argc,
+   argv,
+   offset,
+   data,
+   nullptr,
+   [](SSC_ArgParser* R_ ap, void* R_ dt) -> SSC_Error_t {
+     PlainOldData* pod = static_cast<PlainOldData*>(dt);
+     if (parse_key_file(
+          ap->to_read,
+          Core::KEY_HEX_CHARS,
+          reinterpret_cast<uint8_t*>(pod->user_key)) != SSC_OK)
+       SSC_errx("Failed to parse a valid raw key from the key file!\n");
+     pod->key_size = Core::KEY_BYTES;
+     pod->flags   |= (Core::USE_KEY | Core::KEY_FROM_FILE);
+     return SSC_OK;
+   });
+}
+
+int
 ArgProc::low_mem(const int argc, char** R_ argv, const int offset, void* R_ data)
 {
   SSC_ArgParser parser;
@@ -376,6 +408,17 @@ ArgProc::use_mem(const int argc, char** R_ argv, const int offset, void* R_ data
      pod->memory_low = mem;
      return SSC_OK;
    });
+}
+
+int
+ArgProc::use_key(const int, char** R_ argv, const int offset, void* R_ data)
+{
+  PlainOldData* pod = static_cast<PlainOldData*>(data);
+  SSC_assertMsg(
+   not (pod->flags & Core::KEY_FROM_FILE),
+   "Cannot use both --key-file and -K/--use-key!\n");
+  pod->flags |= Core::USE_KEY;
+  return SSC_1opt(argv[0][offset]);
 }
 
 int

@@ -16,12 +16,15 @@
 */
 #include "Util.hh"
 
+#include <cstdio>
 #include <cstring>
 #include <cstdlib>
 #include <cinttypes>
 #include <cctype>
 
 #include <SSC/Error.h>
+#include <SSC/Operation.h>
+#include <SSC/File.h>
 #include <SSC/SSC_String.h>
 #define R_ SSC_RESTRICT
 
@@ -118,4 +121,77 @@ fourcrypt::parse_integer(const char* R_ cstr, const size_t len)
   uint64_t integer = static_cast<uint64_t>(std::strtoumax(temp, nullptr, 10));
   delete[] temp;
   return integer;
+}
+
+namespace {
+int
+hex_digit_value(const char c)
+{
+  if (c >= '0' && c <= '9')
+    return c - '0';
+  if (c >= 'a' && c <= 'f')
+    return c - 'a' + 10;
+  if (c >= 'A' && c <= 'F')
+    return c - 'A' + 10;
+  return -1;
+}
+} // ! namespace
+
+SSC_Error_t
+fourcrypt::parse_hex_key(
+ const char* R_ str,
+ const size_t str_len,
+ const size_t hex_chars,
+ uint8_t* R_  out)
+{
+  if (hex_chars == 0 || (hex_chars % 2) != 0)
+    return SSC_ERR;
+  size_t begin {0};
+  size_t end   {str_len};
+  // Ignore leading and trailing whitespace.
+  while (begin < end && std::isspace(static_cast<unsigned char>(str[begin])))
+    ++begin;
+  while (end > begin && std::isspace(static_cast<unsigned char>(str[end - 1])))
+    --end;
+  // Accept an optional "0x"/"0X" prefix.
+  if ((end - begin) > 2 && str[begin] == '0' && (str[begin + 1] == 'x' || str[begin + 1] == 'X'))
+    begin += 2;
+  if ((end - begin) != hex_chars)
+    return SSC_ERR;
+  const size_t num_bytes {hex_chars / 2};
+  for (size_t i = 0; i < num_bytes; ++i) {
+    const int hi {hex_digit_value(str[begin + (2 * i)])};
+    const int lo {hex_digit_value(str[begin + (2 * i) + 1])};
+    if (hi < 0 || lo < 0)
+      return SSC_ERR;
+    out[i] = static_cast<uint8_t>((hi << 4) | lo);
+  }
+  return SSC_OK;
+}
+
+SSC_Error_t
+fourcrypt::parse_key_file(const char* R_ path, const size_t hex_chars, uint8_t* R_ out)
+{
+  size_t file_size {0};
+  if (SSC_FilePath_getSize(path, &file_size) != SSC_OK)
+    return SSC_ERR;
+  // The key file must hold at least @hex_chars characters; do not read absurdly large files.
+  if (file_size < hex_chars || file_size > ((2 * hex_chars) + 2))
+    return SSC_ERR;
+  std::FILE* f {std::fopen(path, "rb")};
+  if (f == nullptr)
+    return SSC_ERR;
+  char* const buffer = new char[file_size + 1];
+  const size_t num_read {std::fread(buffer, 1, file_size, f)};
+  std::fclose(f);
+  if (num_read != file_size) {
+    delete[] buffer;
+    return SSC_ERR;
+  }
+  buffer[file_size] = '\0';
+  const SSC_Error_t result {parse_hex_key(buffer, file_size, hex_chars, out)};
+  // Do not leave key material or its hexadecimal representation lying around.
+  SSC_secureZero(buffer, file_size + 1);
+  delete[] buffer;
+  return result;
 }

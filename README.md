@@ -19,6 +19,22 @@ and the key derivation and pseudorandom byte streams differ from all earlier rel
 rejected.** If you have important data encrypted with an earlier version, decrypt it with the old version and
 re-encrypt it with version 0.2.0 before upgrading.
 
+## Version 0.3.0: Raw Symmetric Keys
+In addition to password-based encryption, 4crypt can now encrypt and decrypt files with raw
+64-byte symmetric keys. Supply a key interactively with `-K`/`--use-key` (entered as 128
+hexadecimal characters), or read one from a file with `--key-file=<filepath>`, which accepts an
+optional "0x" prefix and surrounding whitespace. Key files should be stored with restrictive
+permissions (e.g. `chmod 600`), since any reader of the key file can decrypt the data.
+
+Mirroring the password pathway, the 64-byte key is hashed into 1024 bits with Skein512; the first
+512 bits are used as the secret key for Threefish512 in Counter Mode for confidentiality, and the
+latter 512 bits are used as the secret key for Skein512's native Message Authentication Code.
+
+Files encrypted with a raw symmetric key store the value 1 in the header's key-mode field, with
+all Key Derivation Function parameter fields set to zero. **Files encrypted with a raw symmetric
+key cannot be decrypted by versions of 4crypt prior to 0.3.0.** Password-encrypted files remain
+fully compatible in both directions.
+
 ## Buildtime Dependencies
 -   [SSC](https://github.com/stuartcalder/SSC) header and library files.
 -   [tsc_c](https://github.com/stuartcalder/tsc_c) header and library files.
@@ -56,7 +72,8 @@ The beginning of every 4crypt-encrypted file is a header, consisting of:
 5. 256 pseudorandom bits utilized as a cryptographic salt for CATENA.
 6. 256 pseudorandom bits utilized as an initialization vector for Threefish in Counter Mode.
 7. 64 bit, little endian encoded unsigned integer describing the thread count for CATENA.
-8. 64 reserved bits, currently always all zero.
+8. 8 bits encoding the key mode of the file (0 = password-derived via CATENA, 1 = raw symmetric
+   key), followed by 56 reserved bits, currently always all zero.
 9. 64 bit, Threefish512-CTR enciphered, little endian encoded unsigned integer describing the total number of padding bytes.
 10. 64 Threefish512-CTR enciphered reserved bits. Currently the plaintext is always all zero.
 

@@ -46,6 +46,8 @@ struct ArgProc
   static int high_mem(ARGS_);
   // Set the number of KDF iterations per thread.
   static int iterations(ARGS_);
+  // Read a raw 64-byte symmetric key from the file at the provided filepath.
+  static int key_file(ARGS_);
   // Set the lower memory bound for the KDF.
   static int low_mem(ARGS_);
   // Set the output file path.
@@ -62,6 +64,8 @@ struct ArgProc
   static int use_mem(ARGS_);
   // Enable usage of the Phi function in the KDF.
   static int use_phi(ARGS_);
+  // Use a raw 64-byte symmetric key, entered interactively as 128 hexadecimal characters.
+  static int use_key(ARGS_);
  };
 
 } // ! namespace fourcrypt
