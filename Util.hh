@@ -39,9 +39,11 @@ namespace fourcrypt
   SSC_Error_t
   parse_hex_key(const char* R_ str, const size_t str_len, const size_t hex_chars, uint8_t* R_ out);
 
-  /* Read the key file at @path, and decode exactly @hex_chars hexadecimal characters
-   * from its contents into @out (@hex_chars / 2 bytes). Return SSC_OK on success, and
-   * SSC_ERR if the file cannot be read or does not hold a valid hexadecimal key.
+  /* Read the key file at @path into @out (@hex_chars / 2 bytes). The file must hold either
+   * exactly (@hex_chars / 2) raw key bytes, or exactly @hex_chars hexadecimal characters
+   * (leading/trailing whitespace ignored, optional "0x"/"0X" prefix accepted). Return
+   * SSC_OK on success, and SSC_ERR if the file cannot be read, is the wrong size, or does
+   * not hold a valid key.
    */
   SSC_Error_t
   parse_key_file(const char* R_ path, const size_t hex_chars, uint8_t* R_ out);

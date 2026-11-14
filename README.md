@@ -22,9 +22,10 @@ re-encrypt it with version 0.2.0 before upgrading.
 ## Version 0.3.0: Raw Symmetric Keys
 In addition to password-based encryption, 4crypt can now encrypt and decrypt files with raw
 64-byte symmetric keys. Supply a key interactively with `-K`/`--use-key` (entered as 128
-hexadecimal characters), or read one from a file with `--key-file=<filepath>`, which accepts an
-optional "0x" prefix and surrounding whitespace. Key files should be stored with restrictive
-permissions (e.g. `chmod 600`), since any reader of the key file can decrypt the data.
+hexadecimal characters), or read one from a file with `--key-file=<filepath>`. Key files may hold
+the key as 128 hexadecimal characters (with an optional "0x" prefix and surrounding whitespace),
+or as the 64 raw bytes of the key itself. Key files should be stored with restrictive permissions
+(e.g. `chmod 600`), since any reader of the key file can decrypt the data.
 
 Mirroring the password pathway, the 64-byte key is hashed into 1024 bits with Skein512; the first
 512 bits are used as the secret key for Threefish512 in Counter Mode for confidentiality, and the
@@ -79,7 +80,8 @@ The beginning of every 4crypt-encrypted file is a header, consisting of:
        selects raw-key mode, and the remaining bits are reserved (currently always zero).
 3. 64 bit, little endian encoded unsigned integer describing the total size of the file.
 4. 128 pseudorandom bits utilized as a Threefish512 tweak for Threefish in Counter Mode.
-5. 256 pseudorandom bits utilized as a cryptographic salt for CATENA.
+5. 256 pseudorandom bits utilized as a cryptographic salt for CATENA (all
+   zeros for raw-key files, which do not use it).
 6. 256 pseudorandom bits utilized as an initialization vector for Threefish in Counter Mode.
 7. 64 bit, little endian encoded unsigned integer describing the thread count for CATENA.
 8. 64 reserved bits (formerly the key-mode field), currently always all zero.

@@ -137,7 +137,7 @@ print_help()
    "-K, --use-key               Encrypt or decrypt with a raw 64-byte symmetric key, entered interactively\n"
    "                              as 128 hexadecimal characters.\n"
    "    --key-file=<filepath>   Read the raw 64-byte symmetric key from the file at the filepath. The file\n"
-   "                              must contain the key as 128 hexadecimal characters.\n"
+   "                              must contain the key as 128 hexadecimal characters, or as 64 raw bytes.\n"
    "-P, --use-phi               Enable the Phi function for each KDF thread.\n"
    "--pad-as-if=<size>          Pad the output ciphertext as if it were an unpadded encrypted file of this size.\n"
    "--pad-by=<size>             Pad the output ciphertext by this many bytes, rounded up such that the produced\n"

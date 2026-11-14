@@ -16,7 +16,6 @@
 */
 #include "Util.hh"
 
-#include <cstdio>
 #include <cstring>
 #include <cstdlib>
 #include <cinttypes>
@@ -175,20 +174,33 @@ fourcrypt::parse_key_file(const char* R_ path, const size_t hex_chars, uint8_t* 
   size_t file_size {0};
   if (SSC_FilePath_getSize(path, &file_size) != SSC_OK)
     return SSC_ERR;
-  // The key file must hold at least @hex_chars characters; do not read absurdly large files.
-  if (file_size < hex_chars || file_size > ((2 * hex_chars) + 2))
+  // The key file must hold either (@hex_chars / 2) raw key bytes, or @hex_chars hexadecimal
+  // characters (tolerating an optional "0x" prefix and surrounding whitespace); do not read
+  // absurdly large files.
+  if (file_size > ((2 * hex_chars) + 2))
     return SSC_ERR;
-  std::FILE* f {std::fopen(path, "rb")};
-  if (f == nullptr)
+  SSC_File_t f {SSC_FILE_NULL_LITERAL};
+  if (SSC_FilePath_open(path, /*ronly=*/true, &f) != SSC_OK)
     return SSC_ERR;
   char* const buffer = new char[file_size + 1];
-  const size_t num_read {std::fread(buffer, 1, file_size, f)};
-  std::fclose(f);
-  if (num_read != file_size) {
+  SSC_ssize_t num_read {0};
+  const SSC_CodeError_t read_status {SSC_File_read(f, buffer, file_size, &num_read)};
+  SSC_File_close(f);
+  if ((read_status != SSC_FILE_READ_OK) or (static_cast<size_t>(num_read) != file_size)) {
     delete[] buffer;
     return SSC_ERR;
   }
   buffer[file_size] = '\0';
+  // A file of exactly (@hex_chars / 2) bytes holds the raw key itself.
+  if (file_size == (hex_chars / 2)) {
+    std::memcpy(out, buffer, file_size);
+    // Do not leave key material lying around.
+    SSC_secureZero(buffer, file_size + 1);
+    delete[] buffer;
+    return SSC_OK;
+  }
+  if (file_size < hex_chars)
+    return SSC_ERR;
   const SSC_Error_t result {parse_hex_key(buffer, file_size, hex_chars, out)};
   // Do not leave key material or its hexadecimal representation lying around.
   SSC_secureZero(buffer, file_size + 1);
